@@ -8,54 +8,99 @@ mod_storm_ui <- function(id) {
     title = shiny::tagList(shiny::icon("bolt"), "STORM"),
     value = "STORM",
     bslib::layout_sidebar(
+      class = "tempest-scripted-layout tempest-storm-layout",
       sidebar = bslib::sidebar(
-        title = "STORM Settings",
-        width = 300,
-        shiny::textInput(
-          ns("topic"),
-          "Research Topic",
-          placeholder = "Enter a research topic..."
+        title = "STORM settings",
+        width = 320,
+        class = "tempest-scripted-sidebar",
+        bslib::card(
+          class = "tempest-scripted-settings-card",
+          bslib::card_header(
+            shiny::span(
+              shiny::icon("sliders", class = "me-2"),
+              "Run configuration"
+            )
+          ),
+          bslib::card_body(
+            shiny::textInput(
+              ns("topic"),
+              "Research topic",
+              placeholder = "Enter a research topic..."
+            ),
+            shiny::numericInput(
+              ns("n_experts"),
+              "Expert count",
+              3,
+              min = 1,
+              max = 10
+            ),
+            shiny::selectInput(
+              ns("strategy"),
+              "Research strategy",
+              choices = c(
+                "Key questions" = "key_questions",
+                "Conversation" = "conversation"
+              ),
+              selected = "key_questions"
+            ),
+            shiny::helpText(
+              "Choose individual questions or a conversation between experts."
+            ),
+            shiny::numericInput(
+              ns("max_rounds"),
+              "Maximum rounds",
+              3,
+              min = 1,
+              max = 10
+            ),
+            shiny::helpText(
+              "Limits the number of research rounds."
+            )
+          )
         ),
-        shiny::numericInput(
-          ns("n_experts"),
-          "Expert Count",
-          3,
-          min = 1,
-          max = 10
+        shiny::div(
+          class = "tempest-scripted-run-actions",
+          bslib::input_task_button(
+            ns("run"),
+            "Run STORM",
+            icon = shiny::icon("bolt"),
+            label_busy = "Running...",
+            class = "w-100"
+          ),
+          shiny::uiOutput(ns("cancel_control"))
         ),
-        shiny::selectInput(
-          ns("strategy"),
-          "Research Strategy",
-          choices = c("key_questions", "conversation"),
-          selected = "key_questions"
-        ),
-        shiny::numericInput(
-          ns("max_rounds"),
-          "Max Rounds",
-          3,
-          min = 1,
-          max = 10
-        ),
-        bslib::input_task_button(
-          ns("run"),
-          "Run STORM Pipeline",
-          icon = shiny::icon("bolt"),
-          label_busy = "Running...",
-          class = "w-100"
-        ),
-        shiny::uiOutput(ns("cancel_control"))
+        shiny::p(
+          class = "small text-body-secondary mb-0 tempest-scripted-sidebar-note",
+          shiny::icon("circle-info", class = "me-1"),
+          "You can keep using the workspace while STORM runs."
+        )
       ),
       bslib::card(
+        class = "tempest-scripted-card tempest-storm-progress-card",
         full_screen = TRUE,
-        bslib::card_header("STORM Pipeline Progress"),
-        bslib::card_body(
+        bslib::card_header(
+          class = "tempest-scripted-card-header",
           shiny::div(
+            shiny::h2(class = "h5 mb-1", "STORM pipeline progress"),
+            shiny::p(
+              class = "mb-0 small text-body-secondary",
+              "Follow the run as it moves through research, synthesis, and publication."
+            )
+          )
+        ),
+        bslib::card_body(
+          class = "tempest-scripted-card-body",
+          shiny::div(
+            class = "tempest-storm-progress-region",
             role = "status",
             `aria-live` = "polite",
             `aria-atomic` = "true",
             shiny::uiOutput(ns("progress"))
           ),
-          shiny::uiOutput(ns("result"))
+          shiny::div(
+            class = "tempest-storm-result-region",
+            shiny::uiOutput(ns("result"))
+          )
         )
       )
     )
@@ -325,52 +370,49 @@ mod_storm_server <- function(id, config, store) {
       state <- storm_progress_state(progress_events(), status)
       switch(
         status,
-        initial = empty_state(
-          "bolt",
-          "Configure settings and click 'Run STORM Pipeline' to begin."
-        ),
-        running = workflow_progress_ui(state, storm_stage_labels()),
-        success = workflow_progress_ui(state, storm_stage_labels()),
-        error = workflow_progress_ui(state, storm_stage_labels())
+        initial = storm_progress_empty_state_ui(),
+        running = storm_progress_live_ui(state),
+        success = storm_progress_live_ui(state),
+        error = storm_progress_live_ui(state)
       )
     })
 
     output$result <- shiny::renderUI({
       if (!is.null(validation_error())) {
-        return(shiny::div(
-          class = "alert alert-danger mt-3",
-          role = "alert",
-          shiny::icon("triangle-exclamation"),
-          " ",
-          validation_error()
+        return(storm_result_alert_ui(
+          "danger",
+          "triangle-exclamation",
+          "Research topic needed",
+          validation_error(),
+          role = "alert"
         ))
       }
       if (isTRUE(worker_state$cancelled)) {
-        return(shiny::div(
-          class = "alert alert-warning mt-3",
-          role = "alert",
-          shiny::icon("ban"),
-          " STORM run cancelled."
+        return(storm_result_alert_ui(
+          "warning",
+          "ban",
+          "Run cancelled",
+          "STORM run cancelled.",
+          role = "alert"
         ))
       }
       status <- storm_task$status()
       if (identical(status, "success") && !is.null(publication_error())) {
-        return(shiny::div(
-          class = "alert alert-danger mt-3",
-          role = "alert",
-          shiny::icon("triangle-exclamation"),
-          " ",
-          publication_error()
+        return(storm_result_alert_ui(
+          "danger",
+          "triangle-exclamation",
+          "Report could not be published",
+          publication_error(),
+          role = "alert"
         ))
       }
       if (identical(status, "error")) {
-        msg <- "The pipeline failed."
-        return(shiny::div(
-          class = "alert alert-danger mt-3",
-          role = "alert",
-          shiny::icon("triangle-exclamation"),
-          " Pipeline error: ",
-          msg
+        return(storm_result_alert_ui(
+          "danger",
+          "triangle-exclamation",
+          "Pipeline error",
+          "The pipeline failed.",
+          role = "alert"
         ))
       }
       if (!identical(status, "success")) {
@@ -382,16 +424,26 @@ mod_storm_server <- function(id, config, store) {
       }
       chars <- nchar(result@report_md %||% "")
       shiny::div(
-        class = "alert alert-success mt-3",
+        class = "tempest-storm-result tempest-storm-result-success alert alert-success mt-3",
         role = "status",
         `aria-live` = "polite",
         `aria-atomic` = "true",
-        shiny::icon("circle-check"),
-        sprintf(" Pipeline complete! Report: %d characters. ", chars),
+        shiny::div(
+          class = "tempest-storm-result-copy",
+          shiny::div(
+            class = "fw-semibold",
+            shiny::icon("circle-check", class = "me-2"),
+            "Pipeline complete"
+          ),
+          shiny::div(
+            class = "small mt-1",
+            sprintf("Pipeline complete! Report: %d characters.", chars)
+          )
+        ),
         shiny::actionLink(
           ns("view_report"),
           "View Report",
-          class = "alert-link"
+          class = "btn btn-sm btn-success text-white ms-auto"
         )
       )
     })
@@ -414,6 +466,46 @@ mod_storm_server <- function(id, config, store) {
       )
     )
   })
+}
+
+storm_progress_empty_state_ui <- function() {
+  shiny::div(
+    class = "tempest-scripted-empty-state tempest-storm-empty-state",
+    shiny::div(
+      class = "tempest-scripted-empty-icon",
+      shiny::icon("bolt", `aria-hidden` = "true")
+    ),
+    shiny::h3(class = "h5 mb-2", "Ready to run"),
+    shiny::p(
+      class = "mb-0",
+      "Enter a research topic, then select Run STORM."
+    )
+  )
+}
+
+storm_progress_live_ui <- function(state) {
+  shiny::div(
+    class = "tempest-storm-progress",
+    workflow_progress_ui(state, storm_stage_labels())
+  )
+}
+
+storm_result_alert_ui <- function(theme, icon_name, heading, message, role) {
+  shiny::div(
+    class = paste(
+      "tempest-storm-result",
+      "alert",
+      paste0("alert-", theme),
+      "mt-3"
+    ),
+    role = role,
+    shiny::div(
+      class = "fw-semibold",
+      shiny::icon(icon_name, class = "me-2"),
+      heading
+    ),
+    shiny::div(class = "small mt-1", message)
+  )
 }
 
 storm_progress_run_id <- function() {

@@ -1,5 +1,7 @@
 # tempest 0.0.0.9000
 
+* `tempest_app()` groups evidence and session records in the navigation and refreshes discussion setup, scripted runs, review, and report reading on desktop and mobile.
+
 * Saved research products now retain scientific review records with workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 (state schema 5), and promotion bundle schema 2. Readers accept only the current format; older bundles require their matching package version (#188).
 
 * A claim quote that differs from its source only in spacing or typographic quotes and dashes is now matched to the source's own text, and a quote the source does not hold is removed instead of failing the extraction stage. A claim left with no exact evidence span stays unverified and no longer aborts claim verification.

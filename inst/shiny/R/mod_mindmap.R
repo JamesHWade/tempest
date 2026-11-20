@@ -1,53 +1,31 @@
-# Mind Map tab: a KPI strip plus the interactive knowledge graph (visNetwork,
-# with a text fallback).
+# Mind map with session counts, an interactive graph and a text outline.
 
 mod_mindmap_ui <- function(id) {
   ns <- shiny::NS(id)
 
-  kpi <- function(title, output_id, icon_name, theme) {
-    bslib::value_box(
-      title = title,
-      value = shiny::textOutput(ns(output_id), inline = TRUE),
-      showcase = shiny::icon(icon_name),
-      showcase_layout = "left center",
-      theme = theme,
-      height = "150px",
-      class = "tempest-mindmap-kpi"
-    )
-  }
-
-  graph <- if (has_pkg("visNetwork")) {
+  metric <- function(title, output_id) {
     shiny::div(
-      class = "tempest-mindmap-visualization",
-      role = "region",
-      `aria-label` = "Interactive mind map visualization",
-      `aria-describedby` = ns("graph_description"),
-      visNetwork::visNetworkOutput(ns("graph"), height = "520px")
+      shiny::tags$dt(title),
+      shiny::tags$dd(shiny::textOutput(ns(output_id), inline = TRUE))
     )
-  } else {
-    shiny::verbatimTextOutput(ns("graph_text"))
   }
 
   bslib::nav_panel(
     title = shiny::tagList(shiny::icon("sitemap"), "Mind Map"),
     value = "Mind Map",
-    bslib::layout_column_wrap(
-      width = "180px",
-      fill = FALSE,
-      gap = "0.75rem",
-      class = "tempest-mindmap-kpis",
-      kpi("Nodes", "n_nodes", "sitemap", "primary"),
-      kpi("Sources", "n_sources", "link", "info"),
-      kpi("Facts", "n_facts", "check-circle", "success"),
-      kpi("Turns", "n_turns", "comments", "secondary")
+    shiny::tags$dl(
+      class = "tempest-map-metrics",
+      metric("Nodes", "n_nodes"),
+      metric("Sources", "n_sources"),
+      metric("Proposed facts", "n_facts"),
+      metric("Discussion turns", "n_turns")
     ),
     bslib::card(
       full_screen = TRUE,
-      height = "620px",
       class = "tempest-mindmap-card",
       bslib::card_header(
         class = "tempest-mindmap-heading",
-        shiny::uiOutput(ns("header")),
+        shiny::h2(class = "h4 mb-0", "Knowledge map"),
         shiny::p(
           id = ns("graph_description"),
           class = "mb-0 text-muted small",
@@ -56,7 +34,7 @@ mod_mindmap_ui <- function(id) {
       ),
       bslib::card_body(
         class = "p-0 tempest-mindmap-canvas",
-        graph
+        shiny::uiOutput(ns("graph_view"))
       )
     ),
     shiny::tags$details(
@@ -117,23 +95,27 @@ mod_mindmap_server <- function(id, store) {
       if (is.null(ses)) 0L else length(ses$transcript %||% list())
     })
 
-    output$header <- shiny::renderUI({
+    output$graph_view <- shiny::renderUI({
       mm <- mindmap()
-      if (is.null(mm)) {
-        return(shiny::span("Knowledge Mind Map"))
+      if (!length(mm$nodes)) {
+        message <- if (is.null(store$costorm_session())) {
+          "Start a discussion in Chat to build a knowledge map."
+        } else {
+          "Topics and connections will appear here as the discussion develops."
+        }
+        return(shiny::p(class = "tempest-map-empty", message))
       }
-      shiny::tagList(
-        shiny::span("Knowledge Mind Map"),
-        shiny::span(
-          class = "badge bg-secondary ms-2",
-          paste0(
-            length(mm$nodes %||% list()),
-            " nodes, ",
-            length(mm$edges %||% list()),
-            " edges"
-          )
+      if (has_pkg("visNetwork")) {
+        shiny::div(
+          class = "tempest-mindmap-visualization",
+          role = "region",
+          `aria-label` = "Interactive mind map visualization",
+          `aria-describedby` = session$ns("graph_description"),
+          visNetwork::visNetworkOutput(session$ns("graph"), height = "520px")
         )
-      )
+      } else {
+        shiny::verbatimTextOutput(session$ns("graph_text"))
+      }
     })
 
     output$graph_status <- shiny::renderUI({
@@ -171,13 +153,9 @@ mod_mindmap_server <- function(id, store) {
     if (has_pkg("visNetwork")) {
       output$graph <- visNetwork::renderVisNetwork({
         mm <- mindmap()
-        if (is.null(mm)) {
-          return(empty_graph("Start a session to see the mind map"))
-        }
+        shiny::req(length(mm$nodes))
         vn <- mindmap_to_visnetwork(mm)
-        if (is.null(vn)) {
-          return(empty_graph("No mind map nodes yet"))
-        }
+        shiny::req(vn)
         knowledge_graph(vn, input_id = session$ns("selected_node"))
       })
 
@@ -201,15 +179,6 @@ mod_mindmap_server <- function(id, store) {
 
 # --- visNetwork helpers ------------------------------------------------------
 
-empty_graph <- function(label) {
-  visNetwork::visNetwork(
-    data.frame(id = 1, label = label, stringsAsFactors = FALSE),
-    data.frame(from = integer(), to = integer(), stringsAsFactors = FALSE)
-  ) |>
-    visNetwork::visOptions(highlightNearest = FALSE) |>
-    visNetwork::visInteraction(dragNodes = FALSE)
-}
-
 knowledge_graph <- function(vn, input_id) {
   click_js <- sprintf(
     "function(params) {
@@ -222,7 +191,7 @@ knowledge_graph <- function(vn, input_id) {
   overview_ids <- vn$nodes$id[vn$nodes$level <= 2L]
   fit_js <- paste0(
     "function() {",
-    "network.fit({nodes: ",
+    "this.fit({nodes: ",
     jsonlite::toJSON(overview_ids, auto_unbox = FALSE),
     ", animation: {duration: 350, easingFunction: 'easeInOutQuad'}});",
     "}"
@@ -244,7 +213,7 @@ knowledge_graph <- function(vn, input_id) {
       borderWidthSelected = 3,
       font = list(
         size = 14,
-        face = "Inter",
+        face = "system-ui",
         color = "#15293A"
       ),
       margin = list(top = 10, right = 12, bottom = 10, left = 12),

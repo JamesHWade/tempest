@@ -1,0 +1,326 @@
+/* Editorial treatment for the scripted STORM and run-review surfaces. */
+
+.tempest-scripted-layout {
+  --tempest-scripted-border: var(--bs-border-color);
+  --tempest-scripted-surface: var(--bs-body-bg);
+  --tempest-scripted-subtle-surface: var(--bs-tertiary-bg);
+  --tempest-scripted-muted: var(--bs-secondary-color);
+  --tempest-scripted-accent: var(--bs-primary);
+  min-width: 0;
+}
+
+.tempest-scripted-sidebar {
+  gap: 1rem;
+  background: var(--tempest-scripted-subtle-surface);
+  border-right: 1px solid var(--tempest-scripted-border);
+}
+
+.tempest-scripted-sidebar .sidebar-title {
+  letter-spacing: -0.01em;
+}
+
+.tempest-scripted-sidebar-intro {
+  color: var(--tempest-scripted-muted);
+  font-size: 0.9rem;
+  line-height: 1.5;
+}
+
+.tempest-scripted-settings-card,
+.tempest-review-filter-card,
+.tempest-review-boundary-card {
+  overflow: hidden;
+  border-color: var(--tempest-scripted-border);
+  background: var(--tempest-scripted-surface);
+  box-shadow: 0 0.25rem 1rem rgba(var(--bs-emphasis-color-rgb), 0.04);
+}
+
+.tempest-scripted-settings-card .card-header,
+.tempest-review-filter-card .card-header,
+.tempest-review-boundary-card .card-header {
+  padding: 0.75rem 1rem;
+  color: var(--bs-emphasis-color);
+  font-size: 0.82rem;
+  font-weight: 650;
+  letter-spacing: 0.02em;
+}
+
+.tempest-scripted-settings-card .card-body,
+.tempest-review-filter-card .card-body,
+.tempest-review-boundary-card .card-body {
+  padding: 1rem;
+}
+
+.tempest-scripted-sidebar .form-group {
+  margin-bottom: 0.8rem;
+}
+
+.tempest-scripted-sidebar .form-label,
+.tempest-scripted-sidebar .control-label {
+  margin-bottom: 0.3rem;
+  color: var(--bs-emphasis-color);
+  font-size: 0.82rem;
+  font-weight: 650;
+}
+
+.tempest-scripted-sidebar .help-block,
+.tempest-scripted-sidebar .shiny-input-container > .help-block {
+  display: block;
+  margin: -0.4rem 0 0.85rem;
+  color: var(--tempest-scripted-muted);
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.tempest-scripted-sidebar .form-control,
+.tempest-scripted-sidebar .form-select {
+  min-height: 2.5rem;
+}
+
+.tempest-scripted-run-actions {
+  display: grid;
+  gap: 0.55rem;
+}
+
+.tempest-scripted-run-actions .btn {
+  min-height: 2.65rem;
+  font-weight: 650;
+}
+
+.tempest-scripted-sidebar-note {
+  line-height: 1.45;
+}
+
+.tempest-scripted-card {
+  min-width: 0;
+  overflow: hidden;
+  border-color: var(--tempest-scripted-border);
+  background: var(--tempest-scripted-surface);
+  box-shadow: 0 0.4rem 1.25rem rgba(var(--bs-emphasis-color-rgb), 0.05);
+}
+
+.tempest-scripted-card-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding: 1rem 1.15rem;
+}
+
+.tempest-scripted-card-header h2 {
+  letter-spacing: -0.015em;
+}
+
+.tempest-review-identifiers summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+.tempest-review-identifiers[open] summary { margin-bottom: .65rem; }
+
+.tempest-scripted-card-body {
+  min-width: 0;
+  padding: 1.15rem;
+}
+
+.tempest-storm-progress-region {
+  min-height: 13rem;
+}
+
+.tempest-storm-result-region {
+  max-width: 58rem;
+}
+
+.tempest-scripted-empty-state {
+  display: grid;
+  justify-items: center;
+  max-width: 38rem;
+  margin: 0 auto;
+  padding: 3.25rem 1.5rem;
+  color: var(--bs-body-color);
+  text-align: center;
+  border: 1px dashed var(--tempest-scripted-border);
+  border-radius: var(--bs-border-radius-lg);
+  background: var(--tempest-scripted-subtle-surface);
+}
+
+.tempest-scripted-empty-icon {
+  display: grid;
+  width: 3rem;
+  height: 3rem;
+  place-items: center;
+  margin-bottom: 1rem;
+  color: var(--tempest-scripted-accent);
+  border: 1px solid color-mix(in srgb, var(--tempest-scripted-accent), transparent 65%);
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--tempest-scripted-accent), transparent 90%);
+  font-size: 1.2rem;
+}
+
+.tempest-storm-result {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  border-width: 1px;
+}
+
+.tempest-storm-result-copy {
+  min-width: 12rem;
+  flex: 1 1 16rem;
+}
+
+.tempest-storm-result .btn {
+  white-space: nowrap;
+}
+
+.tempest-review-content {
+  min-width: 0;
+}
+
+.tempest-review-summary-region {
+  min-width: 0;
+}
+
+.tempest-review-summary {
+  padding: 0.25rem 0 0.35rem;
+}
+
+.tempest-review-summary h2 {
+  letter-spacing: -0.02em;
+}
+
+.tempest-review-summary-meta {
+  min-width: 0;
+}
+
+.tempest-review-meta-item {
+  display: grid;
+  min-width: 10rem;
+  gap: 0.2rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--tempest-scripted-border);
+  border-radius: var(--bs-border-radius);
+  background: var(--tempest-scripted-subtle-surface);
+  font-size: 0.78rem;
+}
+
+.tempest-review-meta-item code {
+  color: var(--bs-emphasis-color);
+  font-size: 0.76rem;
+}
+
+.tempest-review-summary-copy {
+  max-width: 72rem;
+  font-size: 0.86rem;
+  line-height: 1.55;
+}
+
+.tempest-review-card {
+  min-width: 0;
+  height: 100%;
+  overflow: hidden;
+  border-color: var(--tempest-scripted-border);
+  background: var(--tempest-scripted-surface);
+}
+
+.tempest-review-live-card {
+  border-top: 3px solid var(--bs-warning);
+}
+
+.tempest-review-table-wrap {
+  max-width: 100%;
+}
+
+.tempest-review-table {
+  --bs-table-bg: transparent;
+  --bs-table-striped-bg: var(--tempest-scripted-subtle-surface);
+  --bs-table-hover-bg: color-mix(in srgb, var(--bs-primary), transparent 94%);
+  font-size: 0.79rem;
+}
+
+.tempest-review-table th {
+  color: var(--tempest-scripted-muted);
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.tempest-review-table td,
+.tempest-review-table th {
+  padding: 0.6rem 0.55rem;
+  vertical-align: middle;
+}
+
+.tempest-review-table code {
+  font-size: 0.72rem;
+}
+
+.tempest-review-definitions dt {
+  color: var(--tempest-scripted-muted);
+  font-size: 0.75rem;
+  font-weight: 650;
+}
+
+.tempest-review-definitions dd {
+  margin-bottom: 0.65rem;
+}
+
+.tempest-review-definitions code {
+  color: var(--bs-emphasis-color);
+  font-size: 0.75rem;
+}
+
+.tempest-review-inline-empty {
+  display: flex;
+  align-items: center;
+  min-height: 4.5rem;
+  padding: 1rem;
+  border: 1px dashed var(--tempest-scripted-border);
+  border-radius: var(--bs-border-radius);
+  background: var(--tempest-scripted-subtle-surface);
+  font-size: 0.86rem;
+}
+
+.tempest-review-live-boundary {
+  padding: 0.75rem 0.85rem;
+  border-left: 3px solid var(--bs-warning);
+  background: color-mix(in srgb, var(--bs-warning), transparent 92%);
+}
+
+.tempest-review-alert {
+  display: flex;
+  align-items: flex-start;
+  line-height: 1.45;
+}
+
+@media (max-width: 991.98px) {
+  .tempest-scripted-sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--tempest-scripted-border);
+  }
+
+  .tempest-review-meta-item {
+    min-width: min(100%, 13rem);
+  }
+}
+
+@media (max-width: 575.98px) {
+  .tempest-scripted-card-header,
+  .tempest-scripted-card-body {
+    padding: 0.9rem;
+  }
+
+  .tempest-scripted-empty-state {
+    padding: 2.25rem 1rem;
+  }
+
+  .tempest-storm-result .btn {
+    width: 100%;
+  }
+
+  .tempest-review-meta-item {
+    width: 100%;
+  }
+}
