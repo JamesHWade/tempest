@@ -95,6 +95,7 @@ test_that("tempest_app validates and preserves shorter provider timeouts", {
 
 
 test_that("the bundled app can open a session using package-scoped modules", {
+  skip_if_not_installed("brand.yml")
   skip_if_not_installed("shiny")
   skip_if_not_installed("shinychat")
   skip_if_not_installed("bslib")
