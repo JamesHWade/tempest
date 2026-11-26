@@ -5,64 +5,9 @@
 [![Codecov test coverage](https://codecov.io/gh/JamesHWade/tempest/graph/badge.svg)](https://app.codecov.io/gh/JamesHWade/tempest)
 <!-- badges: end -->
 
-An R-native implementation of [STORM](https://storm.genie.stanford.edu/) (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and [Co-STORM](https://github.com/stanford-oval/storm) from Stanford's STORM project.
+**Evidence-backed STORM and Co-STORM research agents for R.**
 
-This package reproduces the core workflow primitives:
-
-- **Multi-perspective research** with selected or automatically generated
-  expert profiles
-- **Provisional evidence workspaces** with citations and source attribution
-- **Pair-level claim support** with exact claim, span, and source bindings
-- **Research manifests** that identify configuration, programs, knowledge
-  snapshots, traces, and deliverables
-- **Review-only Graft promotion** with immutable acceptance receipts
-- **Resumable research state** for scripted STORM and interactive Co-STORM
-- **Two-step outline refinement** and **at-a-glance decision synthesis**
-- **Query decomposition** and **semantic fact retrieval**
-- **Parallel section writing** from already-grounded evidence (optional)
-- **Interactive multi-agent moderation** with mind map (Co-STORM)
-- **Deterministic dialogue projections** with an explicit expert roster
-- **Automated evaluation** with simulated users
-
-Built on the R AI ecosystem:
-
-- [ellmer](https://github.com/tidyverse/ellmer) — LLM orchestration: tool calling, structured output, streaming
-- [ragnar](https://github.com/tidyverse/ragnar) — RAG: chunking, embedding, semantic retrieval
-- [dsprrr](https://github.com/JamesHWade/dsprrr) — structured extraction/generation modules
-- [Deputy](https://github.com/JamesHWade/deputy) — persistent, permission-bounded Co-STORM agent execution
-- [graft](https://github.com/JamesHWade/graft) — exact retained evidence and explicit review decisions
-- [shinymcp](https://github.com/JamesHWade/shinymcp) — interactive research cards and read-only MCP tools
-- [shinychat](https://github.com/posit-dev/shinychat) — interactive chat UI
-- [vitals](https://github.com/tidyverse/vitals) — evaluation tasks
-
-## Try the ecosystem together
-
-```r
-tempest::tempest_app(demo = TRUE)
-```
-
-The offline demonstration runs actual deputy agents and dsprrr stages against
-synthetic evidence, shows a shinymcp research card, and lets you explicitly
-accept, correct, withdraw, and reopen exact evidence through graft. No model
-credentials or network requests are needed after installation. Install the
-optional shinymcp, graft, shiny, bslib, and callr packages to run it.
-
-Use `tempest_mcp_app(result)` with your own completed STORM or Co-STORM research
-to give people and models the same read-only claim and evidence inspection.
-See [the ecosystem walkthrough](https://jameshwade.github.io/tempest/articles/ecosystem-demo.html).
-
-## Reuse retained artifacts
-
-`tempest_artifact_knowledge(selection, contents)` supplies exact retained evidence
-without a Graft view. The host checks current eligibility and resolves the bytes;
-Tempest checks complete selection coverage, SHA-256 digests, allowed evidence
-classes, and exact declared dependencies. STORM and Co-STORM retain this input in
-their research workspace and current save/resume formats. Saved evidence cannot
-register tools or bind executable procedures.
-
-See [artifact knowledge](https://jameshwade.github.io/tempest/articles/artifact-knowledge.html)
-for the input contract and a local example. This is an evidence consumer API;
-it does not implement artifact storage, approval, withdrawal, or future acceptance.
+Tempest runs multi-perspective research workflows, verifies claims against exact source quotes, pairs reports with reproducible R analyses, and connects to [graft](https://github.com/JamesHWade/graft) so reviewed findings persist across runs, apps, and MCP clients.
 
 ## Installation
 
@@ -71,888 +16,121 @@ it does not implement artifact storage, approval, withdrawal, or future acceptan
 pak::pak("JamesHWade/tempest")
 ```
 
-After installation, run `vignette("tempest", package = "tempest")` for the
-package tour and a first STORM workflow.
+## Quick start
 
-## Setup
-
-### LLM provider credentials
-
-By default, Tempest creates OpenAI clients with `ellmer::chat_openai()`.
-Which credential it needs depends on the installed ellmer:
-
-- **Released ellmer (0.5.0 or later from CRAN)** authenticates with an API
-  key. Set it outside your R source files:
-
-  ```r
-  Sys.setenv(OPENAI_API_KEY = "<your key>")
-  ```
-
-- **ellmer with the subscription-authentication port**
-  (`chat_openai(auth = )`, tidyverse/ellmer#1067) lets Tempest pass
-  `auth = "codex"` and reuse the file-backed ChatGPT subscription managed by
-  an installed Codex CLI; no `OPENAI_API_KEY` is required. If Codex has not
-  stored file-backed credentials, run
-  `codex login -c 'cli_auth_credentials_store="file"'`.
-
-Tempest detects which it has and tells you once per session when it falls
-back to the API key. Alternative providers and custom chat factories use the
-credential mechanism configured for that provider.
-
-### Search provider
-
-By default, `tempest` uses **native provider web search** when available (OpenAI, Anthropic, Google). This leverages each provider's built-in web search capabilities for better results.
-
-To use alternative search providers:
-
-```r
-cfg <- tempest_config(
-  search_provider = "wikipedia"  # or "you", "bing", "serper", "brave", "duckduckgo", "tavily", "searxng", "google", "azure_ai_search"
-)
-```
-
-Provider-specific API keys for alternative search:
-
-- Wikipedia: no API key required (fallback when native not available)
-- You.com: set `YDC_API_KEY`
-- Bing: set `BING_SEARCH_API_KEY`
-- Serper: set `SERPER_API_KEY`
-- Brave: set `BRAVE_API_KEY`
-- DuckDuckGo: no API key required
-- Tavily: set `TAVILY_API_KEY`
-- SearXNG: set `SEARXNG_API_URL`; optionally set `SEARXNG_API_KEY`
-- Google Custom Search: set `GOOGLE_SEARCH_API_KEY` and `GOOGLE_CSE_ID`
-- Azure AI Search: set `AZURE_AI_SEARCH_API_KEY`,
-  `AZURE_AI_SEARCH_ENDPOINT`, and `AZURE_AI_SEARCH_INDEX_NAME`
-
-Completed STORM products are read through `tempest_report()`,
-`tempest_sources()`, `tempest_claims()`, `tempest_claim_supports()`, and
-`tempest_trajectory_review()`. Internal manifests, mutable workspaces,
-retrievers, and state remain implementation details used to validate those
-reads. A Co-STORM session exposes only its supported operations and read-only
-projections. Retained artifact evidence enters through `tempest_artifact_knowledge()`;
-`tempest_reuse_artifact_research()` rechecks Graft decisions and host eligibility.
-New research remains provisional
-until the host explicitly reviews and accepts it.
-
-Internally, every evidence value is one exact `TempestResource`. Retriever
-fetches, provider-native tools, caches, and restored products must agree on
-that shape. `tempest_sources()` returns a read-only presentation table rather
-than a writable evidence object, and Tempest provides no legacy list
-conversion path.
-
-Co-STORM moderator and expert chats run through required persistent Deputy
-agents. Tempest disables ambient file, shell, R, and package-install authority
-at that boundary and allowlists only the Tempest tools already attached to each
-chat. Web authority is limited to that frozen tool surface, including an
-explicit provider-native search tool when configured. Each product-owned
-Deputy session identifier is passed to the Agent constructor and checked
-against the live runtime before use.
-Session persistence stores credential-safe opaque run, session, agent, stage,
-role, expert, and correlation references; it never serializes a Deputy Agent
-or provider credentials.
-
-## Verify and promote research evidence
-
-Claim verification is authoritative at the exact claim-by-evidence-span pair.
-Publication replaces the complete support set atomically, and
-`tempest_claim_supports()` exposes each deterministic pair identity, claim
-text, evidence-span quote and location, source binding, status, score, and
-rationale. Claim-level status and citation-audit
-tables are derived views of those records; they are not separate evidence
-authority.
-
-A succeeded STORM product can be packaged for explicit Graft review:
-
-```r
-supports <- tempest_claim_supports(result)
-
-bundle <- tempest_promotion_bundle(result)
-trusted_bundle_id <- bundle@bundle_id
-tempest_save_promotion_bundle(bundle, "promotion/grid-battery-recycling")
-bundle <- tempest_read_promotion_bundle(
-  "promotion/grid-battery-recycling",
-  expected_bundle_id = trusted_bundle_id
-)
-
-store <- graft::graft_store("research-artifacts", create = TRUE)
-selection <- tempest_publish_artifact_research(result, store)
-# The host explicitly reviews the complete evidence and report.
-accepted <- graft::graft_accept(
-  store, graft::graft_read_selection(store, selection), "battery-recycling",
-  expected = NULL, key = "review-1",
-  actor = "reviewer", reason = "Evidence reviewed", purpose = "research"
-)
-```
-
-Graft retains exact bytes and decision history. Tempest owns the scientific
-record contract and verifies report, source, span, claim, support, and program
-provenance. No graph schema compiler or native database is required.
-
-Promotion accepts only a completed `tempest_run()` result or a succeeded,
-quiescent `TempestSession`. A loose Workspace, Manifest, or StageRecord tuple
-cannot reconstruct publication authority. The bundle contains the selected
-Sources, Claims, EvidenceSpans,
-ClaimSupports, and exact extraction and verification ProgramArtifacts. Its
-closed proof projection retains the exact resources, claims, spans, and
-supports needed to recompute each retained StageRecord digest. A selection
-must include every output bound by each retained extraction or verification
-record; Tempest rejects partial stage-output selection instead of packaging
-unselected evidence. Publishing retains a candidate: Tempest never records host acceptance itself. The promotion directory is a
-closed current-format bundle, its destination must not already exist, and any
-older or extra shape is rejected. Reading requires the original bundle id as an
-out-of-band trust pin; checksums stored inside the directory establish internal
-consistency but are not a signature. Research promotion never creates executable
-authority; stored program references are provenance only.
-
-## Review a completed run
-
-For an independent scientific review before publication, enable it in the
-configuration used by either STORM or Co-STORM:
-
-```r
-config <- tempest_config(
-  research_review = TRUE,
-  repair_evidence = TRUE,
-  max_review_claims = 5,
-  review_concurrency = 2
-)
-result <- tempest_run("Your research question", config = config)
-tempest_claim_reviews(result)
-```
-
-The report retains confirmed concerns, dismissed concerns, unresolved questions,
-and cases where no issue was found. Each finding binds to captured source
-excerpts and exact quotes. Evidence repair permits one targeted search and at
-most two fetched sources per selected claim. These advisory findings remain
-separate from citation support and accepted knowledge. See
-[Scientific review and evidence repair](https://jameshwade.github.io/tempest/articles/scientific-review.html)
-for limits, persistence, and evaluation guidance.
-
-`tempest_trajectory_review()` reconstructs a bounded, read-only review from one
-exact completed STORM result or succeeded, quiescent Co-STORM session:
-
-```r
-review <- tempest_trajectory_review(result)
-proposed_review <- tempest_trajectory_review(
-  result,
-  promotion_bundle = bundle
-)
-artifact_store <- graft::graft_store("research-artifacts", create = TRUE)
-selection <- tempest_publish_artifact_research(result, artifact_store)
-accepted <- graft::graft_accept(
-  artifact_store, graft::graft_read_selection(artifact_store, selection),
-  "research", expected = NULL, key = "review-1",
-  actor = "reviewer", reason = "Reviewed the evidence", purpose = "briefing"
-)
-accepted_review <- tempest_trajectory_review(
-  result, store = artifact_store, selection = selection,
-  stream = "research", decision = accepted@id
-)
-```
-
-The ten-field value identifies the product and contains ordered StageRecord
-summaries, safe terminal Deputy identities, the fixed ProgramSet references,
-input and optional promotion knowledge, evidence identities, explicit joins,
-and structural findings. Variable lanes retain at most 250 records and report
-the complete count and digest when rows are omitted. The review contains no
-prompts, responses, source text, paths, credentials, live objects, or
-capabilities, and it is reconstructable rather than persisted.
-
-Every join names its relation and proof. Exact run, stage, program, artifact selection,
-bundle, publication, and recorded decision identities establish explicit bindings;
-`correlation_id` can establish only `correlated_with` with
-`correlation_only` proof. It never establishes authorship or causation.
-Mutable progress events are intentionally outside the review identity. A
-promotion bundle or publication is shown as proposed; an exact recorded accept
-decision is shown as historically accepted. Withdrawal does not erase that
-history or alter the original input selection. An input `reported_decision` is
-unverified host provenance, not authenticated acceptance; malformed metadata is
-omitted from the projection. Current reuse still requires
-fresh admission through `tempest_reuse_artifact_research()`. Schema 3 directly
-replaces native-snapshot and receipt-based reviews; cross-product publications are rejected.
-
-The current persistence line accepts only `ResearchWorkspace` snapshot schema 8,
-Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 with state schema
-5, ProgramSet schema 2, research-manifest schema 5, StageRecord output-digest
-payload schema 3, and promotion-bundle schema 2. Readers reject every other
-version; missing fields, extra fields, and values that only become valid after
-coercion are errors.
-
-## Product boundary
-
-Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use
-`tempest_run()` for scripted research and `tempest_session()` for interactive
-research. The former application-neutral workflow, runtime, capability,
-connection, skill, deliverable, and artifact kernel and its symbols have been
-removed. There is no compatibility or generic-kernel migration layer.
-
-Product bundles contain the exact research manifest, provisional workspace,
-product state, report, and retained artifact selection. Fixed scientific
-transformations carry dsprrr program identity, while open-ended agent calls
-carry Deputy execution identity. Those identities support correlation and
-audit joins only; they do not claim that an execution caused, authored, or
-validated report content.
-
-## Enriched research reports
-
-Turn a completed research product into a portable HTML report with computed
-figures, inspectable R code, source links, and clearly labeled AI illustrations:
-
-```r
-delivery <- tempest_researcher(
-  "What does the available evidence say about my research question?",
-  output_dir = "reports/my-research",
-  config = tempest_config(),
-  enrichment = list(
-    allow_code = TRUE,
-    executor = tempest_r_executor(timeout = 60),
-    image_generator = tempest_image_generator(),
-    max_analyses = 3,
-    max_illustrations = 2
-  )
-)
-browseURL(file.path(delivery$report@path, "index.html"))
-tempest_read_enriched_report(delivery$report@path)
-```
-
-The planner proposes analyses only when accessible data support them. Code
-execution is disabled by default; the built-in R executor runs trusted code
-with your account's access in a Deputy process, not an OS sandbox. The image
-provider uses `OPENAI_API_KEY`. Supply a reviewed `plan` to avoid a planning
-model call, and inject your own execution or image providers when needed.
-`tempest_enrich_report(result, ...)` also accepts a finalized Co-STORM session.
-
-Reports retain the original research and its publication authority. Calculations
-and illustrations do not become verified claims or accepted knowledge. Failed
-or skipped tasks yield a visible `partial` report. Each new report directory
-contains the plan, source ledger, scripts, outputs, images, and file checksums.
-The default HTML uses a spacious article layout with a readable text column,
-wide figures, and expandable methods. Styling is bundled into the report, so
-reading it does not require a server, web fonts, or JavaScript.
-### Dedicated researcher app
-
-Launch a focused app for research briefs, optional computations and illustrations,
-and the resulting article:
-
-```r
-tempest_researcher_app(
-  model = "openai/gpt-6.1-sol",
-  report_library = TRUE,
-  output_dir = "research-reports",
-  mcp_config = "mcp.json" # optional
-)
-```
-
-Choose a starter brief to draft a question, then edit it before starting.
-Open the evidence navigator to inspect sources and see which computations and
-illustrations completed. To revisit a report in a later session, select it in
-the report library and open it for reading or ZIP download. Enabling
-`report_library` gives all users of this app access to reports in the chosen
-output directory. Use a directory intended for that audience.
-
-The app discovers tools from the MCP servers you select. Choose individual tools
-before starting research; discovery alone does not enable them. You can upload a
-session-local MCP JSON configuration without changing the host configuration.
-Host-supplied R tools are added as named, zero-argument factories through the
-`tools` argument. Both kinds of tool are created in an isolated run worker and
-attached to research experts under the existing Deputy permission policy.
-
-Research runs in the background and can be cancelled. R code execution and image
-generation are separate opt-ins. Completed reports open in the app and download
-as portable bundles containing their evidence, figures, code, and checksums.
-See `?tempest_researcher_app` for tool factories, MCP compatibility, and the
-trusted-user deployment boundary.
-
-See `vignette("enriched-research")` for the plan contract and an offline botanical
-example with real R calculations, repeated-measures limitations, and a generated
-illustration.
-
-See the [supervised live qualification report](https://jameshwade.github.io/tempest/live-research/index.html)
-for a reader edition built from a live Tempest research run. It records the
-additional source preparation, review, extraction, analysis, and reader synthesis
-used for that example; it is not an unattended benchmark or the expected output
-of a bare `tempest_researcher()` call.
-
-## Scripted STORM
+### 1. Scripted STORM report
 
 ```r
 library(tempest)
 
 cfg <- tempest_config(
-  # search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)
-  models = list(
-    coordinator = "openai/gpt-5.6-sol",
-    expert = "openai/gpt-5.6-luna",
-    writer = "openai/gpt-5.6-sol",
-    judge = "openai/gpt-5.6-luna",
-    mindmap = "openai/gpt-5.6-luna"
-  )
+  models = "openai/gpt-5.6-luna",
+  search_provider = "wikipedia"
 )
 
-res <- tempest_run("Life cycle assessment of lithium-ion batteries", config = cfg, verbose = TRUE)
-
-cat(tempest_report(res))
-```
-
-Hosts can supply the same immutable scientific profiles used by generated
-expert panels:
-
-```r
-recycling_expert <- tempest_expert(
-  name = "Dr. Rivera",
-  title = "Battery recovery specialist",
-  description = "Studies process yield, safety, and industrial scale-up.",
-  instructions = "Separate demonstrated performance from projections.",
-  focus_areas = c("hydrometallurgy", "process safety"),
-  initial_questions = "Which recovery steps constrain full-scale yield?"
-)
-
-res <- tempest_run(
-  "Life cycle assessment of lithium-ion batteries",
+result <- tempest_run(
+  "Technical and policy barriers to grid-scale battery recycling",
   config = cfg,
-  experts = list(recycling_expert)
+  n_experts = 2,
+  max_questions_per_perspective = 2
+)
+
+cat(tempest_report(result))
+tempest_sources(result)
+tempest_claims(result)
+tempest_claim_supports(result)
+```
+
+### 2. Interactive apps with Graft project memory
+
+Launch the **Researcher app** for research briefs, host R tools, MCP servers, reproducible R analyses, a saved-report library, and explicit Graft review:
+
+```r
+tempest_researcher_app(
+  output_dir = "research-reports",
+  report_library = TRUE,
+  graft_store = "research-memory"
 )
 ```
 
-Generated and supplied experts use the same canonical constructor. Tempest
-derives `expert_id` and `version` from its six authored fields. Profiles do not
-contain runtime clients, tools, capabilities, or roster state.
-
-### Experimental OpenTelemetry traces
-
-Tempest can project bounded STORM, stage-execution, and Co-STORM
-moderator-completion, turn-commit, warmup, and report traces through a provider
-configured by the host. Start R with the exact Tempest-only scope and generative
-AI content capture disabled:
-
-```sh
-OTEL_R_EMIT_SCOPES=io.github.jameshwade.tempest \
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false \
-R
-```
-
-Then opt in for that R process before starting a run:
+Launch the **Co-STORM workspace** for interactive multi-expert dialogue, a live knowledge map, evidence tables, `shinychat` memory cards, and report publishing:
 
 ```r
-options(tempest.otel.enabled = TRUE)
+tempest_app(graft_store = "research-memory")
 ```
 
-The integration is experimental and off by default. Tempest does not configure
-the OpenTelemetry provider, exporter, endpoint, credentials, or shutdown; the
-host owns those settings. The Tempest projection excludes prompts, responses,
-queries, evidence, source content, URLs, paths, identifiers, and progress
-payloads.
-
-Set the privacy environment before starting R and any Mirai workers. The exact
-Tempest-only scope suppresses automatic Shiny, Mirai, ellmer, and httr2 spans,
-which are separate telemetry contracts that Tempest has not audited. In
-particular, httr2 records the complete request URL as `url.full`. Tempest's
-Google Custom Search request places both `GOOGLE_SEARCH_API_KEY` and the
-research query in URL query parameters, so enabling the httr2 scope could
-expose a credential and research content. Do not broaden the supported scope
-without a separate privacy review.
-
-#### Local OTLP/HTTP Collector
-
-Install [`otelsdk`](https://otelsdk.r-lib.org/reference/collecting.html) in the
-host environment, then save this traces-only Collector configuration as
-`otel-collector.yaml`:
-
-```yaml
-receivers:
-  otlp:
-    protocols:
-      http:
-        endpoint: 0.0.0.0:4318
-
-exporters:
-  debug:
-    verbosity: detailed
-
-service:
-  pipelines:
-    traces:
-      receivers: [otlp]
-      exporters: [debug]
-```
-
-Run the Collector with its OTLP/HTTP port bound only to the local interface:
-
-```sh
-docker run --rm --name tempest-otel-collector \
-  -p 127.0.0.1:4318:4318 \
-  -v "$PWD/otel-collector.yaml:/etc/otelcol/config.yaml:ro" \
-  otel/opentelemetry-collector:0.158.0
-```
-
-Start a fresh R process configured to send only Tempest traces to that local
-Collector:
-
-```sh
-OTEL_TRACES_EXPORTER=http \
-OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318 \
-OTEL_EXPORTER_OTLP_PROTOCOL=http/protobuf \
-OTEL_R_EMIT_SCOPES=io.github.jameshwade.tempest \
-OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false \
-OTEL_SERVICE_NAME=tempest-local \
-R
-```
-
-The local example needs no exporter header or credential. For a short-lived
-smoke test, the host may also set `OTEL_BSP_SCHEDULE_DELAY=100` so the SDK's
-batch processor exports promptly. Tempest does not flush or shut down the
-provider.
-
-[Logfire](https://pydantic.dev/docs/logfire/guides/otel-collector/otel-collector-overview/)
-is one optional operator-selected destination downstream of the Collector. It
-is not a Tempest dependency, API, default, endpoint, SDK, or schema. Keep any
-backend token and exporter configuration in operator-owned Collector secrets,
-never in Tempest configuration, source code, examples, snapshots, or bundles.
-
-Report polishing is deterministic.
-
-You can also use a single model for all roles:
+Want to try the full ecosystem locally with **no API keys or network calls**?
 
 ```r
-cfg <- tempest_config(models = "anthropic/claude-sonnet-4-20250514")
+tempest_app(demo = TRUE)
 ```
 
-### Parallel section writing
+### 3. Research that remembers with Graft
 
-Perspective research is deliberately sequential so each open-ended expert turn
-can be synchronously bound to one terminal Deputy trace. Already-grounded
-report sections can be written in parallel using
-[mirai](https://github.com/r-lib/mirai):
+Every Tempest run produces provisional evidence. When you are ready to keep a finding for future sessions, publish the candidate to a Graft store, review it, and explicitly record acceptance:
 
 ```r
-res <- tempest_run(
-  "Quantum computing applications",
-  config = cfg,
-  parallel_writing = TRUE,  # requires mirai
-  verbose = TRUE
-)
-```
+store <- graft::graft_store("research-memory", create = TRUE)
+selection <- tempest_publish_artifact_research(result, store)
 
-### STORM persistence
-
-Save intermediate STORM artifacts to disk and resume interrupted runs:
-
-```r
-res <- tempest_run(
-  "Quantum computing applications",
-  config = cfg,
-  output_dir = "storm-runs"
+# Review the report and evidence, then explicitly accept into a stream
+decision <- graft::graft_accept(
+  store,
+  graft::graft_read_selection(store, selection),
+  stream = "battery-recycling",
+  expected = NULL,
+  key = "review-1",
+  actor = "analyst",
+  reason = "Verified claims and primary sources",
+  purpose = "research"
 )
 
-# Later: loads completed stages from storm-runs/quantum-computing-applications
-# and continues from the first incomplete stage.
-res <- tempest_run(
-  "Quantum computing applications",
-  config = cfg,
-  output_dir = "storm-runs",
-  resume = TRUE
+# Reuse as a pinned basis in a later run (enables structural change detection)
+knowledge <- tempest_reuse_artifact_research(
+  store,
+  stream = "battery-recycling",
+  decision = decision@id,
+  purpose = "research",
+  eligible = function(event) TRUE
 )
+next_run <- tempest_run("Battery recycling update", knowledge = knowledge)
 ```
 
-Each run directory is an exact current schema-11 STORM product bundle with
-schema-5 state. It includes checksummed JSON state for perspectives, experts,
-sources, claims, outlines, and references; Markdown drafts; and the final
-Markdown report. Resume rejects older, future, missing, extra, coerced, or
-mismatched shapes rather than migrating them.
+You can also hand `graft::graft_tools(store, purpose = "research", eligible = ...)` to `ellmer`, `deputy`, `tempest_researcher_app()`, `tempest_app()`, or `mcptools::mcp_server()` so agents can discover and recall currently accepted streams on demand.
 
-Every typed ProgramSet attempt also has a durable record of its stage, program,
-evaluator, trace, support decision, and execution or fallback path. Tempest
-evaluates a complete structured output before changing product state, so
-malformed output cannot leave a partial update. On resume, persisted running
-attempts become cancelled records. Final reports append a deterministic
-`Execution review` when an attempt failed, was cancelled, used a policy
-fallback, or produced a grounded result that was not verified.
+## Setup
 
-### Pipeline Details
+### LLM credentials
 
-`tempest_run()` executes five steps: `perspectives`, `research`, `outline`, `write`, `polish`. Key features:
-
-- **Persistent staged runs** -- pass `output_dir` to save run artifacts after
-  each completed stage; pass `resume = TRUE` to load saved artifacts and skip
-  completed stages.
-- **ToC-enriched perspective discovery** -- seed URLs are fetched and their table-of-contents headings are extracted to give the coordinator richer context for generating expert perspectives.
-- **Query decomposition** -- each expert research question is decomposed into 2-3 targeted search queries before retrieval.
-- **Semantic fact retrieval** -- when ragnar is configured, section writing uses semantic similarity to select the most relevant facts (falls back to keyword matching otherwise).
-- **Two-step outline** -- a draft outline is generated from the LLM's parametric knowledge, then refined with research findings.
-- **At-a-glance decision brief** -- verified observations are kept distinct
-  from evidence-bound assessments and review actions; no-change signals copy
-  an explicit verified claim and are omitted when evidence is inconclusive.
-- **Parallel section writing** -- pass `parallel_writing = TRUE` to write
-  report sections concurrently with mirai, then assemble the already-grounded
-  sections and evidence in deterministic outline order.
-- **Governed dsprrr programs** -- every structured stage resolves an exact
-  addressable program from a `TempestProgramSet`, including its verified dsprrr
-  artifact ID, stage contract, and evaluator identity.
-
-### Compiling dsprrr programs
-
-Tempest resolves its builtin dsprrr programs internally. Program identity,
-contract version, and evaluator are recorded in the run manifest and rechecked
-before any program executes; runtime registries, model clients, credentials, and
-executable objects never enter that metadata.
-
-Resuming a run recomputes every program artifact ID and continues only when they
-match the persisted run.
-
-
-### Keep stored knowledge separate from execution
-
-The host selects the programs used by a research run. Accepted evidence and
-stored program references cannot select, replace, or authorize executable
-programs. Tempest no longer resolves `GovernedProcedure` records from Graft or
-passes live Graft views into stage execution. Retained procedure references in
-research manifests and trajectory reviews are inert provenance; they cannot be
-loaded into a live ProgramSet.
-
-Accepted evidence uses exact artifact selections. The host recipe retains a
-reviewed decision and its complete evidence closure:
-
-```r
-source(system.file("examples", "briefing-basis.R", package = "tempest"))
-basis <- capture_briefing_basis(store, "battery-recycling", accepted@id, "research")
-saveRDS(basis, "accepted-basis.rds")
-historical <- read_briefing_basis(store, basis)
-knowledge <- reuse_briefing_basis(store, basis, eligible = function(event) TRUE)
-```
-
-The eligibility callback represents the host's current access and purpose check.
-Historical inspection remains available after correction; it does not authorize
-new research or resume.
-
-
-On later days, reopen the matching store and trusted checkpoint. Changes to the
-selected evidence require host review before another automatic run:
-
-```r
-basis <- readRDS("accepted-basis.rds")
-if (nrow(briefing_changes(store, basis)) > 0L) {
-  stop("Review the selected evidence before research.")
-}
-knowledge <- read_briefing_basis(store, basis)
-```
-
-An unchanged day keeps the full selection. After accepting additional research,
-append its complete selection to `basis$selections` and capture a new checkpoint.
-For repeated record IDs, the newest selected receipt revision wins. If current
-records differ from those reviewed revisions, checkpoint creation stops for
-review. The recipe also stops above 1,000 records instead of dropping evidence.
-Historical inspection can still reconstruct the earlier pinned answer.
-
-A report remains host-owned synthesis linked to its selected evidence, not a
-new source or an execution grant. The [offline acceptance and correction
-example](https://jameshwade.github.io/tempest/articles/accepted-research.html)
-shows the complete restart and correction workflow. The [daily briefing
-guide](https://jameshwade.github.io/tempest/articles/daily-briefing.html) applies
-the same recipe to a scheduled host.
-
-Accepted `Claim` records give the briefing its change signal: a verified claim
-that restates one of them is a no-change finding, and every other verified
-claim is something that changed.
-
-Accepted record text is evidence, never instruction. It travels in a data
-channel and cannot change prompts, message roles, tools, or executable programs.
-A record Tempest cannot materialize exactly is rejected rather than truncated.
-The host selects programs independently, and Tempest verifies each program's
-artifact identity and output contract before execution. Stored program and
-procedure references remain inspection data.
-
-### Configuration options
-
-`tempest_config()` accepts the following parameters:
-
-| Parameter | Default | Description |
-|-----------|---------|-------------|
-| `models` | role-specific OpenAI defaults | Single model string or named list with `coordinator`, `expert`, `writer`, `mindmap`, `judge` |
-| `search_provider` | `"native"` | Search backend: `"native"`, `"wikipedia"`, `"you"`, `"bing"`, `"serper"`, `"brave"`, `"duckduckgo"`, `"tavily"`, `"searxng"`, `"google"`, `"azure_ai_search"` |
-| `embed_fn` | `NULL` | Embedding function for RAG (e.g., `ragnar::embed_openai()`) |
-| `ragnar_store` | `NULL` | Pre-built ragnar store; auto-created if `embed_fn` provided |
-| `chat_fn` | `NULL` | Custom chat factory: `function(role, model, system_prompt, echo)` |
-| `cache_dir` | `NULL` | Cache directory; defaults to `tempdir()/tempest-cache` or `TEMPEST_CACHE_DIR` env var |
-| `cache_enabled` | `TRUE` | Whether search and fetch calls read from and write to the cache |
-| `cache_ttl` | `Inf` | Maximum cache age in seconds before search/fetch entries are refreshed |
-| `max_search_results` | `8` | Maximum results per search query |
-| `max_search_queries_per_turn` | `3` | Maximum decomposed search queries per research turn |
-| `retrieve_top_k` | `25` | Maximum facts/chunks retrieved for each section |
-| `max_sources` | `24` | Maximum sources to track per session |
-| `max_active_experts` | `5` | Co-STORM: maximum concurrent active experts |
-
-By default, coordinator and writer roles use `openai/gpt-5.6-sol`; expert,
-mind map, and judge roles use `openai/gpt-5.6-luna`. Tempest constructs
-these clients with `ellmer::chat_openai()`, passing `auth = "codex"` to reuse
-the ChatGPT subscription authenticated by Codex CLI when the installed ellmer
-supports it and using `OPENAI_API_KEY` otherwise (see *LLM provider
-credentials*). Built-in clients use lower reasoning effort for mind-map and
-judge calls; explicit `params` values override these defaults. `tempest_app()` limits individual provider requests to 120
-seconds by default, configurable with `tempest.shiny.provider_timeout_s`.
-The bundled app's warmup asks each active expert for one brief,
-bounded, evidence-backed orientation. Each expert reuses session evidence or
-runs one targeted search, inspects at most two results, and preserves at least
-one citation. Tempest then commits source-backed claims in stable expert order
-and updates the shared mind map once for the complete panel. The summary says
-explicitly when no citable evidence was collected. Warmup concurrency and its
-120-second safety timeout are configurable with `tempest.shiny.warmup_*`
-options.
-
-To set a personal default model, add the `tempest.chat` option to your
-`.Rprofile`, using the same provider/model format as `ellmer::chat()`:
+Tempest uses [ellmer](https://ellmer.tidyverse.org/) for model access. Set your provider key outside R source files (for example `OPENAI_API_KEY`, `ANTHROPIC_API_KEY`, or `GOOGLE_API_KEY`), or set a personal default model in `.Rprofile`:
 
 ```r
 options(tempest.chat = "anthropic/claude-sonnet-4-20250514")
 ```
 
-You can also supply a configured ellmer Chat object:
+With the subscription-auth `ellmer` port (`tidyverse/ellmer#1067`), default `openai/` models reuse Codex CLI file-backed authentication (`codex login -c 'cli_auth_credentials_store="file"'`); with released `ellmer` (>= 0.5.0), Tempest uses `OPENAI_API_KEY`.
 
-```r
-options(
-  tempest.chat = ellmer::chat_ollama(model = "qwen3.5:9b")
-)
-```
+### Search providers
 
-Tempest clones a configured Chat for each role, prepends its role-specific
-system prompt, and retains the Chat's provider settings and existing system
-instructions. Explicit `models` and `chat_fn` arguments take precedence over
-the option. Use either override when API-key authentication or another provider
-is preferred.
+By default, `tempest_config(search_provider = "native")` uses provider-native web search when supported (OpenAI, Anthropic, Google) and falls back to Wikipedia. Other built-in providers include `"wikipedia"`, `"duckduckgo"`, `"tavily"`, `"brave"`, `"serper"`, `"you"`, `"bing"`, `"searxng"`, `"google"`, and `"azure_ai_search"`—see `?tempest_config` for environment variables. Pass `embed_fn = ragnar::embed_openai()` or `ragnar_store` for semantic retrieval with `ragnar`.
 
-## RAG with ragnar
+## How Tempest fits in the ellmer ecosystem
 
-Enable semantic search over fetched sources by providing an embedding function:
+| Package | Role | How it pairs with Tempest |
+|---|---|---|
+| **ellmer** & **shinychat** | Model calls, tools, and chat UI | Powers all model roles, Co-STORM chat, and reviewed-memory tool cards |
+| **deputy** | Governed agent runtime | Executes moderator and expert turns under explicit tool allowlists |
+| **dsprrr** | Typed structured programs | Runs extraction, verification, outline, and writing stages |
+| **graft** | Reviewed project memory | Preserves immutable research candidates, host accept/withdraw decisions, and bounded recall tools (`graft_tools()`) |
+| **ragnar** | Similarity search (RAG) | Indexes large corpora; pair with Graft so **ragnar finds and graft verifies** |
+| **shinymcp** & **mcptools** | MCP Apps & MCP servers | Present read-only research cards (`tempest_mcp_app()`) and serve accepted Graft streams to IDE agents |
+| **scans** & **vitals** | Trajectory review & evals | Audit completed runs and `@extra$graft` consultations; evaluate accuracy offline |
 
-```r
-library(tempest)
+## Documentation
 
-cfg <- tempest_config(
-  embed_fn = ragnar::embed_openai(),  # or embed_ollama(), custom function
-  search_provider = "wikipedia"
-)
-
-res <- tempest_run("Quantum computing applications", config = cfg)
-```
-
-When `embed_fn` is provided, tempest automatically:
-
-- Chunks fetched web content using `ragnar::markdown_chunk()`
-- Stores chunks with metadata (source_id, url, title, perspective)
-- Registers a semantic retrieve tool with chat agents
-
-You can also provide a pre-built ragnar store:
-
-```r
-store <- tempest_create_ragnar_store(
-  embed_fn = ragnar::embed_openai(),
-  cache_dir = "~/.tempest_cache"
-)
-cfg <- tempest_config(ragnar_store = store)
-```
-
-## Custom chat functions
-
-Use custom LLM providers (e.g., internal APIs) with the `chat_fn` parameter:
-
-```r
-cfg <- tempest_config(
-  chat_fn = function(role, model, system_prompt, echo) {
-    my_company_chat(
-      model = model,
-      system_prompt = system_prompt,
-      echo = echo
-    )
-  }
-)
-```
-
-## Deputy execution identity
-
-Co-STORM moderator and expert calls run through Deputy with product-owned tools.
-The product-owned session identifier is the live Deputy Agent's constructor
-identity, not parallel adapter metadata. Tempest persists only credential-safe
-terminal execution identities for correlation and audit joins. These
-references do not grant authority and do not assert causal content provenance.
-
-## Interactive Co-STORM
-
-Co-STORM provides an interactive multi-expert research experience with selected
-or automatically generated expert profiles.
-
-### Console Usage
-
-```r
-library(tempest)
-
-# Create a session - expert profiles are generated automatically
-session <- tempest_session("AI safety and alignment", n_experts = 3)
-
-# See who's on the panel
-session$get_expert_names()
-#> [1] "Dr. Sarah Chen" "Prof. Marcus Webb" "Dr. Aisha Patel"
-
-# Optional: Run warmup phase (experts research their initial questions)
-session$warmup(verbose = TRUE)
-#> ℹ Warmup: Dr. Sarah Chen (3 questions)
-#>   Q: What are the current technical approaches to AI alignment?
-#> ℹ Warmup: Prof. Marcus Webb (3 questions)
-#>   Q: What governance frameworks exist for AI safety?
-#> ℹ Warmup complete: 18 facts, 12 sources
-
-# Interactive Q&A - moderator delegates to experts via tools
-result <- session$step("What are the main risks from advanced AI systems?")
-cat(result$answer)
-
-# Generate and commit a report (styles: "technical" or "executive")
-session$publish(style = "technical", include_references = TRUE)
-committed_report <- tempest_report(session)
-cat(committed_report)
-```
-
-`session$publish()` validates and commits the canonical Co-STORM report.
-`tempest_report()` only reads those exact committed bytes from a
-succeeded, quiescent session; it does not generate or repair a report.
-There is no separate public renderer that can finalize a product or grant
-promotion authority.
-
-### Expert delegation
-
-The moderator receives one scoped
-`delegate_to_expert(expert_id, question)` tool. It resolves the active roster by
-content-derived expert id, so duplicate display names cannot redirect work.
-Each expert:
-
-- Has one persistent Deputy-backed chat session with conversation continuity
-- Receives only the role-specific tools needed for that run
-- Can use host-provided web or evidence tools to find and cite sources
-- Extracts claims automatically after each response
-- Keeps an opaque, host-inaccessible chat session binding for continuity
-
-The moderator uses the same bounded Deputy runtime. Each completed moderator or
-expert run records an opaque terminal trace that is carried through Co-STORM
-snapshot and bundle persistence.
-
-Co-STORM save, snapshot, restore, and resume accept only the exact current
-schema-14 product. Expert, transcript, mind-map, StageRecord, Workspace, report,
-suggested-question, and artifact selection state must pass integrity checks. Live
-chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated
-rather than serialized.
-
-### Warmup Phase
-
-The optional warmup phase has each expert research their initial questions before interactive Q&A begins. This primes the knowledge base with foundational research:
-
-```r
-# Skip warmup - jump straight into Q&A
-session <- tempest_session("Quantum computing")
-session$step("What is quantum supremacy?")
-
-# With warmup - experts research first
-session <- tempest_session("Quantum computing")
-session$warmup()  # Each expert answers 2-4 initial questions
-session$step("What is quantum supremacy?")  # Benefits from prior research
-```
-
-### Dynamic Expert Roster
-
-Experts can be added or retired during a session:
-
-```r
-error_correction_expert <- tempest_expert(
-  name = "Dr. Sarah Chen",
-  title = "Quantum error-correction researcher",
-  description = "Studies fault-tolerant quantum architectures.",
-  instructions = "Distinguish demonstrated thresholds from projections."
-)
-session <- tempest_session(
-  "Quantum computing",
-  experts = list(error_correction_expert)
-)
-session$add_expert("quantum networking")
-session$retire_expert(error_correction_expert@expert_id)
-session$experts
-```
-
-Expert profiles remain immutable. Retirement is manager-owned session-roster
-state, persisted separately from the profile. The roster respects
-`max_active_experts` (default 5), and retired experts' tools return a notice
-that the expert is no longer available.
-
-### Report Generation
-
-```r
-session$reorganize_mindmap()
-report <- session$publish(style = "technical", include_references = TRUE)
-```
-
-### Shiny App
-
-```r
-library(tempest)
-tempest_app()
-```
-
-Untouched model fields inherit `options(tempest.chat = )`; otherwise the app
-uses Tempest's GPT-5.6 Sol/Luna defaults with ChatGPT subscription
-authentication where the installed ellmer supports it, else `OPENAI_API_KEY`. Editing any model field switches the app to those explicit
-per-role model selections.
-
-Start a multi-expert Co-STORM discussion in **Chat** or use **STORM** for a scripted run.
-In **Evidence**, inspect retrieved sources, proposed facts and their citations, or explore the knowledge map and its text outline.
-**Session record** contains the public transcript and a run review with recorded stages and live progress.
-Open **Report** to read or download the published result.
-
-Features:
-
-- Configurable number of experts and optional warmup phase
-- Report style selection (technical or executive)
-- Bounded Co-STORM session download and upload with archive validation
-- Polite live status for progress, persistence, and publication, with alerts
-  for validation, cancellation, and publication failures
-- Dark mode toggle
-
-Session archives are explicit downloads and uploads. The app does not claim
-browser-temporary autosave, and its STORM panel does not expose unsupported
-parallel perspective research. STORM runs in a `shiny::ExtendedTask` backed by
-Mirai so the Shiny session remains responsive.
-
-The Shiny modules and their store are Tempest implementation details. Use
-`tempest_app()` for this Co-STORM application, or `tempest_researcher_app()` for
-the separate enriched researcher. There is no supported contract for embedding
-the internal panels in a host app.
-
-The app currently depends on the shinychat development version that provides
-`chat_server()`, installed from GitHub through `Remotes` in `DESCRIPTION`.
-
-## Notes
-
-- This package is designed as a starting point and reference implementation.
-- For production use, you may want to:
-  - use ragnar with domain-specific content (internal docs, databases)
-  - add guardrails (policy, bias checks) and more systematic evaluations
-  - customize prompts in `inst/prompts/`
-
-## References
-
-Papers:
-
-- **STORM**: Shao, Y., et al. (2024). [Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models](https://arxiv.org/abs/2402.14207). NAACL 2024.
-- **Co-STORM**: Jiang, Y., et al. (2024). [Into the Unknown Unknowns: Engaged Human Learning through Participation in Language Model Agent Conversations](https://arxiv.org/abs/2408.15232). EMNLP 2024.
-- **DSPy**: Khattab, O., et al. (2024). [DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines](https://arxiv.org/abs/2310.03714). ICLR 2024.
-
-Code that inspired tempest:
-
-- [stanford-oval/storm](https://github.com/stanford-oval/storm) — the reference STORM and Co-STORM implementation this package ports to R.
-- [stanfordnlp/dspy](https://github.com/stanfordnlp/dspy) — the DSPy framework that [dsprrr](https://github.com/JamesHWade/dsprrr) brings to R for tempest's optimizable modules.
-- [Stanford STORM project](https://storm.genie.stanford.edu/) — live demo and project overview.
-
-## Retain reviewed research across runs
-
-Use `tempest_publish_artifact_research()` to preserve a completed report and its
-full evidence through Graft's artifact store. After explicit host acceptance,
-`tempest_reuse_artifact_research()` checks the current decision and host policy
-before research admission. Historical inspection uses
-`tempest_read_artifact_research()` and grants no current permission.
-See [retained artifact evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.html)
-for an executable offline example and session resume rules.
+- [Get started with Tempest](https://jameshwade.github.io/tempest/articles/tempest.html) — STORM, Co-STORM, experts, configuration, and persistence
+- [Enriched reports & the Researcher app](https://jameshwade.github.io/tempest/articles/enriched-research.html) — reproducible R analyses, host tools, MCP servers, and saved libraries
+- [Research that remembers with Graft](https://jameshwade.github.io/tempest/articles/research-memory.html) — human review, multi-stream recall, `ragnar` + `graft`, and MCP servers
+- [Build a recurring decision briefing](https://jameshwade.github.io/tempest/articles/daily-briefing.html) — structural "what changed" briefings over accepted streams
+- [Scientific review and evidence repair](https://jameshwade.github.io/tempest/articles/scientific-review.html) — adversarial claim review, adjudication, and targeted follow-up retrieval
+- [Live enriched report example](https://jameshwade.github.io/tempest/live-research/index.html) — inspect a published `datasets::CO2` report with real charts and tables

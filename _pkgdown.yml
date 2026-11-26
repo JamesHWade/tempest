@@ -1,70 +1,82 @@
 url: https://jameshwade.github.io/tempest/
+title: tempest
 template:
-  bootstrap: 5
+  light-switch: true
+  bslib:
+    version: 5
+    brand: _brand.yml
+development:
+  mode: auto
+home:
+  title: "tempest: Evidence-backed research agents for R"
+  description: >
+    Multi-perspective STORM and Co-STORM research agents, claim-by-span
+    verification, reproducible R analyses, interactive apps, and reviewed
+    project memory with graft.
+navbar:
+  structure:
+    left: [intro, articles, reference, news]
+    right: [search, github, lightswitch]
 articles:
-- title: Get started
-  desc: Install Tempest and run your first workflow.
-  navbar: ~
-  contents:
-  - tempest
-  - daily-briefing
-  - artifact-knowledge
-  - ecosystem-demo
-  - scientific-review
-  - enriched-research
+  - title: Start here
+    navbar: Start here
+    contents:
+      - tempest
+  - title: Guides
+    navbar: Guides
+    contents:
+      - enriched-research
+      - research-memory
+      - daily-briefing
+      - scientific-review
+redirects:
+  - ["articles/artifact-knowledge.html", "articles/research-memory.html"]
+  - ["articles/ecosystem-demo.html", "articles/research-memory.html"]
 reference:
-- title: Research products
-  desc: Run scripted STORM, hold a Co-STORM session, or open the bundled app.
-  contents:
-  - tempest_run
-  - tempest_session
-  - tempest_app
-  - tempest_config
-- title: Enriched research reports
-  desc: Combine cited research with reproducible calculations and illustrations.
-  contents:
-  - tempest_researcher
-  - tempest_researcher_app
-  - tempest_enrich_report
-  - tempest_r_executor
-  - tempest_image_generator
-  - tempest_read_enriched_report
-- title: Scientific experts
-  contents:
-  - tempest_expert
-- title: Host retrievers
-  desc: Connect host search and fetch adapters to the research workspace.
-  contents:
-  - tempest_research_workspace
-  - tempest_resource
-  - tempest_source_id
-- title: Accepted organizational knowledge
-  desc: Bring retained artifact evidence or reviewed Graft knowledge into a run.
-  contents:
-  - tempest_publish_artifact_research
-  - tempest_read_artifact_research
-  - tempest_reuse_artifact_research
-  - tempest_artifact_knowledge
-  - print.tempest_knowledge
-- title: Reading a completed product
-  desc: Read the committed report and inspect the evidence behind it.
-  contents:
-  - tempest_report
-  - tempest_sources
-  - tempest_claims
-  - tempest_claim_supports
-  - tempest_claim_reviews
-  - tempest_trajectory_review
-  - tempest_trajectory_review_data
-  - tempest_mcp_app
-- title: Session persistence
-  desc: Save and resume the exact current session product.
-  contents:
-  - tempest_session_save
-  - tempest_session_resume
-- title: Graft review and promotion
-  desc: Propose, review, commit, and verify accepted research evidence.
-  contents:
-  - tempest_promotion_bundle
-  - tempest_save_promotion_bundle
-  - tempest_read_promotion_bundle
+  - title: Research workflows & apps
+    desc: Run scripted STORM, hold an interactive Co-STORM session, or launch a research app.
+    contents:
+      - tempest_run
+      - tempest_session
+      - tempest_researcher
+      - tempest_researcher_app
+      - tempest_app
+      - tempest_config
+      - tempest_expert
+  - title: Inspect reports & evidence
+    desc: Read committed reports, verify claim-by-span support, inspect scientific reviews, or share an MCP card.
+    contents:
+      - tempest_report
+      - tempest_sources
+      - tempest_claims
+      - tempest_claim_supports
+      - tempest_claim_reviews
+      - tempest_trajectory_review
+      - tempest_trajectory_review_data
+      - tempest_mcp_app
+  - title: Enriched research reports
+    desc: Pair cited research with reproducible R analyses, illustrations, and integrity-checked bundles.
+    contents:
+      - tempest_enrich_report
+      - tempest_read_enriched_report
+      - tempest_r_executor
+      - tempest_image_generator
+  - title: Reviewed memory with Graft
+    desc: Publish candidates, review and accept findings in Graft, and admit verified evidence into later runs.
+    contents:
+      - tempest_publish_artifact_research
+      - tempest_read_artifact_research
+      - tempest_reuse_artifact_research
+      - tempest_artifact_knowledge
+      - tempest_promotion_bundle
+      - tempest_save_promotion_bundle
+      - tempest_read_promotion_bundle
+      - print.tempest_knowledge
+  - title: Persistence & host retrievers
+    desc: Save and resume Co-STORM sessions or connect custom host retrievers and source records.
+    contents:
+      - tempest_session_save
+      - tempest_session_resume
+      - tempest_research_workspace
+      - tempest_resource
+      - tempest_source_id

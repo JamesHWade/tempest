@@ -1,5 +1,6 @@
 # tempest 0.0.0.9000
 
+* Revamped the pkgdown site, `README.md`, and vignettes with a branded `_brand.yml` theme, light/dark mode support, an ecosystem architecture diagram, a redesigned landing page, and five streamlined task-focused guides (`tempest`, `enriched-research`, `research-memory`, `daily-briefing`, `scientific-review`) (#199).
 * `tempest_app()` now accepts optional `graft_store`, `memory_purpose`, `memory_actor`, and `memory_eligible` arguments supporting both local and PostgreSQL `graft::ArtifactStore` handles; Workspace settings adds a Project memory (Graft) panel to attach read-only `graft::graft_tools()` recall (rendering inline `shinychat` tool cards) and pin accepted streams for new sessions, the Report tab adds explicit publish/accept/correct/withdraw controls, and Run review displays pinned inputs and `@extra$graft` consultation records (#198).
 * `tempest_app()` groups evidence and session records in the navigation and refreshes discussion setup, scripted runs, review, and report reading on desktop and mobile.
 * `tempest_mcp_app()` now includes read-only Graft input selection provenance (`input_selection_id` and `input_purpose`) in its overview summary (#198).
