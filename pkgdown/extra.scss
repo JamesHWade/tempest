@@ -1,0 +1,186 @@
+/* Tempest pkgdown styling — light & dark mode harmonized with _brand.yml */
+
+:root {
+  --tempest-surface: #ffffff;
+  --tempest-surface-subtle: #f4f8fa;
+  --tempest-border: #d7e4ea;
+  --tempest-muted: #556674;
+  --tempest-accent: #2b6476;
+  --tempest-accent-soft: #ebf3f6;
+  --tempest-gold: #d99b26;
+}
+
+[data-bs-theme="dark"] {
+  --tempest-surface: #13212d;
+  --tempest-surface-subtle: #182a39;
+  --tempest-border: #2a4052;
+  --tempest-muted: #a6bccb;
+  --tempest-accent: #6ec0d6;
+  --tempest-accent-soft: #1b3648;
+  --tempest-gold: #f0bc52;
+}
+
+.navbar {
+  border-bottom: 1px solid var(--tempest-border);
+}
+
+[data-bs-theme="dark"] .navbar .nav-text,
+[data-bs-theme="dark"] .navbar .label-default,
+[data-bs-theme="dark"] .navbar .version-danger,
+[data-bs-theme="dark"] .navbar .version-default {
+  color: #eef5f9;
+}
+
+/* Landing hero */
+.tempest-hero {
+  background: linear-gradient(
+    135deg,
+    var(--tempest-surface-subtle) 0%,
+    var(--tempest-surface) 75%
+  );
+  border: 1px solid var(--tempest-border);
+  border-radius: 1rem;
+  padding: 2.25rem 2.25rem 2rem;
+  margin-bottom: 2.25rem;
+}
+
+.tempest-eyebrow {
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--tempest-accent);
+  margin-bottom: 0.6rem;
+}
+
+.tempest-hero h2 {
+  font-size: clamp(1.9rem, 3.2vw, 2.65rem);
+  line-height: 1.12;
+  margin-top: 0;
+  margin-bottom: 1rem;
+  border-bottom: 0;
+  padding-bottom: 0;
+}
+
+.tempest-hero-copy {
+  font-size: 1.1rem;
+  color: var(--tempest-muted);
+  max-width: 62ch;
+  margin-bottom: 1.5rem;
+}
+
+.tempest-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+}
+
+/* 3-step workflow grid */
+.tempest-steps,
+.tempest-apps {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 2rem;
+}
+
+.tempest-step,
+.tempest-app-card,
+.tempest-guides section {
+  background: var(--tempest-surface);
+  border: 1px solid var(--tempest-border);
+  border-radius: 0.85rem;
+  padding: 1.25rem 1.35rem;
+}
+
+.tempest-step-num {
+  display: inline-block;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--tempest-accent);
+  background: var(--tempest-accent-soft);
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  margin-bottom: 0.65rem;
+}
+
+.tempest-step h3,
+.tempest-app-card h3,
+.tempest-guides h3 {
+  font-size: 1.15rem;
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  border-bottom: 0;
+}
+
+.tempest-step p:last-child,
+.tempest-app-card p:last-child,
+.tempest-guides p:last-child {
+  margin-bottom: 0;
+}
+
+/* 2x2 guide grid */
+.tempest-guides {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.tempest-callout {
+  background: var(--tempest-surface-subtle);
+  border-left: 4px solid var(--tempest-accent);
+  border-radius: 0 0.6rem 0.6rem 0;
+  padding: 1rem 1.25rem;
+  margin: 1.25rem 0 1.5rem;
+}
+
+.tempest-callout p:last-child {
+  margin-bottom: 0;
+}
+
+/* Ecosystem figure */
+.tempest-figure {
+  background: var(--tempest-surface);
+  border: 1px solid var(--tempest-border);
+  border-radius: 0.85rem;
+  padding: 1rem;
+  margin: 1.5rem 0;
+  text-align: center;
+}
+
+.tempest-figure img {
+  max-width: 100%;
+  height: auto;
+}
+
+.tempest-figure figcaption {
+  font-size: 0.9rem;
+  color: var(--tempest-muted);
+  margin-top: 0.75rem;
+}
+
+[data-bs-theme="dark"] .tempest-figure figcaption code,
+[data-bs-theme="dark"] .text-muted code {
+  color: #cbe7f2;
+  background-color: rgba(110, 192, 214, 0.14);
+}
+
+[data-bs-theme="dark"] .source-link,
+[data-bs-theme="dark"] a {
+  color: #7cc9df;
+}
+
+@media (max-width: 820px) {
+  .tempest-steps,
+  .tempest-apps,
+  .tempest-guides {
+    grid-template-columns: 1fr;
+  }
+
+  .tempest-hero {
+    padding: 1.5rem;
+  }
+}

@@ -1,0 +1,56 @@
+meta:
+  name:
+    short: tempest
+    full: tempest research agents
+  link:
+    home: https://jameshwade.github.io/tempest/
+    github: https://github.com/JamesHWade/tempest
+
+color:
+  palette:
+    storm-navy: "#15293A"
+    deep-teal: "#2B6476"
+    storm-teal: "#3D8094"
+    sky-mist: "#EBF3F6"
+    cloud-tint: "#F4F8FA"
+    paper: "#FCFDFE"
+    ink: "#162430"
+    slate: "#556674"
+    lightning: "#D99B26"
+    meadow: "#2E7D5B"
+    crimson: "#B4434D"
+  foreground: ink
+  background: paper
+  primary: deep-teal
+  secondary: slate
+  success: meadow
+  info: storm-teal
+  warning: lightning
+  danger: crimson
+  light: sky-mist
+  dark: storm-navy
+
+typography:
+  fonts:
+    - family: Source Sans 3
+      source: google
+      weight: [400, 600, 700]
+      style: [normal, italic]
+    - family: Fraunces
+      source: google
+      weight: [500, 600, 700]
+      style: [normal, italic]
+    - family: IBM Plex Mono
+      source: google
+      weight: [400, 500]
+  base:
+    family: Source Sans 3
+    size: 17px
+    line-height: 1.6
+  headings:
+    family: Fraunces
+    weight: 600
+    line-height: 1.18
+  monospace:
+    family: IBM Plex Mono
+    size: 0.9em

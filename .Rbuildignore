@@ -1,6 +1,7 @@
 ^LICENSE\.md$
 ^\.claude$
 ^_pkgdown\.yml$
+^_brand\.yml$
 ^docs$
 ^pkgdown$
 ^\.github$
