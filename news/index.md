@@ -2,6 +2,11 @@
 
 ## tempest 0.0.0.9000
 
+- [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
+  groups evidence and session records in the navigation and refreshes
+  discussion setup, scripted runs, review, and report reading on desktop
+  and mobile.
+
 - Saved research products now retain scientific review records with
   workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM
   bundle schema 11 (state schema 5), and promotion bundle schema 2.

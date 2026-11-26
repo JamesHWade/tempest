@@ -715,25 +715,7 @@
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="reference/tempest_app.html">tempest_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Untouched model fields inherit <code>options(tempest.chat = )</code>; otherwise the app uses Tempest’s GPT-5.6 Sol/Luna defaults with ChatGPT subscription authentication where the installed ellmer supports it, else <code>OPENAI_API_KEY</code>. Editing any model field switches the app to those explicit per-role model selections.</p>
-<p>The app provides:</p>
-<ul>
-<li>
-<strong>Chat tab</strong>: Multi-expert conversation with selected or generated experts, shinychat <code>chat_server()</code> streaming, cancellation, and greeting support</li>
-<li>
-<strong>STORM tab</strong>: Scripted research through a responsive asynchronous worker</li>
-<li>
-<strong>Mind Map tab</strong>: Real-time knowledge graph visualization</li>
-<li>
-<strong>Sources tab</strong>: Table of all retrieved sources with metadata</li>
-<li>
-<strong>Facts tab</strong>: Extracted facts with citations and confidence</li>
-<li>
-<strong>Transcript tab</strong>: Ordered public Co-STORM turns</li>
-<li>
-<strong>Report tab</strong>: Rendered markdown report with footnotes</li>
-<li>
-<strong>Run review tab</strong>: Bounded authoritative StageRecord review beside clearly labeled, untrusted live progress observations</li>
-</ul>
+<p>Start a multi-expert Co-STORM discussion in <strong>Chat</strong> or use <strong>STORM</strong> for a scripted run. In <strong>Evidence</strong>, inspect retrieved sources, proposed facts and their citations, or explore the knowledge map and its text outline. <strong>Session record</strong> contains the public transcript and a run review with recorded stages and live progress. Open <strong>Report</strong> to read or download the published result.</p>
 <p>Features:</p>
 <ul>
 <li>Configurable number of experts and optional warmup phase</li>

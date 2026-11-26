@@ -1008,20 +1008,12 @@ authentication where the installed ellmer supports it, else
 `OPENAI_API_KEY`. Editing any model field switches the app to those
 explicit per-role model selections.
 
-The app provides:
-
-- **Chat tab**: Multi-expert conversation with selected or generated
-  experts, shinychat `chat_server()` streaming, cancellation, and
-  greeting support
-- **STORM tab**: Scripted research through a responsive asynchronous
-  worker
-- **Mind Map tab**: Real-time knowledge graph visualization
-- **Sources tab**: Table of all retrieved sources with metadata
-- **Facts tab**: Extracted facts with citations and confidence
-- **Transcript tab**: Ordered public Co-STORM turns
-- **Report tab**: Rendered markdown report with footnotes
-- **Run review tab**: Bounded authoritative StageRecord review beside
-  clearly labeled, untrusted live progress observations
+Start a multi-expert Co-STORM discussion in **Chat** or use **STORM**
+for a scripted run. In **Evidence**, inspect retrieved sources, proposed
+facts and their citations, or explore the knowledge map and its text
+outline. **Session record** contains the public transcript and a run
+review with recorded stages and live progress. Open **Report** to read
+or download the published result.
 
 Features:
 
