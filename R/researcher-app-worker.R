@@ -107,7 +107,12 @@ tempest_researcher_app_validate_request <- function(request) {
     "mcp_servers",
     "selected_mcp"
   )
-  allowed_fields <- c(fields, "research_strategy")
+  allowed_fields <- c(
+    fields,
+    "research_strategy",
+    "use_memory_tools",
+    "memory_basis_stream"
+  )
   if (
     !is.list(request) ||
       is.data.frame(request) ||
@@ -163,6 +168,21 @@ tempest_researcher_app_validate_request <- function(request) {
   )
   for (name in c("selected_tools", "mcp_servers", "selected_mcp")) {
     request[[name]] <- tempest_researcher_app_strings(request[[name]], name)
+  }
+  if (is.null(request$use_memory_tools)) {
+    request$use_memory_tools <- FALSE
+  } else {
+    request$use_memory_tools <- tempest_researcher_app_flag(
+      request$use_memory_tools,
+      "use_memory_tools"
+    )
+  }
+  if (!is.null(request$memory_basis_stream)) {
+    request$memory_basis_stream <- tempest_researcher_app_string(
+      request$memory_basis_stream,
+      "memory_basis_stream",
+      256L
+    )
   }
   request
 }
@@ -305,7 +325,10 @@ tempest_researcher_worker <- function(
   tools,
   mcp_config,
   output_dir,
-  progress_path
+  progress_path,
+  graft_store_path = NULL,
+  memory_purpose = "research",
+  memory_eligible = NULL
 ) {
   if (identical(kind, "discover")) {
     servers <- tempest_researcher_app_strings(
@@ -329,6 +352,30 @@ tempest_researcher_worker <- function(
     mcp_servers = request$mcp_servers,
     selected_mcp = request$selected_mcp
   )
+  memory_store <- NULL
+  knowledge <- NULL
+  if (!is.null(graft_store_path)) {
+    memory_store <- tempest_graft_store_open(graft_store_path, create = FALSE)
+    if (isTRUE(request$use_memory_tools)) {
+      memory_tools <- tempest_graft_memory_tools(
+        memory_store,
+        purpose = memory_purpose,
+        eligible = memory_eligible
+      )
+      if (length(memory_tools) > 0L) {
+        selected <- c(selected, memory_tools)
+        tempest_researcher_checked_tool_names(selected)
+      }
+    }
+    if (!is.null(request$memory_basis_stream)) {
+      knowledge <- tempest_graft_reuse_stream(
+        memory_store,
+        stream = request$memory_basis_stream,
+        purpose = memory_purpose,
+        eligible = memory_eligible
+      )
+    }
+  }
   on.exit(
     {
       rm(selected)
@@ -356,7 +403,7 @@ tempest_researcher_worker <- function(
       0L
     }
   )
-  result <- tempest_researcher_app_run_research(
+  run_args <- list(
     topic = request$topic,
     output_dir = output_dir,
     config = cfg,
@@ -368,10 +415,41 @@ tempest_researcher_worker <- function(
     verbose = FALSE,
     enrichment = enrichment
   )
-  list(
+  if (!is.null(knowledge)) {
+    run_args$knowledge <- knowledge
+  }
+  result <- do.call(tempest_researcher_app_run_research, run_args)
+  output <- list(
     path = result$report@path,
     status = result$report@status
   )
+  if (!is.null(memory_store) && !is.null(result$research)) {
+    output$graft <- tryCatch(
+      {
+        bundle <- tempest_promotion_bundle(result$research)
+        selection_id <- tempest_publish_artifact_research(
+          bundle,
+          memory_store,
+          report = tempest_report(result$research)
+        )
+        list(
+          selection_id = selection_id,
+          research_run_id = bundle@research_run_id,
+          bundle_id = bundle@bundle_id,
+          publish_error = NULL
+        )
+      },
+      error = function(error) {
+        list(
+          selection_id = NULL,
+          research_run_id = NULL,
+          bundle_id = NULL,
+          publish_error = conditionMessage(error)
+        )
+      }
+    )
+  }
+  output
 }
 
 tempest_researcher_app_package_path <- function() {
@@ -582,6 +660,8 @@ tempest_researcher_app_callr_entry <- function(
         "tempest_execution_error",
         "tempest_persistence_error",
         "tempest_research_tools_error",
+        "tempest_graft_memory_error",
+        "tempest_knowledge_error",
         "tempest_error",
         "tempest_researcher_app_error",
         "tempest_researcher_app_config_error",
@@ -591,6 +671,8 @@ tempest_researcher_app_callr_entry <- function(
       found <- intersect(classes, allowed)
       error_class <- if (length(found)) found[[1L]] else "tempest_worker_error"
       safe_classes <- c(
+        "tempest_graft_memory_error",
+        "tempest_knowledge_error",
         "tempest_researcher_app_error",
         "tempest_researcher_app_config_error",
         "tempest_researcher_app_input_error",
@@ -690,7 +772,10 @@ TempestResearcherAppSession <- R6::R6Class(
       config,
       tools = list(),
       mcp_config = NULL,
-      output_dir = tempdir()
+      output_dir = tempdir(),
+      graft_store_path = NULL,
+      memory_purpose = "research",
+      memory_eligible = NULL
     ) {
       if (!S7::S7_inherits(config, TempestConfig)) {
         tempest_researcher_app_abort(
@@ -742,6 +827,9 @@ TempestResearcherAppSession <- R6::R6Class(
       private$tools <- tools
       private$mcp_config_path <- mcp_config
       private$mcp_config_owned <- FALSE
+      private$graft_store_path <- graft_store_path
+      private$memory_purpose <- memory_purpose
+      private$memory_eligible <- memory_eligible
       private$output_dir <- normalizePath(output_dir, mustWork = TRUE)
       private$session_dir <- tempfile("tempest-researcher-session-")
       if (!dir.create(private$session_dir, mode = "0700")) {
@@ -883,6 +971,8 @@ TempestResearcherAppSession <- R6::R6Class(
         }
         class <- gsub("[^A-Za-z0-9_.]", "", class)
         safe_classes <- c(
+          "tempest_graft_memory_error",
+          "tempest_knowledge_error",
           "tempest_researcher_app_error",
           "tempest_researcher_app_config_error",
           "tempest_researcher_app_input_error",
@@ -950,6 +1040,23 @@ TempestResearcherAppSession <- R6::R6Class(
         private$fail("The published report failed integrity validation.")
         return(self$snapshot())
       }
+      if (
+        is.list(result$graft) &&
+          (rlang::is_string(result$graft$selection_id) ||
+            rlang::is_string(result$graft$publish_error))
+      ) {
+        tryCatch(
+          tempest_researcher_memory_write_record(
+            output_dir = private$output_dir,
+            report_id = basename(public_path),
+            selection_id = result$graft$selection_id,
+            research_run_id = result$graft$research_run_id,
+            bundle_id = result$graft$bundle_id,
+            publish_error = result$graft$publish_error
+          ),
+          error = function(error) NULL
+        )
+      }
       private$report_candidate <- NULL
       private$result <- list(path = published@path, status = published@status)
       private$remove_candidate()
@@ -994,6 +1101,9 @@ TempestResearcherAppSession <- R6::R6Class(
     tools = NULL,
     mcp_config_path = NULL,
     mcp_config_owned = FALSE,
+    graft_store_path = NULL,
+    memory_purpose = "research",
+    memory_eligible = NULL,
     output_dir = NULL,
     session_dir = NULL,
     status = NULL,
@@ -1103,6 +1213,11 @@ TempestResearcherAppSession <- R6::R6Class(
         }
         work$config <- handoff$config
         work$ragnar_handoff <- handoff$handoff
+        if (!is.null(private$graft_store_path)) {
+          work$graft_store_path <- private$graft_store_path
+          work$memory_purpose <- private$memory_purpose
+          work$memory_eligible <- private$memory_eligible
+        }
       }
       if (identical(kind, "discover")) {
         work$config <- NULL

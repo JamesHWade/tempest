@@ -3,9 +3,12 @@ tempest_researcher_ui <- function(
   mcp_servers = character(),
   model = "openai/gpt-6.1-sol",
   max_experts = 5L,
-  library_enabled = FALSE
+  library_enabled = FALSE,
+  memory_enabled = FALSE,
+  memory_streams = character()
 ) {
   rlang::check_bool(library_enabled)
+  rlang::check_bool(memory_enabled)
   max_experts <- min(10L, max_experts)
   if (
     !is.data.frame(tool_catalog) ||
@@ -624,7 +627,10 @@ tempest_researcher_ui <- function(
               shiny::uiOutput("tools_status")
             ),
             shiny::uiOutput("mcp_tools")
-          )
+          ),
+          if (isTRUE(memory_enabled)) {
+            tempest_researcher_memory_sidebar_ui(memory_streams)
+          }
         ),
         shiny::div(
           class = "researcher-run-controls",
@@ -680,7 +686,13 @@ tempest_researcher_ui <- function(
         shiny::uiOutput("progress")
       ),
       if (isTRUE(library_enabled)) {
-        tempest_researcher_library_ui("library")
+        tempest_researcher_library_ui(
+          "library",
+          memory_enabled = memory_enabled
+        )
+      },
+      if (isTRUE(memory_enabled)) {
+        tempest_researcher_memory_review_ui("memory_review")
       },
       shiny::tags$section(
         class = "researcher-report-paper",

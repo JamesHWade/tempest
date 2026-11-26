@@ -11,7 +11,11 @@ tempest_researcher_app(
   mcp_config = NULL,
   output_dir = file.path(tempdir(), "tempest-researcher"),
   model = "openai/gpt-6.1-sol",
-  report_library = FALSE
+  report_library = FALSE,
+  graft_store = NULL,
+  memory_purpose = "research",
+  memory_actor = NULL,
+  memory_eligible = NULL
 )
 }
 \arguments{
@@ -47,6 +51,24 @@ A supplied Chat can change models within its provider; use a custom
 can open and download the reports in that directory. Use a dedicated
 directory managed by the host and enable this only for an audience that
 can read the entire collection.}
+
+\item{graft_store}{Optional local directory path (or \code{graft::LocalArtifactStore})
+for Graft reviewed project memory. Defaults to \code{NULL} (disabled). When
+supplied, completed runs are published as unaccepted candidates that you
+can review, accept into a named stream, correct, or withdraw; new runs can
+consult accepted streams through read-only \code{graft::graft_tools()} or pin an
+accepted stream as their comparison basis.}
+
+\item{memory_purpose}{Consultation purpose recorded on Graft decisions and
+memory recall tools. Defaults to \code{"research"}.}
+
+\item{memory_actor}{Default reviewer label shown in the Graft review panel.
+Defaults to \code{"local-reviewer"}.}
+
+\item{memory_eligible}{Optional one-argument host eligibility function
+\verb{function(stream)} returning \code{TRUE} or \code{FALSE}. Defaults to allowing all
+streams in the local store. Multi-user hosts must supply an authenticated
+policy function.}
 }
 \value{
 Invisibly, the result of \code{\link[shiny:runApp]{shiny::runApp()}}.
@@ -81,7 +103,11 @@ functions must work in a fresh R process without captured open connections.
 }
 \examples{
 \dontrun{
-tempest_researcher_app(output_dir = "research-reports", report_library = TRUE)
+tempest_researcher_app(
+  output_dir = "research-reports",
+  report_library = TRUE,
+  graft_store = "research-memory"
+)
 
 tempest_researcher_app(
   tools = list(plant_data = function() {

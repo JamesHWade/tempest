@@ -15,7 +15,7 @@ test_that("ledger identity fields reject credential-shaped values", {
     )
     expect_error(
       do.call(tempest:::tempest_claim, arguments),
-      class = "simpleError",
+      class = s7_validation_error_class(),
       info = field
     )
   }
@@ -29,7 +29,7 @@ test_that("ledger identity fields reject credential-shaped values", {
     arguments[[field]] <- "Authorization:Bearer-sk-live-secret"
     expect_error(
       do.call(tempest:::tempest_evidence_span, arguments),
-      class = "simpleError",
+      class = s7_validation_error_class(),
       info = field
     )
   }
@@ -38,7 +38,7 @@ test_that("ledger identity fields reject credential-shaped values", {
       "Disputed result",
       claim_ids = "sk-live-secret"
     ),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 })
 
@@ -48,37 +48,37 @@ test_that("ledger timestamps are canonical and revalidated on serialization", {
       "Scientific evidence",
       created_at = "2026-08-16 01:00:00"
     ),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   expect_error(
     tempest:::tempest_evidence_span(
       "source-1",
       created_at = "2026-08-16T01:00:00PST"
     ),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   expect_error(
     tempest:::tempest_dispute(
       "Disputed result",
       created_at = "sk-live-secret"
     ),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 
   claim <- tempest:::tempest_claim("Scientific evidence")
   expect_error(
     claim@verified_at <- "sk-live-secret",
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   span <- tempest:::tempest_evidence_span("source-1")
   expect_error(
     span@created_at <- "2026-08-16T01:00:00Zjunk",
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   dispute <- tempest:::tempest_dispute("Disputed result")
   expect_error(
     dispute@created_at <- "2026-02-30T01:00:00Z",
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 })
 
@@ -328,7 +328,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
         start_offset = offsets[[1]],
         end_offset = offsets[[2]]
       ),
-      class = "simpleError"
+      class = s7_validation_error_class()
     )
   }
   expect_error(
@@ -355,7 +355,7 @@ test_that("evidence offsets are zero-based half-open character offsets", {
       start_offset = 0L,
       end_offset = 1L
     ),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 })
 
@@ -412,7 +412,7 @@ test_that("claims require resolvable unique contradicting sources", {
       source_ids = source_id,
       contradicting_source_ids = rep(source_id, 2L)
     ),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   expect_no_error(workspace$add_proposed_claim(tempest_claim(
     "Mixed evidence",

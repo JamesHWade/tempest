@@ -284,7 +284,7 @@ test_that("ProgramSet construction rejects partial and ambiguous contracts", {
       entries = builtin@entries,
       programs = builtin@programs
     ),
-    class = "simpleError",
+    class = s7_validation_error_class(),
     regexp = "absolute directory path"
   )
 

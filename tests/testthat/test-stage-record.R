@@ -261,11 +261,11 @@ test_that("stage record codecs are exact and reject trust tampering", {
 
   expect_error(
     S7::set_props(record, program_artifact_id = "sha256:not-a-digest"),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   expect_error(
     S7::set_props(record, fallback_taken = c(FALSE, TRUE)),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 
   for (field in c(
@@ -427,13 +427,13 @@ test_that("output references and trace references are exact", {
   scalar_reference$ids <- scalar_reference$ids[[1]]
   expect_error(
     S7::set_props(succeeded, output_reference = scalar_reference),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
   scalar_trace <- running@trace_references
   scalar_trace$evidence_claim_ids <- scalar_trace$evidence_claim_ids[[1]]
   expect_error(
     S7::set_props(running, trace_references = scalar_trace),
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 
   data <- tempest:::tempest_stage_record_data(succeeded)
