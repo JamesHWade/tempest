@@ -31,7 +31,7 @@ shiny_config_review_settings <- function(input, default_config) {
   )
 }
 
-mod_config_ui <- function(id) {
+mod_config_ui <- function(id, memory_ui = NULL) {
   ns <- shiny::NS(id)
   default_config <- tempest::tempest_config()
   default_models <- default_config@models
@@ -114,7 +114,8 @@ mod_config_ui <- function(id) {
           )
         )
       )
-    )
+    ),
+    memory_ui
   )
 }
 

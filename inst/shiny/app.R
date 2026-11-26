@@ -10,6 +10,29 @@ tempest:::tempest_shiny_require_server(panels)
 # Colors, typography, and logo are defined in _brand.yml (auto-discovered by
 # bslib from the app directory).
 theme <- bs_theme(version = 5, preset = "shiny", brand = TRUE)
+memory_ctx <- modules$shiny_memory_context()
+memory_streams <- if (is.null(memory_ctx)) {
+  character()
+} else {
+  tryCatch(
+    tempest:::tempest_graft_memory_accepted_streams(
+      memory_ctx$store,
+      purpose = memory_ctx$purpose,
+      eligible = memory_ctx$eligible
+    )$stream,
+    error = function(error) character()
+  )
+}
+memory_config_ui <- if (is.null(memory_ctx)) {
+  NULL
+} else {
+  modules$mod_memory_config_ui("memory_config", streams = memory_streams)
+}
+memory_report_ui <- if (is.null(memory_ctx)) {
+  NULL
+} else {
+  modules$mod_memory_report_ui("memory_report")
+}
 
 ui <- page_navbar(
   title = span(
@@ -42,7 +65,7 @@ ui <- page_navbar(
   ),
   modules$mod_chat_ui(
     "chat",
-    config_ui = modules$mod_config_ui("config"),
+    config_ui = modules$mod_config_ui("config", memory_ui = memory_config_ui),
     allow_user_experts = TRUE
   ),
   modules$mod_storm_ui("storm"),
@@ -57,7 +80,7 @@ ui <- page_navbar(
     modules$mod_transcript_ui("transcript"),
     modules$mod_run_review_ui("review")
   ),
-  modules$mod_report_ui("report"),
+  modules$mod_report_ui("report", memory_ui = memory_report_ui),
   nav_spacer(),
   modules$about_nav_item(),
   nav_item(input_dark_mode(id = "dark_mode", mode = "light"))
@@ -65,12 +88,34 @@ ui <- page_navbar(
 
 server <- function(input, output, session) {
   store <- modules$new_session_store()
-  config <- modules$mod_config_server("config")
+  base_config <- modules$mod_config_server("config")
+  memory_revision <- reactiveVal(0L)
+  memory_config <- if (is.null(memory_ctx)) {
+    NULL
+  } else {
+    modules$mod_memory_config_server(
+      "memory_config",
+      memory_ctx = memory_ctx,
+      memory_revision = memory_revision
+    )
+  }
+  config <- reactive({
+    cfg <- base_config()
+    if (is.null(memory_config)) {
+      return(cfg)
+    }
+    modules$shiny_memory_wrap_config(
+      cfg,
+      memory_ctx = memory_ctx,
+      use_tools = memory_config$use_tools()
+    )
+  })
 
   chat_handle <- modules$mod_chat_server(
     "chat",
     config = config,
     store = store,
+    knowledge = if (is.null(memory_config)) NULL else memory_config$knowledge,
     allow_user_experts = TRUE
   )
   storm_handle <- modules$mod_storm_server(
@@ -78,6 +123,22 @@ server <- function(input, output, session) {
     config = config,
     store = store
   )
+  active_report_product <- reactive({
+    modules$shiny_active_report_product(
+      report_md = store$report_md(),
+      report_workspace = store$report_workspace(),
+      costorm_session = store$costorm_session(),
+      storm_product = storm_handle$last_successful_product()
+    )
+  })
+  if (!is.null(memory_ctx)) {
+    modules$mod_memory_report_server(
+      "memory_report",
+      memory_ctx = memory_ctx,
+      product = active_report_product,
+      memory_revision = memory_revision
+    )
+  }
   costorm_events <- reactive({
     active <- store$costorm_session()
     if (is.null(active)) list() else tempest:::tempest_execution_events(active)

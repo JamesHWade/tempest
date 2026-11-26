@@ -1,123 +1,173 @@
 ---
-title: "A daily briefing with persistent evidence"
+title: "Build a recurring decision briefing"
+description: >
+  Use a pinned Graft stream as your briefing basis so Tempest structurally
+  separates what changed from what held steady, and review updates deliberately.
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{A daily briefing with persistent evidence}
+  %\VignetteIndexEntry{Build a recurring decision briefing}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
 
-A daily briefing should distinguish new evidence, an unchanged finding, and a
-correction. Its earlier reports and evidence must remain inspectable after the
-next run. Tempest produces and validates the research; the host reviews it;
-Graft retains exact artifacts and decisions.
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
+```
 
-## Ownership
+A useful daily or weekly briefing is an attention system. It answers four
+questions without manufacturing novelty:
 
-| Component | Responsibility |
-|---|---|
-| Host | Schedule, topic, credentials, review, access, and retention policy |
-| Tempest | Evidence, verification, report, scientific provenance, saved research |
-| Graft | Exact artifact selections and explicit host decision history |
-| scans | Inspection through Tempest's validated public trajectory projection |
+1. **What changed?** Verified claims that do not restate what the team already
+   accepted.
+2. **Why does it matter?** Labeled, confidence-calibrated assessments bound to
+   their supporting claims.
+3. **What needs review today?** Concrete proposed actions, clearly distinct
+   from established facts.
+4. **What held steady?** Explicit no-change signals—emitted only when today's
+   verified evidence actually reconfirms an accepted claim (never when evidence
+   is missing or inconclusive).
 
-## Start with a retained basis
+You do not need a separate briefing framework. Your host script owns the
+schedule and approval policy, **Tempest** runs the research and computes the
+change signal structurally against pinned accepted claims, **Graft** stores
+exact selections and human review decisions, and **scans** audits completed
+trajectories.
 
-These are host integration snippets, not a scheduled service. Supply real current
-eligibility checks and model/search configuration in the application.
+## 1. Load your accepted briefing basis
 
-```{r setup, eval=FALSE}
+Start by opening your Graft store and checking whether a previous accepted
+checkpoint exists. On day one, `knowledge` is `NULL` and every verified claim
+is new. On later runs, reuse the exact previously accepted decision after
+verifying current eligibility:
+
+```{r basis}
 library(tempest)
 library(graft)
 source(system.file("examples", "briefing-basis.R", package = "tempest"))
-store <- graft_store("briefing/artifacts", create = TRUE)
+
+store <- graft_store("briefing/memory", create = TRUE)
 basis_path <- "briefing/basis.rds"
 knowledge <- NULL
+
 if (file.exists(basis_path)) {
-  basis <- readRDS(basis_path) # Trusted host-owned checkpoint.
+  basis <- readRDS(basis_path)
+  # Inspect any decisions recorded since the last run
   changes <- briefing_changes(store, basis)
-  historical <- read_briefing_basis(store, basis)
-  # Inspect changed decisions before choosing the basis for another run.
   knowledge <- reuse_briefing_basis(
-    store, basis, eligible = function(event) host_allows(event)
+    store,
+    basis,
+    eligible = function(event) host_allows(event)
   )
 }
 ```
 
-The checkpoint names one exact decision, selection, stream, and purpose. Reading
-history verifies the retained evidence and report without granting current
-admission. Reuse also checks that the decision is the current accepted head, that
-the purpose matches, and that the host permits consultation now. A stale,
-withdrawn, or disallowed basis fails; it is never silently replaced by “latest.”
+If another reviewer corrected or withdrew the stream in the meantime,
+`reuse_briefing_basis()` stops rather than silently substituting a different
+basis—giving your host a chance to inspect `changes` first.
 
-## Run and review
+## 2. Run today's briefing
 
-```{r research, eval=FALSE}
-result <- tempest_run(
-  "Battery recycling: evidence that changes today's operating decisions",
-  knowledge = knowledge,
-  config = tempest_config(),
-  output_dir = "briefing/runs"
+Pass `knowledge` into `tempest_run()`. Use a focused expert panel matched to
+the decision at hand:
+
+```{r run}
+experts <- list(
+  tempest_expert(
+    name = "Technical reviewer",
+    title = "Process and scale-up specialist",
+    description = "Evaluates demonstrated operating performance and technical risk.",
+    instructions = "Separate measured plant results from projections.",
+    focus_areas = c("yield", "scale-up", "safety")
+  ),
+  tempest_expert(
+    name = "Market and policy reviewer",
+    title = "Supply-chain and regulatory analyst",
+    description = "Tracks policy changes, capacity expansions, and economics.",
+    instructions = "Distinguish binding rules and operating plants from announcements.",
+    focus_areas = c("policy", "capacity", "economics")
+  )
 )
+
+result <- tempest_run(
+  paste(
+    "Decision briefing on grid-scale battery recycling as of", Sys.Date(),
+    "highlighting what changed, why it matters, what needs review,",
+    "and any material no-change signal backed by verified evidence."
+  ),
+  config = tempest_config(
+    models = "openai/gpt-5.6-luna",
+    citation_policy = "claim_verified",
+    on_unsupported_claim = "flag"
+  ),
+  knowledge = knowledge,
+  experts = experts,
+  max_questions_per_perspective = 2,
+  output_dir = "briefing/runs",
+  run_id = paste0("briefing-", Sys.Date())
+)
+
 report <- tempest_report(result)
-review <- tempest_trajectory_review(result)
-selection <- tempest_publish_artifact_research(result, store)
+claims <- tempest_claims(result)
+supports <- tempest_claim_supports(result)
 ```
 
-Publishing stores a candidate and its exact report, sources, spans, claims,
-supports, and program provenance. It does not accept the research. The host
-reviews the complete evidence before making an explicit decision.
+Tempest decides structurally—not just via prompts—whether each verified claim
+belongs under **What changed** or **No material change** by comparing it
+against active `Claim` records in `knowledge`.
 
-```{r accept, eval=FALSE}
+## 3. Publish, review, and accept deliberately
+
+Publish today's run as a candidate selection in Graft and inspect its
+trajectory before deciding whether to advance the accepted briefing stream:
+
+```{r publish-and-accept}
+selection <- tempest_publish_artifact_research(result, store)
+review <- tempest_trajectory_review(result)
+
+# On an unchanged day, keep the briefing report in your run log without
+# manufacturing a new accepted knowledge revision.
+# When a reviewer confirms a real update or correction, advance the stream:
 previous <- if (file.exists(basis_path)) basis$decision else NULL
+
 accepted <- graft_accept(
-  store, graft_read_selection(store, selection), "battery-briefing",
+  store,
+  graft_read_selection(store, selection),
+  stream = "battery-briefing",
   expected = previous,
-  key = "review-2026-09-18", actor = "reviewer",
-  reason = "Evidence and proposed changes reviewed", purpose = "briefing"
+  key = paste0("review-", Sys.Date()),
+  actor = "briefing-reviewer",
+  reason = "Reviewed today's new claims and source spans",
+  purpose = "briefing"
 )
-basis <- capture_briefing_basis(
-  store, "battery-briefing", accepted@id, "briefing"
-)
+
+basis <- capture_briefing_basis(store, "battery-briefing", accepted@id, "briefing")
 saveRDS(basis, basis_path)
 ```
 
-The predecessor is explicit. If another review has advanced the stream, this
-request fails and the host reviews the changed state. Retrying the same committed
-request returns its original event; it cannot restore eligibility after withdrawal.
+Because `expected = previous` is explicit, two reviewers cannot silently
+overwrite each other's decisions. If evidence later turns out to be flawed,
+record a withdrawal—future runs stop consulting that stream while historical
+briefings remain readable:
 
-## Unchanged days and corrections
-
-Tempest compares verified statements with active Claim records in the admitted
-artifact selection. A verified restatement supports a no-change finding; it
-cannot masquerade as a new observation. The report still needs exact evidence.
-
-An unchanged day can retain its new run and report without replacing the
-accepted basis. An explicit new review of the same selection creates a distinct
-decision. A correction accepts a new complete selection, making the old event
-ineligible for new consultation while keeping the old report and bytes readable.
-Nothing automatically unions evidence across decisions or accepts model output.
-
-```{r withdrawal, eval=FALSE}
-withdrawn <- graft_withdraw(
-  store, basis$stream, expected = basis$decision,
-  key = "withdraw-2026-09-19", actor = "reviewer",
-  reason = "Evidence needs reconsideration"
+```{r withdraw}
+graft_withdraw(
+  store,
+  stream = "battery-briefing",
+  expected = basis$decision,
+  key = paste0("withdraw-", Sys.Date()),
+  actor = "briefing-reviewer",
+  reason = "Primary source retracted; re-evaluate next cycle"
 )
+
+# Historical inspection remains available even after withdrawal
 historical <- read_briefing_basis(store, basis)
-# reuse_briefing_basis() now fails for this event.
 ```
 
-## Save, inspect, and resume
+## 4. Pair with interactive review and `scans`
 
-Saved STORM and Co-STORM products contain their exact artifact selection and
-materialized evidence, not a native graph object or snapshot sidecar. Offline
-inspection requires neither a Graft store nor permission to start a new run.
-Resuming a product with accepted inputs requires a fresh matching knowledge
-value and current admission. The host controls interruptions and checks during
-active work; a prior admission is not a lasting permit.
-
-The offline [artifact research example](artifact-knowledge.html) exercises
-acceptance, an unchanged review, correction, and withdrawal. The daily-briefing
-tests also reopen checkpoints in a fresh process. These synthetic fixtures are
-contract evidence, not a claim that a live model researched the example topic.
+You can open any briefing run inside `tempest_mcp_app(result)` for read-only
+claim inspection, serve your accepted `"battery-briefing"` stream to chat
+agents with `graft::graft_tools()`, or project `tempest_trajectory_review()`
+into `scans` to monitor run reliability over time. See
+[Research that remembers with Graft](research-memory.html) for the full
+composition guide.

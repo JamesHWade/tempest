@@ -4,7 +4,14 @@
 \alias{tempest_app}
 \title{Run the Tempest research application}
 \usage{
-tempest_app(..., demo = FALSE)
+tempest_app(
+  ...,
+  demo = FALSE,
+  graft_store = NULL,
+  memory_purpose = "research",
+  memory_actor = NULL,
+  memory_eligible = NULL
+)
 }
 \arguments{
 \item{...}{Passed to \code{shiny::runApp()}.}
@@ -15,6 +22,24 @@ deputy and dsprrr execution, a shinymcp research card, and explicit Graft
 review, correction, withdrawal, and fresh-process reuse. No credentials
 or network are needed. The example uses a local demo directory; set
 \code{options(tempest.demo_dir = "path")} to keep it across R sessions.}
+
+\item{graft_store}{Optional local directory path or \code{graft::ArtifactStore}
+(including \code{graft::graft_store_postgres()}) for reviewed project memory.
+Defaults to \code{NULL} (disabled). When supplied, Workspace settings can pin
+an accepted stream for new sessions or attach read-only \code{graft_tools()}
+recall (with \code{shinychat} tool cards), and the Report tab adds explicit
+review, acceptance, correction, and withdrawal controls.}
+
+\item{memory_purpose}{Consultation purpose recorded on Graft decisions and
+memory recall tools. Defaults to \code{"research"}.}
+
+\item{memory_actor}{Default reviewer label shown in the Graft review panel.
+Defaults to \code{"local-reviewer"}.}
+
+\item{memory_eligible}{Optional one-argument host eligibility function
+\verb{function(stream)} returning \code{TRUE} or \code{FALSE}. Defaults to allowing all
+streams in the store. Multi-user hosts must supply an authenticated
+policy function.}
 }
 \value{
 A Shiny app object (invisibly, from \code{shiny::runApp()}).
@@ -36,5 +61,6 @@ are announced as alerts.
 \examples{
 \dontrun{
 tempest_app()
+tempest_app(graft_store = "research-memory")
 }
 }

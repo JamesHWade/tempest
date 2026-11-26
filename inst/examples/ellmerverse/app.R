@@ -117,7 +117,13 @@ ui <- page_sidebar(
           tags$tr(
             tags$td("graft"),
             tags$td(
-              "Retains exact report and evidence bytes, acceptance decisions, and withdrawals."
+              "Retains exact report and evidence bytes, acceptance decisions, withdrawals, and bounded read-only recall tools (graft_tools() with @extra$graft provenance)."
+            )
+          ),
+          tags$tr(
+            tags$td("mcptools & scans"),
+            tags$td(
+              "Serve graft_tools() to external MCP clients (Claude Code, Positron, Posit Assistant) and inspect completed trajectories and memory consultations."
             )
           ),
           tags$tr(

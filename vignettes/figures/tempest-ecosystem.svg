@@ -1,0 +1,95 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 920 390" role="img" aria-labelledby="title desc">
+  <title id="title">Tempest and Graft in the ellmer ecosystem</title>
+  <desc id="desc">Flow from inputs (ellmer, ragnar, MCP tools, and Graft reviewed memory) into Tempest research workflows (STORM, Co-STORM, verification, enrichment), then through explicit human review in apps back into Graft decision streams, recall tools, and scans inspection.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#2B6476"/>
+    </marker>
+    <marker id="arrow-gold" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M 0 1 L 10 5 L 0 9 z" fill="#B57B14"/>
+    </marker>
+    <style>
+      .bg { fill: #FCFDFE; }
+      .panel { fill: #F4F8FA; stroke: #C6D8E2; stroke-width: 1.5; rx: 14; }
+      .core { fill: #15293A; stroke: #2B6476; stroke-width: 2; rx: 14; }
+      .graft { fill: #EDF6F2; stroke: #2E7D5B; stroke-width: 1.8; rx: 14; }
+      .card { fill: #FFFFFF; stroke: #D2E0E8; stroke-width: 1.2; rx: 9; }
+      .card-dark { fill: #1F394F; stroke: #3D8094; stroke-width: 1.2; rx: 9; }
+      .card-graft { fill: #FFFFFF; stroke: #9ACBB6; stroke-width: 1.2; rx: 9; }
+      .eyebrow { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #2B6476; }
+      .eyebrow-light { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #8AD0E3; }
+      .eyebrow-graft { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; font-weight: 700; letter-spacing: 0.08em; fill: #1F6B4E; }
+      .heading { font-family: Georgia, serif; font-size: 16px; font-weight: 700; fill: #162430; }
+      .heading-light { font-family: Georgia, serif; font-size: 16px; font-weight: 700; fill: #FFFFFF; }
+      .label { font-family: system-ui, -apple-system, sans-serif; font-size: 12.5px; font-weight: 600; fill: #162430; }
+      .label-light { font-family: system-ui, -apple-system, sans-serif; font-size: 12.5px; font-weight: 600; fill: #F2F8FB; }
+      .sub { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; fill: #556674; }
+      .sub-light { font-family: system-ui, -apple-system, sans-serif; font-size: 11px; fill: #B7D3E0; }
+      .flow { fill: none; stroke: #2B6476; stroke-width: 2; marker-end: url(#arrow); }
+      .flow-loop { fill: none; stroke: #B57B14; stroke-width: 2; stroke-dasharray: 6 4; marker-end: url(#arrow-gold); }
+      .badge-text { font-family: system-ui, -apple-system, sans-serif; font-size: 10.5px; font-weight: 600; fill: #8C5D0A; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="920" height="390" rx="12"/>
+
+  <!-- Column 1: Sources & Tools -->
+  <rect class="panel" x="20" y="24" width="230" height="270"/>
+  <text class="eyebrow" x="38" y="48">1 · EVIDENCE &amp; TOOLS</text>
+  <text class="heading" x="38" y="70">Inputs &amp; Recall</text>
+
+  <rect class="card" x="36" y="86" width="198" height="54"/>
+  <text class="label" x="48" y="108">ellmer + web search</text>
+  <text class="sub" x="48" y="126">Native search, Wikipedia, host tools</text>
+
+  <rect class="card" x="36" y="152" width="198" height="54"/>
+  <text class="label" x="48" y="174">ragnar + MCP servers</text>
+  <text class="sub" x="48" y="192">Semantic retrieval &amp; external data</text>
+
+  <rect class="card-graft" x="36" y="218" width="198" height="60"/>
+  <text class="label" x="48" y="240">graft_tools() &amp; basis</text>
+  <text class="sub" x="48" y="258">Read-only recall + pinned streams</text>
+
+  <!-- Column 2: Tempest Core -->
+  <rect class="core" x="296" y="24" width="280" height="270"/>
+  <text class="eyebrow-light" x="316" y="48">2 · RESEARCH ENGINE</text>
+  <text class="heading-light" x="316" y="70">Tempest Workflows</text>
+
+  <rect class="card-dark" x="314" y="86" width="244" height="54"/>
+  <text class="label-light" x="326" y="108">STORM &amp; Co-STORM</text>
+  <text class="sub-light" x="326" y="126">deputy agents + dsprrr stages</text>
+
+  <rect class="card-dark" x="314" y="152" width="244" height="54"/>
+  <text class="label-light" x="326" y="174">Verify &amp; review claims</text>
+  <text class="sub-light" x="326" y="192">Exact claim-by-span support + repair</text>
+
+  <rect class="card-dark" x="314" y="218" width="244" height="60"/>
+  <text class="label-light" x="326" y="240">Enrich &amp; inspect</text>
+  <text class="sub-light" x="326" y="258">Reproducible R analyses + MCP cards</text>
+
+  <!-- Column 3: Apps & Graft Memory -->
+  <rect class="graft" x="622" y="24" width="278" height="270"/>
+  <text class="eyebrow-graft" x="642" y="48">3 · REVIEW &amp; MEMORY</text>
+  <text class="heading" x="642" y="70">Human Review + Graft</text>
+
+  <rect class="card-graft" x="640" y="86" width="242" height="54"/>
+  <text class="label" x="652" y="108">tempest_researcher_app() &amp; tempest_app()</text>
+  <text class="sub" x="652" y="126">shinychat cards, evidence nav, report review</text>
+
+  <rect class="card-graft" x="640" y="152" width="242" height="54"/>
+  <text class="label" x="652" y="174">graft_accept() / graft_withdraw()</text>
+  <text class="sub" x="652" y="192">Explicit human decisions on named streams</text>
+
+  <rect class="card-graft" x="640" y="218" width="242" height="60"/>
+  <text class="label" x="652" y="240">mcptools, scans &amp; vitals</text>
+  <text class="sub" x="652" y="258">Serve to IDE agents &amp; audit @extra$graft</text>
+
+  <!-- Forward arrows -->
+  <path class="flow" d="M 250 158 L 292 158"/>
+  <path class="flow" d="M 576 158 L 618 158"/>
+
+  <!-- Feedback loop: Graft back to next run -->
+  <path class="flow-loop" d="M 760 294 L 760 344 L 135 344 L 135 282"/>
+  <rect x="315" y="330" width="290" height="26" rx="13" fill="#FFF8EA" stroke="#E8C67B" stroke-width="1.2"/>
+  <text class="badge-text" x="460" y="347" text-anchor="middle">Reviewed streams feed the next research run</text>
+</svg>

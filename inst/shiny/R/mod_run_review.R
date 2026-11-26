@@ -167,6 +167,26 @@ mod_run_review_ui <- function(id) {
               shiny::uiOutput(ns("live_progress"))
             )
           )
+        ),
+        bslib::card(
+          class = "tempest-review-card tempest-review-memory-card",
+          bslib::card_header(
+            class = "tempest-scripted-card-header",
+            shiny::div(
+              shiny::h2(
+                class = "h5 mb-1",
+                "Reviewed memory consultations (Graft)"
+              ),
+              shiny::p(
+                class = "mb-0 small text-body-secondary",
+                "Pinned input selections and read-only @extra$graft recall records."
+              )
+            )
+          ),
+          bslib::card_body(
+            class = "tempest-scripted-card-body",
+            shiny::uiOutput(ns("graft_memory"))
+          )
         )
       )
     )
@@ -590,6 +610,68 @@ mod_run_review_server <- function(
         ""
       }
       run_review_progress_ui(selected_events(), product_id)
+    })
+
+    output$graft_memory <- shiny::renderUI({
+      state <- review_state()
+      input_sel <- if (identical(state$status, "ready")) {
+        knowledge <- run_review_prop(state$review, "knowledge")
+        if (is.list(knowledge)) knowledge$input_selection else NULL
+      } else {
+        NULL
+      }
+      consultations <- tryCatch(
+        shiny_product_graft_consultations(selected_product()),
+        error = function(error) tempest:::tempest_graft_consultations(NULL)
+      )
+      if (is.null(input_sel) && nrow(consultations) == 0L) {
+        return(run_review_inline_empty_state_ui(
+          "No Graft memory selections or recall consultations recorded for this run."
+        ))
+      }
+      blocks <- list()
+      if (!is.null(input_sel)) {
+        blocks[[length(blocks) + 1L]] <- shiny::p(
+          class = "small mb-2",
+          shiny::strong("Pinned input selection: "),
+          shiny::tags$code(substr(input_sel$selection_id %||% "", 1L, 12L)),
+          " (",
+          input_sel$purpose %||% "research",
+          ", ",
+          input_sel$records$total %||% 0L,
+          " records)"
+        )
+      }
+      if (nrow(consultations) > 0L) {
+        blocks[[length(blocks) + 1L]] <- shiny::tags$table(
+          class = "table table-sm mb-0",
+          shiny::tags$thead(shiny::tags$tr(
+            shiny::tags$th("Stream"),
+            shiny::tags$th("Status"),
+            shiny::tags$th("Purpose"),
+            shiny::tags$th("Decision"),
+            shiny::tags$th("Artifacts")
+          )),
+          shiny::tags$tbody(lapply(
+            seq_len(nrow(consultations)),
+            function(i) {
+              row <- consultations[i, , drop = FALSE]
+              shiny::tags$tr(
+                shiny::tags$td(row$stream),
+                shiny::tags$td(row$status),
+                shiny::tags$td(row$purpose),
+                shiny::tags$td(shiny::tags$code(substr(
+                  row$decision_id %||% "",
+                  1L,
+                  12L
+                ))),
+                shiny::tags$td(row$artifact_count)
+              )
+            }
+          ))
+        )
+      }
+      shiny::tagList(blocks)
     })
 
     invisible(NULL)
