@@ -23,9 +23,10 @@ tempest_researcher_memory_record_path <- function(output_dir, report_id) {
 tempest_researcher_memory_write_record <- function(
   output_dir,
   report_id,
-  selection_id,
-  research_run_id,
-  bundle_id
+  selection_id = NULL,
+  research_run_id = NULL,
+  bundle_id = NULL,
+  publish_error = NULL
 ) {
   dir_path <- tempest_researcher_memory_dir(output_dir)
   if (!dir.exists(dir_path)) {
@@ -38,6 +39,7 @@ tempest_researcher_memory_write_record <- function(
     selection_id = selection_id,
     research_run_id = research_run_id,
     bundle_id = bundle_id,
+    publish_error = publish_error,
     published_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   )
   tmp <- tempfile("graft-record-", tmpdir = dir_path, fileext = ".json")
@@ -67,12 +69,15 @@ tempest_researcher_memory_read_record <- function(output_dir, report_id) {
     jsonlite::read_json(target, simplifyVector = FALSE),
     error = function(error) NULL
   )
+  has_selection <- rlang::is_string(parsed$selection_id) &&
+    nzchar(parsed$selection_id)
+  has_error <- rlang::is_string(parsed$publish_error) &&
+    nzchar(parsed$publish_error)
   if (
     !is.list(parsed) ||
       !identical(parsed$schema_version, 1L) ||
       !identical(parsed$report_id, report_id) ||
-      !rlang::is_string(parsed$selection_id) ||
-      !nzchar(parsed$selection_id)
+      (!has_selection && !has_error)
   ) {
     return(NULL)
   }
@@ -193,10 +198,23 @@ tempest_researcher_memory_review_server <- function(
       tempest_enriched_render_text(article$title, "")
     })
 
+    displayed_streams <- shiny::reactive({
+      memory_revision()
+      tempest_graft_memory_streams(
+        store,
+        purpose = purpose,
+        eligible = eligible
+      )
+    })
+
     selection_state <- shiny::reactive({
       memory_revision()
       rec <- record()
-      if (is.null(rec)) {
+      if (
+        is.null(rec) ||
+          !rlang::is_string(rec$selection_id) ||
+          !nzchar(rec$selection_id)
+      ) {
         return(NULL)
       }
       tempest_graft_selection_status(
@@ -212,9 +230,19 @@ tempest_researcher_memory_review_server <- function(
       feedback_is_error(FALSE)
     })
 
+    shiny::observeEvent(input$refresh, {
+      feedback(NULL)
+      feedback_is_error(FALSE)
+      memory_revision(shiny::isolate(memory_revision()) + 1L)
+    })
+
     shiny::observeEvent(input$accept, {
       rec <- record()
-      if (is.null(rec)) {
+      if (
+        is.null(rec) ||
+          !rlang::is_string(rec$selection_id) ||
+          !nzchar(rec$selection_id)
+      ) {
         feedback("This report does not have a Graft research candidate.")
         feedback_is_error(TRUE)
         return()
@@ -230,6 +258,20 @@ tempest_researcher_memory_review_server <- function(
       } else {
         trimws(input$stream %||% "")
       }
+      streams_df <- displayed_streams()
+      state <- selection_state()
+      match_idx <- which(streams_df$stream == stream)
+      expected_head <- if (length(match_idx) > 0L) {
+        streams_df$decision_id[[match_idx[[1L]]]]
+      } else if (
+        !is.null(state) &&
+          identical(state$stream, stream) &&
+          rlang::is_string(state$decision_id)
+      ) {
+        state$decision_id
+      } else {
+        ""
+      }
       tryCatch(
         {
           decision <- tempest_graft_accept_selection(
@@ -238,7 +280,8 @@ tempest_researcher_memory_review_server <- function(
             stream = stream,
             actor = input$actor %||% default_actor,
             reason = input$reason %||% "",
-            purpose = purpose
+            purpose = purpose,
+            expected = expected_head
           )
           feedback(sprintf(
             "Accepted into stream '%s' (decision %s).",
@@ -291,12 +334,30 @@ tempest_researcher_memory_review_server <- function(
       if (is.null(rec)) {
         return(NULL)
       }
+      if (!rlang::is_string(rec$selection_id) || !nzchar(rec$selection_id)) {
+        return(shiny::tags$section(
+          class = "researcher-memory-review card mb-3",
+          `aria-label` = "Review and project memory",
+          shiny::div(
+            class = "card-body",
+            shiny::div(
+              class = "d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2",
+              shiny::tags$strong("Project memory (Graft)"),
+              tempest_researcher_memory_status_badge("unlinked")
+            ),
+            shiny::p(
+              class = "small text-body-secondary mb-0",
+              paste(
+                "This report completed normally, but no Graft memory candidate",
+                "was published:",
+                rec$publish_error %||% "promotion requirements were not met."
+              )
+            )
+          )
+        ))
+      }
       state <- selection_state()
-      existing_streams <- tempest_graft_memory_streams(
-        store,
-        purpose = purpose,
-        eligible = eligible
-      )$stream
+      existing_streams <- displayed_streams()$stream
       default_stream <- state$stream %||%
         tempest_graft_stream_slug(report_title())
       existing_choices <- c(
@@ -436,7 +497,12 @@ tempest_researcher_memory_review_server <- function(
                     "Withdraw from active memory",
                     class = "btn-outline-secondary btn-sm"
                   )
-                }
+                },
+                shiny::actionButton(
+                  ns("refresh"),
+                  "Refresh status",
+                  class = "btn-outline-secondary btn-sm"
+                )
               )
             )
           ),

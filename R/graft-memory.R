@@ -340,6 +340,7 @@ tempest_graft_accept_selection <- function(
   actor,
   reason,
   purpose = "research",
+  expected = NULL,
   key = NULL
 ) {
   tempest_graft_memory_require("Accepting research into project memory")
@@ -370,13 +371,35 @@ tempest_graft_accept_selection <- function(
     graft::graft_history(store, stream),
     error = function(error) list()
   )
-  expected <- if (length(history)) history[[length(history)]] else NULL
+  current_head <- if (length(history)) history[[length(history)]] else NULL
+  expected_decision <- if (is.null(expected)) {
+    current_head
+  } else if (identical(expected, "")) {
+    if (!is.null(current_head)) {
+      tempest_graft_memory_abort(
+        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before accepting."
+      )
+    }
+    NULL
+  } else {
+    expected_id <- if (S7::S7_inherits(expected, graft::Decision)) {
+      expected@id
+    } else {
+      expected
+    }
+    if (is.null(current_head) || !identical(current_head@id, expected_id)) {
+      tempest_graft_memory_abort(
+        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before accepting."
+      )
+    }
+    current_head
+  }
   request_key <- key %||% paste0("accept-", tempest_uuid("graft"))
   graft::graft_accept(
     store,
     graft::graft_read_selection(store, selection_id),
     stream = stream,
-    expected = expected,
+    expected = expected_decision,
     key = request_key,
     actor = actor,
     reason = reason,

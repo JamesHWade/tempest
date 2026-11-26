@@ -80,6 +80,34 @@ test_that("graft memory helpers manage streams, corrections, withdrawal, and reu
     "accepted"
   )
 
+  # Stale acceptance targeting a superseded stream head fails closed.
+  expect_error(
+    tempest:::tempest_graft_accept_selection(
+      store,
+      selection_id = sel_a,
+      stream = "battery-recycling",
+      actor = "alice",
+      reason = "Stale re-acceptance",
+      purpose = "research",
+      expected = dec_1@id
+    ),
+    class = "tempest_graft_memory_error"
+  )
+
+  # Stale acceptance expecting an empty stream fails closed once a decision exists.
+  expect_error(
+    tempest:::tempest_graft_accept_selection(
+      store,
+      selection_id = sel_a,
+      stream = "battery-recycling",
+      actor = "alice",
+      reason = "Stale initial acceptance",
+      purpose = "research",
+      expected = ""
+    ),
+    class = "tempest_graft_memory_error"
+  )
+
   # Stale withdrawal targeting the superseded decision fails closed.
   expect_error(
     tempest:::tempest_graft_withdraw_stream(

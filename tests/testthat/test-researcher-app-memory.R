@@ -116,6 +116,207 @@ test_that("researcher worker attaches Graft recall tools, pins basis, and publis
   expect_identical(st$status, "provisional")
 })
 
+test_that("researcher worker preserves completed report when Graft promotion fails", {
+  skip_if_not_installed("graft")
+  skip_if_not("graft_store" %in% getNamespaceExports("graft"))
+
+  store_path <- file.path(withr::local_tempdir(), "memory")
+  store <- graft::graft_store(store_path, create = TRUE)
+  fresh <- test_promotion_storm_fixture(
+    run_id = "worker-fail-promote",
+    evidence_text = "Completed report whose promotion fails."
+  )
+  output_dir <- file.path(withr::local_tempdir(), "research-run-feed")
+  dir.create(output_dir, recursive = TRUE)
+
+  local_mocked_bindings(
+    tempest_researcher_tools_config = function(config, tools) config,
+    tempest_researcher_app_run_research = function(...) {
+      list(
+        research = fresh$research,
+        report = TempestEnrichedReport(
+          path = output_dir,
+          status = "complete",
+          manifest = list(status = "complete")
+        )
+      )
+    },
+    tempest_promotion_bundle = function(...) {
+      stop("promotion closure rejected unsupported claim")
+    }
+  )
+
+  request <- list(
+    topic = "Strict promotion test",
+    model = "openai/gpt-6.1-sol",
+    n_experts = 2L,
+    max_rounds = 1L,
+    max_questions = 1L,
+    allow_code = FALSE,
+    allow_images = FALSE,
+    max_analyses = 0L,
+    max_illustrations = 0L,
+    selected_tools = character(),
+    mcp_servers = character(),
+    selected_mcp = character(),
+    use_memory_tools = FALSE,
+    memory_basis_stream = NULL
+  )
+
+  res <- tempest:::tempest_researcher_worker(
+    kind = "research",
+    request = request,
+    config = tempest_config(chat_fn = function(...) NULL),
+    tools = list(),
+    mcp_config = NULL,
+    output_dir = output_dir,
+    progress_path = tempfile(fileext = ".jsonl"),
+    graft_store_path = store_path,
+    memory_purpose = "research"
+  )
+
+  expect_identical(res$status, "complete")
+  expect_identical(res$path, output_dir)
+  expect_null(res$graft$selection_id)
+  expect_match(
+    res$graft$publish_error,
+    "promotion closure rejected unsupported claim",
+    fixed = TRUE
+  )
+
+  # Sidecar preserves the explicit failure reason and review panel renders it.
+  reports_root <- withr::local_tempdir()
+  tempest:::tempest_researcher_memory_write_record(
+    output_dir = reports_root,
+    report_id = "research-run-feed",
+    publish_error = res$graft$publish_error
+  )
+  rec <- tempest:::tempest_researcher_memory_read_record(
+    reports_root,
+    "research-run-feed"
+  )
+  expect_null(rec$selection_id)
+  expect_match(rec$publish_error, "promotion closure", fixed = TRUE)
+
+  current <- shiny::reactiveVal(list(
+    path = file.path(reports_root, "research-run-feed"),
+    status = "complete"
+  ))
+  shiny::testServer(
+    function(id) {
+      tempest:::tempest_researcher_memory_review_server(
+        id,
+        store = store,
+        output_dir = reports_root,
+        current_report = current,
+        purpose = "research"
+      )
+    },
+    {
+      session$flushReact()
+      expect_match(output$panel$html, "Not published to Graft", fixed = TRUE)
+      expect_match(
+        output$panel$html,
+        "promotion closure rejected unsupported claim",
+        fixed = TRUE
+      )
+    }
+  )
+})
+
+test_that("researcher review panel rejects stale re-acceptance when stream head changed", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("graft")
+  skip_if_not("graft_store" %in% getNamespaceExports("graft"))
+
+  root <- withr::local_tempdir()
+  store <- graft::graft_store(file.path(root, "memory"), create = TRUE)
+  reports_dir <- file.path(root, "reports")
+  dir.create(reports_dir)
+
+  f1 <- test_promotion_storm_fixture(
+    run_id = "stale-accept-1",
+    evidence_text = "First report evidence for stale accept test."
+  )
+  f2 <- test_promotion_storm_fixture(
+    run_id = "stale-accept-2",
+    evidence_text = "Second report evidence superseding first."
+  )
+  report <- tempest_enrich_report(
+    f1$research,
+    file.path(reports_dir, "research-run-1111"),
+    plan = test_enriched_plan(f1$resource@resource_id, analyses = FALSE),
+    allow_code = FALSE
+  )
+  sel1 <- tempest_publish_artifact_research(f1$research, store)
+  sel2 <- tempest_publish_artifact_research(f2$research, store)
+  tempest:::tempest_researcher_memory_write_record(
+    output_dir = reports_dir,
+    report_id = "research-run-1111",
+    selection_id = sel1,
+    research_run_id = "stale-accept-1",
+    bundle_id = "bundle-1"
+  )
+
+  mem_rev <- shiny::reactiveVal(0L)
+  current <- shiny::reactiveVal(list(path = report@path, status = "complete"))
+
+  shiny::testServer(
+    function(id) {
+      tempest:::tempest_researcher_memory_review_server(
+        id,
+        store = store,
+        output_dir = reports_dir,
+        current_report = current,
+        purpose = "research",
+        default_actor = "alice",
+        memory_revision = mem_rev
+      )
+    },
+    {
+      session$flushReact()
+      session$setInputs(
+        stream = "shared-battery-stream",
+        actor = "alice",
+        reason = "Initial accept",
+        reviewed = TRUE,
+        accept = 1
+      )
+      session$flushReact()
+      expect_identical(mem_rev(), 1L)
+
+      # Out-of-band correction advances the stream head before alice re-accepts.
+      tempest:::tempest_graft_accept_selection(
+        store,
+        selection_id = sel2,
+        stream = "shared-battery-stream",
+        actor = "bob",
+        reason = "Superseding correction",
+        purpose = "research"
+      )
+
+      session$setInputs(
+        existing_stream = "shared-battery-stream",
+        reason = "Stale re-accept",
+        reviewed = TRUE,
+        accept = 2
+      )
+      session$flushReact()
+      expect_identical(mem_rev(), 1L)
+      expect_match(
+        output$panel$html,
+        "changed since it was displayed",
+        fixed = TRUE
+      )
+      expect_identical(
+        tempest:::tempest_graft_selection_status(store, sel2)$status,
+        "accepted"
+      )
+    }
+  )
+})
+
 test_that("researcher memory review module and library integrate accept and withdraw", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")

@@ -78,7 +78,11 @@ tempest_researcher_library_catalog <- function(
     mem_stream <- character(nrow(rows))
     for (i in seq_len(nrow(rows))) {
       rec <- tempest_researcher_memory_read_record(root, rows$id[[i]])
-      if (is.null(rec)) {
+      if (
+        is.null(rec) ||
+          !rlang::is_string(rec$selection_id) ||
+          !nzchar(rec$selection_id)
+      ) {
         mem_status[[i]] <- "unlinked"
         mem_stream[[i]] <- ""
       } else {

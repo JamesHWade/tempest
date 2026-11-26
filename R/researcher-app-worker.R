@@ -424,16 +424,29 @@ tempest_researcher_worker <- function(
     status = result$report@status
   )
   if (!is.null(memory_store) && !is.null(result$research)) {
-    bundle <- tempest_promotion_bundle(result$research)
-    selection_id <- tempest_publish_artifact_research(
-      bundle,
-      memory_store,
-      report = tempest_report(result$research)
-    )
-    output$graft <- list(
-      selection_id = selection_id,
-      research_run_id = bundle@research_run_id,
-      bundle_id = bundle@bundle_id
+    output$graft <- tryCatch(
+      {
+        bundle <- tempest_promotion_bundle(result$research)
+        selection_id <- tempest_publish_artifact_research(
+          bundle,
+          memory_store,
+          report = tempest_report(result$research)
+        )
+        list(
+          selection_id = selection_id,
+          research_run_id = bundle@research_run_id,
+          bundle_id = bundle@bundle_id,
+          publish_error = NULL
+        )
+      },
+      error = function(error) {
+        list(
+          selection_id = NULL,
+          research_run_id = NULL,
+          bundle_id = NULL,
+          publish_error = conditionMessage(error)
+        )
+      }
     )
   }
   output
@@ -1028,7 +1041,9 @@ TempestResearcherAppSession <- R6::R6Class(
         return(self$snapshot())
       }
       if (
-        is.list(result$graft) && rlang::is_string(result$graft$selection_id)
+        is.list(result$graft) &&
+          (rlang::is_string(result$graft$selection_id) ||
+            rlang::is_string(result$graft$publish_error))
       ) {
         tryCatch(
           tempest_researcher_memory_write_record(
@@ -1036,7 +1051,8 @@ TempestResearcherAppSession <- R6::R6Class(
             report_id = basename(public_path),
             selection_id = result$graft$selection_id,
             research_run_id = result$graft$research_run_id,
-            bundle_id = result$graft$bundle_id
+            bundle_id = result$graft$bundle_id,
+            publish_error = result$graft$publish_error
           ),
           error = function(error) NULL
         )
