@@ -17,7 +17,11 @@ tempest_researcher_app(
   mcp_config = NULL,
   output_dir = file.path(tempdir(), "tempest-researcher"),
   model = "openai/gpt-6.1-sol",
-  report_library = FALSE
+  report_library = FALSE,
+  graft_store = NULL,
+  memory_purpose = "research",
+  memory_actor = NULL,
+  memory_eligible = NULL
 )
 ```
 
@@ -74,6 +78,34 @@ tempest_researcher_app(
   managed by the host and enable this only for an audience that can read
   the entire collection.
 
+- graft_store:
+
+  Optional local directory path (or
+  [`graft::LocalArtifactStore`](https://jameshwade.github.io/graft/reference/LocalArtifactStore.html))
+  for Graft reviewed project memory. Defaults to `NULL` (disabled). When
+  supplied, completed runs are published as unaccepted candidates that
+  you can review, accept into a named stream, correct, or withdraw; new
+  runs can consult accepted streams through read-only
+  [`graft::graft_tools()`](https://jameshwade.github.io/graft/reference/graft_tools.html)
+  or pin an accepted stream as their comparison basis.
+
+- memory_purpose:
+
+  Consultation purpose recorded on Graft decisions and memory recall
+  tools. Defaults to `"research"`.
+
+- memory_actor:
+
+  Default reviewer label shown in the Graft review panel. Defaults to
+  `"local-reviewer"`.
+
+- memory_eligible:
+
+  Optional one-argument host eligibility function `function(stream)`
+  returning `TRUE` or `FALSE`. Defaults to allowing all streams in the
+  local store. Multi-user hosts must supply an authenticated policy
+  function.
+
 ## Value
 
 Invisibly, the result of
@@ -108,7 +140,11 @@ captured open connections.
 
 ``` r
 if (FALSE) { # \dontrun{
-tempest_researcher_app(output_dir = "research-reports", report_library = TRUE)
+tempest_researcher_app(
+  output_dir = "research-reports",
+  report_library = TRUE,
+  graft_store = "research-memory"
+)
 
 tempest_researcher_app(
   tools = list(plant_data = function() {

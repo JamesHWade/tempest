@@ -66,7 +66,11 @@ interactive Co-STORM sessions.</p>
 <span>  mcp_config <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/tempfile.html" class="external-link">tempdir</a></span><span class="op">(</span><span class="op">)</span>, <span class="st">"tempest-researcher"</span><span class="op">)</span>,</span>
 <span>  model <span class="op">=</span> <span class="st">"openai/gpt-6.1-sol"</span>,</span>
-<span>  report_library <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  report_library <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  graft_store <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  memory_purpose <span class="op">=</span> <span class="st">"research"</span>,</span>
+<span>  memory_actor <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  memory_eligible <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -120,6 +124,32 @@ can open and download the reports in that directory. Use a dedicated
 directory managed by the host and enable this only for an audience that
 can read the entire collection.</p></dd>
 
+
+<dt id="arg-graft-store">graft_store<a class="anchor" aria-label="anchor" href="#arg-graft-store"></a></dt>
+<dd><p>Optional local directory path (or <code><a href="https://jameshwade.github.io/graft/reference/LocalArtifactStore.html" class="external-link">graft::LocalArtifactStore</a></code>)
+for Graft reviewed project memory. Defaults to <code>NULL</code> (disabled). When
+supplied, completed runs are published as unaccepted candidates that you
+can review, accept into a named stream, correct, or withdraw; new runs can
+consult accepted streams through read-only <code><a href="https://jameshwade.github.io/graft/reference/graft_tools.html" class="external-link">graft::graft_tools()</a></code> or pin an
+accepted stream as their comparison basis.</p></dd>
+
+
+<dt id="arg-memory-purpose">memory_purpose<a class="anchor" aria-label="anchor" href="#arg-memory-purpose"></a></dt>
+<dd><p>Consultation purpose recorded on Graft decisions and
+memory recall tools. Defaults to <code>"research"</code>.</p></dd>
+
+
+<dt id="arg-memory-actor">memory_actor<a class="anchor" aria-label="anchor" href="#arg-memory-actor"></a></dt>
+<dd><p>Default reviewer label shown in the Graft review panel.
+Defaults to <code>"local-reviewer"</code>.</p></dd>
+
+
+<dt id="arg-memory-eligible">memory_eligible<a class="anchor" aria-label="anchor" href="#arg-memory-eligible"></a></dt>
+<dd><p>Optional one-argument host eligibility function
+<code>function(stream)</code> returning <code>TRUE</code> or <code>FALSE</code>. Defaults to allowing all
+streams in the local store. Multi-user hosts must supply an authenticated
+policy function.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -149,7 +179,11 @@ functions must work in a fresh R process without captured open connections.</p>
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span><span class="fu">tempest_researcher_app</span><span class="op">(</span>output_dir <span class="op">=</span> <span class="st">"research-reports"</span>, report_library <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="fu">tempest_researcher_app</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span>,</span></span>
+<span class="r-in"><span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span></span>
+<span class="r-in"><span>  graft_store <span class="op">=</span> <span class="st">"research-memory"</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="fu">tempest_researcher_app</span><span class="op">(</span></span></span>
 <span class="r-in"><span>  tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>plant_data <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span></span>
