@@ -18,13 +18,10 @@ navbar:
     left: [intro, articles, reference, news]
     right: [search, github, lightswitch]
 articles:
-  - title: Start here
-    navbar: Start here
+  - title: Guides
+    navbar: ~
     contents:
       - tempest
-  - title: Guides
-    navbar: Guides
-    contents:
       - enriched-research
       - research-memory
       - daily-briefing
