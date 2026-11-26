@@ -222,6 +222,76 @@ shiny_memory_product_topic <- function(product) {
   }
 }
 
+shiny_memory_find_selection <- function(
+  store,
+  product,
+  purpose = "research",
+  eligible = NULL
+) {
+  if (is.null(store) || is.null(product)) {
+    return(NULL)
+  }
+  bundle <- tryCatch(
+    tempest::tempest_promotion_bundle(product),
+    error = function(error) NULL
+  )
+  if (is.null(bundle)) {
+    return(NULL)
+  }
+  expected_name <- paste0("tempest:research:", bundle@research_run_id)
+  expected_bundle_id <- bundle@bundle_id
+  streams <- tryCatch(
+    tempest:::tempest_graft_memory_streams(
+      store,
+      purpose = purpose,
+      eligible = eligible,
+      max_streams = .Machine$integer.max
+    ),
+    error = function(error) NULL
+  )
+  if (is.null(streams) || nrow(streams) == 0L) {
+    return(NULL)
+  }
+  candidate_ids <- character()
+  for (stream in streams$stream) {
+    history <- tryCatch(
+      graft::graft_history(store, stream),
+      error = function(error) list()
+    )
+    for (event in rev(history)) {
+      sel_id <- event@selection
+      if (rlang::is_string(sel_id) && nzchar(sel_id)) {
+        candidate_ids <- c(candidate_ids, sel_id)
+      }
+    }
+  }
+  candidate_ids <- unique(candidate_ids)
+  for (sel_id in candidate_ids) {
+    matched <- tryCatch(
+      {
+        selected <- graft::graft_read_selection(store, sel_id)
+        if (
+          length(selected@roots) != 1L ||
+            !tempest:::tempest_artifact_ref_matches(
+              selected@roots[[1L]],
+              expected_name
+            )
+        ) {
+          FALSE
+        } else {
+          parsed <- tempest::tempest_read_artifact_research(store, sel_id)
+          identical(parsed$bundle@bundle_id, expected_bundle_id)
+        }
+      },
+      error = function(error) FALSE
+    )
+    if (isTRUE(matched)) {
+      return(sel_id)
+    }
+  }
+  NULL
+}
+
 mod_memory_report_server <- function(
   id,
   memory_ctx,
@@ -237,6 +307,25 @@ mod_memory_report_server <- function(
 
     product_key <- shiny::reactive(shiny_memory_product_key(product()))
 
+    recover_selection <- function(key, prod) {
+      if (is.null(key) || is.null(prod) || is.null(memory_ctx)) {
+        return(NULL)
+      }
+      if (exists(key, envir = published_cache, inherits = FALSE)) {
+        return(get(key, envir = published_cache, inherits = FALSE))
+      }
+      found <- shiny_memory_find_selection(
+        store = memory_ctx$store,
+        product = prod,
+        purpose = memory_ctx$purpose,
+        eligible = memory_ctx$eligible
+      )
+      if (!is.null(found)) {
+        assign(key, found, envir = published_cache)
+      }
+      found
+    }
+
     shiny::observeEvent(
       product_key(),
       {
@@ -247,11 +336,7 @@ mod_memory_report_server <- function(
           current_selection(NULL)
           return()
         }
-        if (exists(key, envir = published_cache, inherits = FALSE)) {
-          current_selection(get(key, envir = published_cache, inherits = FALSE))
-        } else {
-          current_selection(NULL)
-        }
+        current_selection(recover_selection(key, shiny::isolate(product())))
       },
       ignoreNULL = FALSE
     )
@@ -317,6 +402,13 @@ mod_memory_report_server <- function(
     shiny::observeEvent(input$refresh, {
       feedback(NULL)
       feedback_is_error(FALSE)
+      if (is.null(shiny::isolate(current_selection()))) {
+        key <- shiny::isolate(product_key())
+        found <- recover_selection(key, shiny::isolate(product()))
+        if (!is.null(found)) {
+          current_selection(found)
+        }
+      }
       memory_revision(shiny::isolate(memory_revision()) + 1L)
     })
 
