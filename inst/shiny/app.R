@@ -123,21 +123,14 @@ server <- function(input, output, session) {
     config = config,
     store = store
   )
-  active_report_product <- reactiveVal(NULL)
-  observeEvent(
-    chat_handle$report_navigation_event(),
-    {
-      active_report_product(store$peek_costorm_session())
-    },
-    ignoreInit = TRUE
-  )
-  observeEvent(
-    storm_handle$report_navigation_event(),
-    {
-      active_report_product(storm_handle$last_successful_product())
-    },
-    ignoreInit = TRUE
-  )
+  active_report_product <- reactive({
+    modules$shiny_active_report_product(
+      report_md = store$report_md(),
+      report_workspace = store$report_workspace(),
+      costorm_session = store$costorm_session(),
+      storm_product = storm_handle$last_successful_product()
+    )
+  })
   if (!is.null(memory_ctx)) {
     modules$mod_memory_report_server(
       "memory_report",
