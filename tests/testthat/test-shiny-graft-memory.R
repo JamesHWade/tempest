@@ -357,3 +357,68 @@ test_that("Co-STORM report memory panel rejects stale withdrawal when stream hea
     }
   )
 })
+
+test_that("Co-STORM report memory panel recovers retained selection in a fresh Shiny session", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("graft")
+  skip_if_not("graft_store" %in% getNamespaceExports("graft"))
+
+  store <- graft::graft_store(
+    file.path(withr::local_tempdir(), "restore-memory"),
+    create = TRUE
+  )
+  fixture <- test_promotion_storm_fixture(
+    run_id = "restore-mem-1",
+    evidence_text = "Restored session accepted evidence."
+  )
+  sel <- tempest_publish_artifact_research(fixture$research, store)
+  tempest:::tempest_graft_accept_selection(
+    store,
+    selection_id = sel,
+    stream = "restored-stream",
+    actor = "alice",
+    reason = "Accepted in prior session",
+    purpose = "research"
+  )
+
+  env <- tempest:::tempest_shiny_module_env()
+  ctx <- list(
+    store = store,
+    store_path = tempest:::tempest_graft_store_path(store),
+    purpose = "research",
+    actor = "alice",
+    eligible = function(stream) TRUE
+  )
+  prod <- shiny::reactiveVal(fixture$research)
+  mem_rev <- shiny::reactiveVal(0L)
+
+  # Fresh Shiny session with an empty session-local cache immediately recovers
+  # the accepted selection, shows decision history, and allows withdrawal.
+  shiny::testServer(
+    function(id) {
+      env$mod_memory_report_server(
+        id,
+        memory_ctx = ctx,
+        product = prod,
+        memory_revision = mem_rev
+      )
+    },
+    {
+      session$flushReact()
+      expect_identical(session$returned$selection(), sel)
+      expect_match(output$panel$html, "Accepted", fixed = TRUE)
+      expect_match(output$panel$html, "Decision history (1)", fixed = TRUE)
+      expect_match(
+        output$panel$html,
+        "Withdraw from active memory",
+        fixed = TRUE
+      )
+
+      session$setInputs(reason = "Withdrawn after restore", withdraw = 1)
+      session$flushReact()
+      expect_match(output$panel$html, "Withdrawn", fixed = TRUE)
+      expect_identical(mem_rev(), 1L)
+    }
+  )
+})
