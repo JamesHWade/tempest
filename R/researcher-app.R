@@ -32,6 +32,20 @@
 #'   When omitted with a configured Chat object, starts with that Chat's model.
 #'   A supplied Chat can change models within its provider; use a custom
 #'   `config` chat factory to support switching providers.
+#' @param graft_store Optional local directory path (or `graft::LocalArtifactStore`)
+#'   for Graft reviewed project memory. Defaults to `NULL` (disabled). When
+#'   supplied, completed runs are published as unaccepted candidates that you
+#'   can review, accept into a named stream, correct, or withdraw; new runs can
+#'   consult accepted streams through read-only `graft::graft_tools()` or pin an
+#'   accepted stream as their comparison basis.
+#' @param memory_purpose Consultation purpose recorded on Graft decisions and
+#'   memory recall tools. Defaults to `"research"`.
+#' @param memory_actor Default reviewer label shown in the Graft review panel.
+#'   Defaults to `"local-reviewer"`.
+#' @param memory_eligible Optional one-argument host eligibility function
+#'   `function(stream)` returning `TRUE` or `FALSE`. Defaults to allowing all
+#'   streams in the local store. Multi-user hosts must supply an authenticated
+#'   policy function.
 #'
 #' @details
 #' Run the application for trusted users. MCP configurations can launch local
@@ -57,7 +71,11 @@
 #' @return Invisibly, the result of [shiny::runApp()].
 #' @examples
 #' \dontrun{
-#' tempest_researcher_app(output_dir = "research-reports", report_library = TRUE)
+#' tempest_researcher_app(
+#'   output_dir = "research-reports",
+#'   report_library = TRUE,
+#'   graft_store = "research-memory"
+#' )
 #'
 #' tempest_researcher_app(
 #'   tools = list(plant_data = function() {
@@ -80,7 +98,11 @@ tempest_researcher_app <- function(
   mcp_config = NULL,
   output_dir = file.path(tempdir(), "tempest-researcher"),
   model = "openai/gpt-6.1-sol",
-  report_library = FALSE
+  report_library = FALSE,
+  graft_store = NULL,
+  memory_purpose = "research",
+  memory_actor = NULL,
+  memory_eligible = NULL
 ) {
   for (package in c("shiny", "bslib", "callr", "zip")) {
     tempest_require(package, "The dedicated researcher application needs it.")
@@ -94,6 +116,27 @@ tempest_researcher_app <- function(
   tempest_enriched_string(output_dir, "output_dir")
   tempest_enriched_string(model, "model")
   rlang::check_bool(report_library)
+  memory_purpose <- tempest_graft_memory_check_purpose(memory_purpose)
+  memory_actor <- tempest_graft_memory_check_actor(memory_actor)
+  memory_eligible_fn <- tempest_graft_memory_eligible(memory_eligible)
+  memory_store <- NULL
+  memory_store_path <- NULL
+  memory_streams <- character()
+  if (!is.null(graft_store)) {
+    memory_store <- tempest_graft_store_open(graft_store, create = TRUE)
+    memory_store_path <- tempest_graft_store_path(memory_store)
+    if (is.null(memory_store_path)) {
+      tempest_graft_memory_abort(
+        "The researcher app worker requires a local `graft_store()` directory path.",
+        class = "tempest_input_error"
+      )
+    }
+    memory_streams <- tempest_graft_memory_accepted_streams(
+      memory_store,
+      purpose = memory_purpose,
+      eligible = memory_eligible_fn
+    )$stream
+  }
   catalog <- tempest_researcher_tool_catalog(tools)
   servers <- tempest_researcher_mcp_servers(mcp_config)
   runner <- getOption("tempest.app_runner", shiny::runApp)
@@ -106,14 +149,21 @@ tempest_researcher_app <- function(
       servers,
       model,
       max_experts = config@max_active_experts,
-      library_enabled = report_library
+      library_enabled = report_library,
+      memory_enabled = !is.null(memory_store),
+      memory_streams = memory_streams
     ),
     server = tempest_researcher_app_server(
       config,
       tools,
       mcp_config,
       output_dir,
-      report_library = report_library
+      report_library = report_library,
+      graft_store = memory_store,
+      graft_store_path = memory_store_path,
+      memory_purpose = memory_purpose,
+      memory_actor = memory_actor,
+      memory_eligible = memory_eligible_fn
     )
   )
   old <- options(ellmer_timeout_s = tempest_shiny_provider_timeout())
@@ -130,20 +180,36 @@ tempest_researcher_app_server <- function(
   tools,
   mcp_config,
   output_dir,
-  report_library = FALSE
+  report_library = FALSE,
+  graft_store = NULL,
+  graft_store_path = NULL,
+  memory_purpose = "research",
+  memory_actor = "local-reviewer",
+  memory_eligible = NULL
 ) {
   force(config)
   force(tools)
   force(mcp_config)
   force(output_dir)
   force(report_library)
+  force(graft_store)
+  force(graft_store_path)
+  force(memory_purpose)
+  force(memory_actor)
+  force(memory_eligible)
   function(input, output, session) {
-    controller <- tempest_researcher_app_controller(
+    controller_args <- list(
       config = config,
       tools = tools,
       mcp_config = mcp_config,
       output_dir = output_dir
     )
+    if (!is.null(graft_store_path)) {
+      controller_args$graft_store_path <- graft_store_path
+      controller_args$memory_purpose <- memory_purpose
+      controller_args$memory_eligible <- memory_eligible
+    }
+    controller <- do.call(tempest_researcher_app_controller, controller_args)
     state <- shiny::reactiveVal(controller$snapshot())
     notice <- shiny::reactiveVal(NULL)
     catalog <- shiny::reactiveVal(NULL)
@@ -152,6 +218,7 @@ tempest_researcher_app_server <- function(
     resource <- NULL
 
     library_revision <- shiny::reactiveVal(0L)
+    memory_revision <- shiny::reactiveVal(0L)
     open_report <- function(report) {
       evidence <- tempest_researcher_evidence_ui(report)
       next_resource <- paste0("tempest-report-", tempest_uuid("view"))
@@ -175,8 +242,66 @@ tempest_researcher_app_server <- function(
         "library",
         output_dir,
         open_report,
-        library_revision
+        library_revision,
+        graft_store = graft_store,
+        memory_purpose = memory_purpose,
+        memory_eligible = memory_eligible,
+        memory_revision = memory_revision
       )
+    }
+    if (!is.null(graft_store)) {
+      tempest_researcher_memory_review_server(
+        "memory_review",
+        store = graft_store,
+        output_dir = output_dir,
+        current_report = published,
+        purpose = memory_purpose,
+        default_actor = memory_actor,
+        eligible = memory_eligible,
+        memory_revision = memory_revision
+      )
+      shiny::observeEvent(
+        memory_revision(),
+        {
+          accepted <- tempest_graft_memory_accepted_streams(
+            graft_store,
+            purpose = memory_purpose,
+            eligible = memory_eligible
+          )$stream
+          current_selected <- shiny::isolate(input$memory_basis_stream %||% "")
+          if (!current_selected %in% c("", accepted)) {
+            current_selected <- ""
+          }
+          shiny::updateSelectInput(
+            session,
+            "memory_basis_stream",
+            choices = c(
+              "None (fresh research)" = "",
+              stats::setNames(accepted, accepted)
+            ),
+            selected = current_selected
+          )
+        },
+        ignoreInit = FALSE
+      )
+      output$memory_sidebar_status <- shiny::renderUI({
+        memory_revision()
+        accepted <- tempest_graft_memory_accepted_streams(
+          graft_store,
+          purpose = memory_purpose,
+          eligible = memory_eligible
+        )
+        n <- nrow(accepted)
+        if (n == 0L) {
+          "No accepted streams yet. Review and accept a report to build project memory."
+        } else {
+          sprintf(
+            "%d accepted stream%s available for recall.",
+            n,
+            if (n == 1L) "" else "s"
+          )
+        }
+      })
     }
 
     refresh <- function() {
@@ -248,7 +373,7 @@ tempest_researcher_app_server <- function(
           } else {
             character()
           }
-          controller$start(list(
+          req_payload <- list(
             topic = input$topic,
             model = input$model,
             research_strategy = input$research_strategy %||% "key_questions",
@@ -262,7 +387,17 @@ tempest_researcher_app_server <- function(
             selected_tools = input$local_tools %||% character(),
             mcp_servers = selected_servers,
             selected_mcp = selected_mcp
-          ))
+          )
+          if (!is.null(graft_store)) {
+            basis_stream <- trimws(input$memory_basis_stream %||% "")
+            req_payload$use_memory_tools <- isTRUE(input$use_memory_tools)
+            req_payload$memory_basis_stream <- if (nzchar(basis_stream)) {
+              basis_stream
+            } else {
+              NULL
+            }
+          }
+          controller$start(req_payload)
         },
         "Research could not start. Check the topic, model, and run limits; rediscover changed MCP tools, and wait for any active job to finish."
       )
@@ -303,6 +438,9 @@ tempest_researcher_app_server <- function(
             {
               open_report(tempest_read_enriched_report(value$result$path))
               library_revision(shiny::isolate(library_revision()) + 1L)
+              if (!is.null(graft_store)) {
+                memory_revision(shiny::isolate(memory_revision()) + 1L)
+              }
             },
             error = function(error) {
               value$status <<- "error"

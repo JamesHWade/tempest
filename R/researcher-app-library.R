@@ -43,7 +43,12 @@ tempest_researcher_library_metadata <- function(directory, id) {
   )
 }
 
-tempest_researcher_library_catalog <- function(directory) {
+tempest_researcher_library_catalog <- function(
+  directory,
+  graft_store = NULL,
+  memory_purpose = "research",
+  memory_eligible = NULL
+) {
   root <- normalizePath(directory, mustWork = TRUE)
   if (!dir.exists(root) || file.access(root, 4L) != 0L) {
     stop("Directory unavailable.")
@@ -64,8 +69,34 @@ tempest_researcher_library_catalog <- function(directory) {
       title = character(),
       summary = character(),
       status = character(),
-      created_at = character()
+      created_at = character(),
+      stringsAsFactors = FALSE
     )
+  }
+  if (!is.null(graft_store)) {
+    mem_status <- character(nrow(rows))
+    mem_stream <- character(nrow(rows))
+    for (i in seq_len(nrow(rows))) {
+      rec <- tempest_researcher_memory_read_record(root, rows$id[[i]])
+      if (is.null(rec)) {
+        mem_status[[i]] <- "unlinked"
+        mem_stream[[i]] <- ""
+      } else {
+        st <- tryCatch(
+          tempest_graft_selection_status(
+            graft_store,
+            rec$selection_id,
+            purpose = memory_purpose,
+            eligible = memory_eligible
+          ),
+          error = function(error) list(status = "provisional", stream = NULL)
+        )
+        mem_status[[i]] <- st$status %||% "provisional"
+        mem_stream[[i]] <- st$stream %||% ""
+      }
+    }
+    rows$memory_status <- mem_status
+    rows$memory_stream <- mem_stream
   }
   list(
     status = "ok",
@@ -74,7 +105,7 @@ tempest_researcher_library_catalog <- function(directory) {
   )
 }
 
-tempest_researcher_library_ui <- function(id) {
+tempest_researcher_library_ui <- function(id, memory_enabled = FALSE) {
   ns <- shiny::NS(id)
   shiny::tags$details(
     class = "tempest-researcher-library",
@@ -85,6 +116,19 @@ tempest_researcher_library_ui <- function(id) {
       "Search saved reports",
       placeholder = "Title, summary, or date"
     ),
+    if (isTRUE(memory_enabled)) {
+      shiny::selectInput(
+        ns("memory_filter"),
+        "Memory status",
+        choices = c(
+          "All reports" = "all",
+          "Accepted in Graft" = "accepted",
+          "Provisional drafts" = "provisional",
+          "Withdrawn or superseded" = "historical"
+        ),
+        selected = "all"
+      )
+    },
     shiny::actionButton(ns("refresh"), "Refresh saved reports"),
     shiny::uiOutput(ns("status")),
     shiny::uiOutput(ns("reports"))
@@ -95,33 +139,68 @@ tempest_researcher_library_server <- function(
   id,
   directory,
   on_open,
-  refresh_token
+  refresh_token,
+  graft_store = NULL,
+  memory_purpose = "research",
+  memory_eligible = NULL,
+  memory_revision = NULL
 ) {
   shiny::moduleServer(id, function(input, output, session) {
     notice <- shiny::reactiveVal(NULL)
     catalog <- shiny::reactive({
       refresh_token()
+      if (!is.null(memory_revision)) {
+        memory_revision()
+      }
       input$refresh
       tryCatch(
-        tempest_researcher_library_catalog(directory),
+        tempest_researcher_library_catalog(
+          directory,
+          graft_store = graft_store,
+          memory_purpose = memory_purpose,
+          memory_eligible = memory_eligible
+        ),
         error = function(e) NULL
       )
     })
     filtered <- shiny::reactive({
       rows <- catalog()$reports
+      if (!length(rows$id)) {
+        return(rows)
+      }
+      if (!is.null(graft_store) && "memory_status" %in% names(rows)) {
+        mem_filter <- input$memory_filter %||% "all"
+        if (identical(mem_filter, "accepted")) {
+          rows <- rows[rows$memory_status == "accepted", , drop = FALSE]
+        } else if (identical(mem_filter, "provisional")) {
+          rows <- rows[
+            rows$memory_status %in% c("provisional", "unlinked"),
+            ,
+            drop = FALSE
+          ]
+        } else if (identical(mem_filter, "historical")) {
+          rows <- rows[
+            rows$memory_status %in% c("withdrawn", "superseded"),
+            ,
+            drop = FALSE
+          ]
+        }
+      }
       query <- trimws(input$search %||% "")
       if (!length(rows$id) || !nzchar(query)) {
         return(rows)
       }
-      matched <- grepl(
-        tolower(query),
-        tolower(paste(rows$title, rows$summary, rows$created_at)),
-        fixed = TRUE
+      searchable <- paste(
+        rows$title,
+        rows$summary,
+        rows$created_at,
+        if ("memory_stream" %in% names(rows)) rows$memory_stream else ""
       )
+      matched <- grepl(tolower(query), tolower(searchable), fixed = TRUE)
       rows[matched, , drop = FALSE]
     })
     shiny::observeEvent(
-      list(input$selected, input$refresh, input$search),
+      list(input$selected, input$refresh, input$search, input$memory_filter),
       notice(NULL)
     )
     output$status <- shiny::renderUI({
@@ -133,10 +212,22 @@ tempest_researcher_library_server <- function(
         return(shiny::div(role = "alert", "Saved reports are unavailable."))
       }
       count <- length(value$reports$id)
+      accepted_count <- if ("memory_status" %in% names(value$reports)) {
+        sum(value$reports$memory_status == "accepted")
+      } else {
+        0L
+      }
       shiny::div(
         role = "status",
         if (!count) {
           "No saved reports yet."
+        } else if (!is.null(graft_store)) {
+          sprintf(
+            "%d saved report%s (%d accepted in Graft)",
+            count,
+            if (count == 1L) "" else "s",
+            accepted_count
+          )
         } else {
           sprintf("%d saved report%s", count, if (count == 1L) "" else "s")
         },
@@ -151,12 +242,38 @@ tempest_researcher_library_server <- function(
         }
         return(NULL)
       }
-      labels <- sprintf(
-        "%s (%s, %s)",
-        rows$title,
-        substr(rows$created_at, 1L, 10L),
-        rows$status
-      )
+      labels <- if ("memory_status" %in% names(rows)) {
+        vapply(
+          seq_len(nrow(rows)),
+          function(i) {
+            tag <- switch(
+              rows$memory_status[[i]],
+              accepted = paste0("Accepted \u00b7 ", rows$memory_stream[[i]]),
+              superseded = paste0(
+                "Superseded \u00b7 ",
+                rows$memory_stream[[i]]
+              ),
+              withdrawn = paste0("Withdrawn \u00b7 ", rows$memory_stream[[i]]),
+              provisional = "Provisional",
+              rows$status[[i]]
+            )
+            sprintf(
+              "%s (%s, %s)",
+              rows$title[[i]],
+              substr(rows$created_at[[i]], 1L, 10L),
+              tag
+            )
+          },
+          character(1)
+        )
+      } else {
+        sprintf(
+          "%s (%s, %s)",
+          rows$title,
+          substr(rows$created_at, 1L, 10L),
+          rows$status
+        )
+      }
       shiny::tagList(
         shiny::selectInput(
           session$ns("selected"),

@@ -93,12 +93,14 @@ VignetteBuilder: knitr
 URL: https://jameshwade.github.io/tempest/,
     https://github.com/JamesHWade/tempest
 BugReports: https://github.com/JamesHWade/tempest/issues
-Config/roxygen2/version: 8.1.0
+Config/roxygen2/version: 8.1.1
 Collate: 
     'app.R'
+    'graft-memory.R'
     'researcher-app-tools.R'
     'researcher-app-worker.R'
     'researcher-app-briefs.R'
+    'researcher-app-memory.R'
     'researcher-app-library.R'
     'researcher-app-evidence.R'
     'researcher-app-example.R'
