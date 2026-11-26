@@ -142,6 +142,29 @@ test_that("graft memory helpers manage streams, corrections, withdrawal, and reu
     ),
     class = "tempest_graft_memory_error"
   )
+
+  # Direct stream lookup resolves status without requiring a full store scan,
+  # and a failed store scan reports "unknown" rather than "provisional".
+  local_mocked_bindings(
+    tempest_graft_memory_streams = function(...) {
+      stop("store exceeded stream listing bound")
+    }
+  )
+  direct_status <- tempest:::tempest_graft_selection_status(
+    store,
+    selection_id = sel_b,
+    purpose = "research",
+    stream = "battery-recycling"
+  )
+  expect_identical(direct_status$status, "withdrawn")
+  expect_identical(direct_status$stream, "battery-recycling")
+
+  unknown_status <- tempest:::tempest_graft_selection_status(
+    store,
+    selection_id = sel_b,
+    purpose = "research"
+  )
+  expect_identical(unknown_status$status, "unknown")
 })
 
 test_that("graft memory tools expose multi-stream recall and extract @extra$graft metadata", {

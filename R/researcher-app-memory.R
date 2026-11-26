@@ -26,7 +26,8 @@ tempest_researcher_memory_write_record <- function(
   selection_id = NULL,
   research_run_id = NULL,
   bundle_id = NULL,
-  publish_error = NULL
+  publish_error = NULL,
+  stream = NULL
 ) {
   dir_path <- tempest_researcher_memory_dir(output_dir)
   if (!dir.exists(dir_path)) {
@@ -39,6 +40,7 @@ tempest_researcher_memory_write_record <- function(
     selection_id = selection_id,
     research_run_id = research_run_id,
     bundle_id = bundle_id,
+    stream = stream,
     publish_error = publish_error,
     published_at = format(Sys.time(), "%Y-%m-%dT%H:%M:%SZ", tz = "UTC")
   )
@@ -103,6 +105,7 @@ tempest_researcher_memory_status_badge <- function(status, stream = NULL) {
       "Withdrawn"
     },
     provisional = "Provisional draft",
+    unknown = "Memory status unavailable",
     "Not published to Graft"
   )
   tone <- switch(
@@ -111,6 +114,7 @@ tempest_researcher_memory_status_badge <- function(status, stream = NULL) {
     superseded = "bg-warning-subtle text-warning-emphasis",
     withdrawn = "bg-secondary-subtle text-secondary-emphasis",
     provisional = "bg-info-subtle text-info-emphasis",
+    unknown = "bg-warning-subtle text-warning-emphasis",
     "bg-light text-muted"
   )
   shiny::tags$span(
@@ -221,7 +225,8 @@ tempest_researcher_memory_review_server <- function(
         store = store,
         selection_id = rec$selection_id,
         purpose = purpose,
-        eligible = eligible
+        eligible = eligible,
+        stream = rec$stream
       )
     })
 
@@ -282,6 +287,17 @@ tempest_researcher_memory_review_server <- function(
             reason = input$reason %||% "",
             purpose = purpose,
             expected = expected_head
+          )
+          tryCatch(
+            tempest_researcher_memory_write_record(
+              output_dir = output_dir,
+              report_id = rec$report_id,
+              selection_id = rec$selection_id,
+              research_run_id = rec$research_run_id,
+              bundle_id = rec$bundle_id,
+              stream = decision@stream
+            ),
+            error = function(error) NULL
           )
           feedback(sprintf(
             "Accepted into stream '%s' (decision %s).",

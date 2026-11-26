@@ -138,7 +138,8 @@ tempest_graft_memory_streams <- function(
   store,
   purpose = "research",
   eligible = NULL,
-  max_streams = 100L
+  max_streams = 1000L,
+  error_on_failure = FALSE
 ) {
   tempest_graft_memory_require("Listing project memory streams")
   eligible_fn <- tempest_graft_memory_eligible(eligible)
@@ -156,7 +157,12 @@ tempest_graft_memory_streams <- function(
   )
   decisions <- tryCatch(
     graft::graft_streams(store, purpose = purpose, max_streams = max_streams),
-    error = function(error) list()
+    error = function(error) {
+      if (isTRUE(error_on_failure)) {
+        stop(error)
+      }
+      list()
+    }
   )
   if (!length(decisions)) {
     return(empty)
@@ -242,11 +248,85 @@ tempest_graft_history_table <- function(history) {
   )
 }
 
+tempest_graft_selection_status_in_stream <- function(
+  store,
+  selection_id,
+  stream,
+  purpose = "research",
+  eligible = NULL
+) {
+  if (!rlang::is_string(stream) || !nzchar(stream)) {
+    return(NULL)
+  }
+  eligible_fn <- tempest_graft_memory_eligible(eligible)
+  allowed <- tryCatch(
+    isTRUE(eligible_fn(stream)),
+    error = function(error) FALSE
+  )
+  if (!allowed) {
+    return(NULL)
+  }
+  history <- tryCatch(
+    graft::graft_history(store, stream),
+    error = function(error) list()
+  )
+  if (!length(history)) {
+    return(NULL)
+  }
+  head <- history[[length(history)]]
+  if (
+    !is.null(purpose) &&
+      rlang::is_string(head@purpose) &&
+      !identical(head@purpose, purpose)
+  ) {
+    return(NULL)
+  }
+  if (
+    identical(head@action, "accept") &&
+      identical(head@selection, selection_id)
+  ) {
+    return(list(
+      status = "accepted",
+      stream = stream,
+      decision_id = head@id,
+      sequence = as.integer(head@sequence),
+      actor = head@actor %||% "",
+      reason = head@reason %||% "",
+      history = tempest_graft_history_table(history)
+    ))
+  }
+  matched <- Filter(
+    function(event) {
+      identical(event@action, "accept") &&
+        identical(event@selection, selection_id)
+    },
+    history
+  )
+  if (!length(matched)) {
+    return(NULL)
+  }
+  status <- if (identical(head@action, "withdraw")) {
+    "withdrawn"
+  } else {
+    "superseded"
+  }
+  list(
+    status = status,
+    stream = stream,
+    decision_id = head@id,
+    sequence = as.integer(head@sequence),
+    actor = head@actor %||% "",
+    reason = head@reason %||% "",
+    history = tempest_graft_history_table(history)
+  )
+}
+
 tempest_graft_selection_status <- function(
   store,
   selection_id,
   purpose = "research",
-  eligible = NULL
+  eligible = NULL,
+  stream = NULL
 ) {
   empty_history <- tempest_graft_history_table(list())
   if (
@@ -264,11 +344,41 @@ tempest_graft_selection_status <- function(
       history = empty_history
     ))
   }
-  streams <- tempest_graft_memory_streams(
-    store,
-    purpose = purpose,
-    eligible = eligible
+  # When the report sidecar remembers the stream, query it directly without
+  # scanning the entire store.
+  if (rlang::is_string(stream) && nzchar(stream)) {
+    direct <- tempest_graft_selection_status_in_stream(
+      store = store,
+      selection_id = selection_id,
+      stream = stream,
+      purpose = purpose,
+      eligible = eligible
+    )
+    if (!is.null(direct)) {
+      return(direct)
+    }
+  }
+  streams <- tryCatch(
+    tempest_graft_memory_streams(
+      store,
+      purpose = purpose,
+      eligible = eligible,
+      max_streams = .Machine$integer.max,
+      error_on_failure = TRUE
+    ),
+    error = function(error) NULL
   )
+  if (is.null(streams)) {
+    return(list(
+      status = "unknown",
+      stream = if (rlang::is_string(stream) && nzchar(stream)) stream else NULL,
+      decision_id = NULL,
+      sequence = NA_integer_,
+      actor = NULL,
+      reason = NULL,
+      history = empty_history
+    ))
+  }
   # First look for a stream whose current accepted head is this selection.
   active_idx <- which(
     streams$status == "accepted" &
@@ -292,34 +402,16 @@ tempest_graft_selection_status <- function(
     ))
   }
   # Next inspect stream histories to distinguish superseded vs. withdrawn.
-  for (stream in streams$stream) {
-    history <- tryCatch(
-      graft::graft_history(store, stream),
-      error = function(error) list()
+  for (stream_name in streams$stream) {
+    found <- tempest_graft_selection_status_in_stream(
+      store = store,
+      selection_id = selection_id,
+      stream = stream_name,
+      purpose = purpose,
+      eligible = eligible
     )
-    matched <- Filter(
-      function(event) {
-        identical(event@action, "accept") &&
-          identical(event@selection, selection_id)
-      },
-      history
-    )
-    if (length(matched) > 0L) {
-      head <- history[[length(history)]]
-      status <- if (identical(head@action, "withdraw")) {
-        "withdrawn"
-      } else {
-        "superseded"
-      }
-      return(list(
-        status = status,
-        stream = stream,
-        decision_id = head@id,
-        sequence = as.integer(head@sequence),
-        actor = head@actor %||% "",
-        reason = head@reason %||% "",
-        history = tempest_graft_history_table(history)
-      ))
+    if (!is.null(found)) {
+      return(found)
     }
   }
   list(

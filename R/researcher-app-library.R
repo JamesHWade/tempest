@@ -91,7 +91,8 @@ tempest_researcher_library_catalog <- function(
             graft_store,
             rec$selection_id,
             purpose = memory_purpose,
-            eligible = memory_eligible
+            eligible = memory_eligible,
+            stream = rec$stream
           ),
           error = function(error) list(status = "provisional", stream = NULL)
         )
