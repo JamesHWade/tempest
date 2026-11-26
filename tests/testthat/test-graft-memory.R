@@ -219,3 +219,89 @@ test_that("graft memory tools expose multi-stream recall and extract @extra$graf
   expect_length(fallback_tools, 1L)
   expect_identical(fallback_tools[[1L]]@name, "recall_project_memory")
 })
+
+test_that("graft store handoff supports factory and Postgres stores without leaking credentials", {
+  skip_if_not_installed("graft")
+  skip_if_not("graft_store" %in% getNamespaceExports("graft"))
+
+  # Credential redaction covers Postgres URIs and key-value secrets.
+  redacted <- tempest:::tempest_graft_memory_redact(
+    "connection failed for postgresql://alice:s3cr3t@db.example:5432/prod password=topsecret token=tok123"
+  )
+  expect_false(grepl("s3cr3t", redacted, fixed = TRUE))
+  expect_false(grepl("topsecret", redacted, fixed = TRUE))
+  expect_false(grepl("tok123", redacted, fixed = TRUE))
+  expect_match(
+    redacted,
+    "postgresql://alice:[redacted]@db.example:5432/prod",
+    fixed = TRUE
+  )
+
+  # Zero-argument factory function opens and creates a serializable handoff.
+  store_path <- file.path(withr::local_tempdir(), "factory-memory")
+  factory <- function() {
+    graft::graft_store(store_path, create = !dir.exists(store_path))
+  }
+  opened <- tempest:::tempest_graft_store_open(factory, create = TRUE)
+  expect_s7_class(opened, graft::LocalArtifactStore)
+
+  handoff <- tempest:::tempest_graft_store_handoff(
+    factory,
+    opened_store = opened
+  )
+  expect_identical(handoff$kind, "factory")
+  expect_true(is.function(handoff$factory))
+  reopened <- tempest:::tempest_graft_store_open_handoff(handoff)
+  expect_s7_class(reopened$store, graft::LocalArtifactStore)
+  expect_identical(reopened$owns_connection, FALSE)
+
+  # Functions with required arguments are rejected cleanly.
+  expect_error(
+    tempest:::tempest_graft_store_open(function(path) graft::graft_store(path)),
+    class = "tempest_input_error"
+  )
+
+  # PostgresArtifactStore handoff extracts only non-secret connection metadata
+  # and delegates worker reconnection to tempest_graft_store_connect_postgres().
+  fake_pg_store <- structure(
+    list(
+      scope = "team-research",
+      max_bytes = 64L * 1024L * 1024L,
+      max_revision_bytes = 1024L * 1024L
+    ),
+    class = "tempest_fake_pg_store"
+  )
+  local_mocked_bindings(
+    tempest_graft_store_is_postgres = function(x) {
+      inherits(x, "tempest_fake_pg_store")
+    },
+    tempest_graft_store_postgres_info = function(store) {
+      list(
+        kind = "postgres",
+        scope = store$scope,
+        max_bytes = store$max_bytes,
+        max_revision_bytes = store$max_revision_bytes,
+        connection_info = list(
+          dbname = "tempest_prod",
+          host = "db.internal",
+          port = "5432",
+          user = "researcher"
+        )
+      )
+    },
+    tempest_graft_store_connect_postgres = function(handoff) {
+      expect_identical(handoff$scope, "team-research")
+      expect_identical(handoff$connection_info$dbname, "tempest_prod")
+      expect_false("password" %in% names(handoff$connection_info))
+      fake_pg_store
+    }
+  )
+  pg_handoff <- tempest:::tempest_graft_store_handoff(fake_pg_store)
+  expect_identical(pg_handoff$kind, "postgres")
+  expect_identical(pg_handoff$scope, "team-research")
+  expect_false("password" %in% names(pg_handoff$connection_info))
+
+  pg_reopened <- tempest:::tempest_graft_store_open_handoff(pg_handoff)
+  expect_identical(pg_reopened$store, fake_pg_store)
+  expect_identical(pg_reopened$owns_connection, TRUE)
+})

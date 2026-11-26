@@ -18,12 +18,13 @@
 #'   review, correction, withdrawal, and fresh-process reuse. No credentials
 #'   or network are needed. The example uses a local demo directory; set
 #'   `options(tempest.demo_dir = "path")` to keep it across R sessions.
-#' @param graft_store Optional local directory path or `graft::ArtifactStore`
-#'   (including `graft::graft_store_postgres()`) for reviewed project memory.
-#'   Defaults to `NULL` (disabled). When supplied, Workspace settings can pin
-#'   an accepted stream for new sessions or attach read-only `graft_tools()`
-#'   recall (with `shinychat` tool cards), and the Report tab adds explicit
-#'   review, acceptance, correction, and withdrawal controls.
+#' @param graft_store Optional local directory path, `graft::ArtifactStore`
+#'   (including `graft::graft_store_postgres()`), or zero-argument store
+#'   factory `function()` returning a `graft::ArtifactStore` for reviewed
+#'   project memory. Defaults to `NULL` (disabled). When supplied, Workspace
+#'   settings can pin an accepted stream for new sessions or attach read-only
+#'   `graft_tools()` recall (with `shinychat` tool cards), and the Report tab
+#'   adds explicit review, acceptance, correction, and withdrawal controls.
 #' @param memory_purpose Consultation purpose recorded on Graft decisions and
 #'   memory recall tools. Defaults to `"research"`.
 #' @param memory_actor Default reviewer label shown in the Graft review panel.

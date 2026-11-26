@@ -234,7 +234,7 @@ test_that("shiny_product_graft_consultations() reads moderator and expert manage
   env <- tempest:::tempest_shiny_module_env()
   costorm_ses <- test_promotion_costorm_fixture()$research
 
-  make_graft_chat <- function(stream, selection_id) {
+  make_graft_chat <- function(stream, decision_id, selection_id) {
     tr <- ellmer::ContentToolResult(
       value = paste("Recalled", stream),
       extra = list(
@@ -242,7 +242,7 @@ test_that("shiny_product_graft_consultations() reads moderator and expert manage
           status = "accepted",
           stream = stream,
           selection_id = selection_id,
-          decision_id = paste0("dec-", stream),
+          decision_id = decision_id,
           purpose = "research"
         )
       )
@@ -253,19 +253,38 @@ test_that("shiny_product_graft_consultations() reads moderator and expert manage
     chat_env
   }
 
+  dec_mod <- strrep("a", 64L)
+  sel_mod <- strrep("b", 64L)
+  dec_exp <- strrep("c", 64L)
+  sel_exp <- strrep("d", 64L)
+
   ses_priv <- costorm_ses$.__enclos_env__$private
-  ses_priv$chats_value$moderator <- make_graft_chat("mod-stream", "sel-mod-1")
+  ses_priv$chats_value$moderator <- make_graft_chat(
+    "mod-stream",
+    dec_mod,
+    sel_mod
+  )
   mgr <- tempest:::tempest_session_expert_manager(costorm_ses)
   mgr_priv <- mgr$.__enclos_env__$private
+  active_sid <- mgr$get_or_create(
+    costorm_ses$experts[[1L]]@expert_id
+  )$session_id
   assign(
-    "expert-session-1",
-    make_graft_chat("expert-stream", "sel-exp-1"),
+    active_sid,
+    make_graft_chat("expert-stream", dec_exp, sel_exp),
     envir = mgr_priv$sessions
   )
 
   consultations <- env$shiny_product_graft_consultations(costorm_ses)
   expect_setequal(consultations$stream, c("mod-stream", "expert-stream"))
-  expect_setequal(consultations$selection_id, c("sel-mod-1", "sel-exp-1"))
+  expect_setequal(consultations$selection_id, c(sel_mod, sel_exp))
+
+  review <- tempest_trajectory_review(costorm_ses)
+  expect_identical(review@knowledge$consultations$total, 2L)
+  expect_setequal(
+    vapply(review@knowledge$consultations$items, `[[`, character(1), "stream"),
+    c("mod-stream", "expert-stream")
+  )
 })
 
 test_that("Co-STORM report memory panel rejects stale withdrawal when stream head changed", {

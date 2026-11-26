@@ -614,16 +614,45 @@ mod_run_review_server <- function(
 
     output$graft_memory <- shiny::renderUI({
       state <- review_state()
-      input_sel <- if (identical(state$status, "ready")) {
-        knowledge <- run_review_prop(state$review, "knowledge")
-        if (is.list(knowledge)) knowledge$input_selection else NULL
+      knowledge <- if (identical(state$status, "ready")) {
+        run_review_prop(state$review, "knowledge")
       } else {
         NULL
       }
-      consultations <- tryCatch(
-        shiny_product_graft_consultations(selected_product()),
-        error = function(error) tempest:::tempest_graft_consultations(NULL)
-      )
+      input_sel <- if (is.list(knowledge)) knowledge$input_selection else NULL
+      consultations <- if (
+        is.list(knowledge) &&
+          is.list(knowledge$consultations) &&
+          is.list(knowledge$consultations$items)
+      ) {
+        items <- knowledge$consultations$items
+        if (length(items) == 0L) {
+          tempest:::tempest_graft_consultations(NULL)
+        } else {
+          do.call(
+            rbind,
+            lapply(items, function(item) {
+              data.frame(
+                status = item$status %||% "",
+                stream = item$stream %||% "",
+                purpose = item$purpose %||% NA_character_,
+                decision_id = item$decision_id %||% NA_character_,
+                selection_id = item$selection_id %||% NA_character_,
+                artifact_count = as.integer(item$artifact_count %||% 0L),
+                text_bytes = as.integer(item$text_bytes %||% 0L),
+                truncated = isTRUE(item$truncated),
+                omitted_count = as.integer(item$omitted_count %||% 0L),
+                stringsAsFactors = FALSE
+              )
+            })
+          )
+        }
+      } else {
+        tryCatch(
+          shiny_product_graft_consultations(selected_product()),
+          error = function(error) tempest:::tempest_graft_consultations(NULL)
+        )
+      }
       if (is.null(input_sel) && nrow(consultations) == 0L) {
         return(run_review_inline_empty_state_ui(
           "No Graft memory selections or recall consultations recorded for this run."
