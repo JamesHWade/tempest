@@ -43,7 +43,7 @@ shiny_memory_wrap_config <- function(cfg, memory_ctx, use_tools = FALSE) {
       )
     }
     if (
-      !role %in% c("moderator", "expert") ||
+      !role %in% c("coordinator", "expert") ||
         is.null(chat) ||
         !is.function(chat$register_tools)
     ) {
@@ -275,6 +275,31 @@ mod_memory_report_server <- function(
       sel
     }
 
+    displayed_streams <- shiny::reactive({
+      memory_revision()
+      if (is.null(memory_ctx)) {
+        return(data.frame(
+          stream = character(),
+          decision_id = character(),
+          stringsAsFactors = FALSE
+        ))
+      }
+      tryCatch(
+        tempest:::tempest_graft_memory_streams(
+          memory_ctx$store,
+          purpose = memory_ctx$purpose,
+          eligible = memory_ctx$eligible
+        ),
+        error = function(error) {
+          data.frame(
+            stream = character(),
+            decision_id = character(),
+            stringsAsFactors = FALSE
+          )
+        }
+      )
+    })
+
     selection_state <- shiny::reactive({
       memory_revision()
       sel <- current_selection()
@@ -287,6 +312,12 @@ mod_memory_report_server <- function(
         purpose = memory_ctx$purpose,
         eligible = memory_ctx$eligible
       )
+    })
+
+    shiny::observeEvent(input$refresh, {
+      feedback(NULL)
+      feedback_is_error(FALSE)
+      memory_revision(shiny::isolate(memory_revision()) + 1L)
     })
 
     shiny::observeEvent(input$accept, {
@@ -304,6 +335,20 @@ mod_memory_report_server <- function(
       } else {
         trimws(input$stream %||% "")
       }
+      streams_df <- displayed_streams()
+      state <- selection_state()
+      match_idx <- which(streams_df$stream == stream)
+      expected_head <- if (length(match_idx) > 0L) {
+        streams_df$decision_id[[match_idx[[1L]]]]
+      } else if (
+        !is.null(state) &&
+          identical(state$stream, stream) &&
+          rlang::is_string(state$decision_id)
+      ) {
+        state$decision_id
+      } else {
+        ""
+      }
       tryCatch(
         {
           sel <- ensure_published()
@@ -313,7 +358,8 @@ mod_memory_report_server <- function(
             stream = stream,
             actor = input$actor %||% memory_ctx$actor,
             reason = input$reason %||% "",
-            purpose = memory_ctx$purpose
+            purpose = memory_ctx$purpose,
+            expected = expected_head
           )
           feedback(sprintf(
             "Accepted into stream '%s' (decision %s).",
@@ -371,14 +417,7 @@ mod_memory_report_server <- function(
       }
       state <- selection_state()
       status_code <- if (is.null(state)) "provisional" else state$status
-      existing_streams <- tryCatch(
-        tempest:::tempest_graft_memory_streams(
-          memory_ctx$store,
-          purpose = memory_ctx$purpose,
-          eligible = memory_ctx$eligible
-        )$stream,
-        error = function(error) character()
-      )
+      existing_streams <- displayed_streams()$stream
       default_stream <- (if (!is.null(state)) state$stream else NULL) %||%
         tempest:::tempest_graft_stream_slug(shiny_memory_product_topic(
           product()
@@ -510,7 +549,12 @@ mod_memory_report_server <- function(
                     "Withdraw from active memory",
                     class = "btn-outline-secondary btn-sm"
                   )
-                }
+                },
+                shiny::actionButton(
+                  ns("refresh"),
+                  "Refresh status",
+                  class = "btn-outline-secondary btn-sm"
+                )
               )
             )
           ),

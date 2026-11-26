@@ -60,22 +60,36 @@ test_that("Co-STORM memory config wraps chat_fn with read-only graft tools and p
     eligible = function(stream) TRUE
   )
 
-  registered <- character()
-  fake_role_chat <- list(
-    get_tools = function() list(),
-    register_tools = function(tools) {
-      registered <<- c(registered, vapply(tools, \(t) t@name, character(1)))
+  registered_by_role <- list()
+  make_fake_role_chat <- function(role) {
+    list(
+      get_tools = function() list(),
+      register_tools = function(tools) {
+        registered_by_role[[role]] <<- c(
+          registered_by_role[[role]],
+          vapply(tools, \(t) t@name, character(1))
+        )
+      }
+    )
+  }
+  base_cfg <- tempest_config(
+    chat_fn = function(role, model, system_prompt, echo) {
+      make_fake_role_chat(role)
     }
   )
-  base_cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_role_chat
-  )
   wrapped_cfg <- env$shiny_memory_wrap_config(base_cfg, ctx, use_tools = TRUE)
-  wrapped_cfg@chat_fn("moderator", "openai/gpt-5.6-sol", "sys", "none")
+  tempest:::tempest_make_chat(wrapped_cfg, "coordinator", system_prompt = "sys")
+  tempest:::tempest_make_chat(wrapped_cfg, "expert", system_prompt = "sys")
+  tempest:::tempest_make_chat(wrapped_cfg, "judge", system_prompt = "sys")
   expect_setequal(
-    registered,
+    registered_by_role$coordinator,
     c("list_project_memory", "recall_project_memory")
   )
+  expect_setequal(
+    registered_by_role$expert,
+    c("list_project_memory", "recall_project_memory")
+  )
+  expect_null(registered_by_role$judge)
 
   mem_rev <- shiny::reactiveVal(0L)
   shiny::testServer(
@@ -324,6 +338,22 @@ test_that("Co-STORM report memory panel rejects stale withdrawal when stream hea
         purpose = "research"
       )
       expect_identical(active$status, "accepted")
+
+      # Stale re-acceptance from the older displayed view must also fail closed.
+      session$setInputs(
+        existing_stream = "shared-stream",
+        reason = "Stale re-accept",
+        reviewed = TRUE,
+        accept = 2
+      )
+      session$flushReact()
+      expect_identical(mem_rev(), 1L)
+      active_after <- tempest:::tempest_graft_selection_status(
+        store,
+        selection_id = sel2,
+        purpose = "research"
+      )
+      expect_identical(active_after$status, "accepted")
     }
   )
 })
