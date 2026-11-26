@@ -1,6 +1,6 @@
 # Report tab: render the generated report and offer Markdown/HTML downloads.
 
-mod_report_ui <- function(id) {
+mod_report_ui <- function(id, memory_ui = NULL) {
   ns <- shiny::NS(id)
   bslib::nav_panel(
     title = shiny::tagList(shiny::icon("file-lines"), "Report"),
@@ -44,6 +44,7 @@ mod_report_ui <- function(id) {
       ),
       bslib::card_body(
         class = "tempest-report-body",
+        memory_ui,
         shiny::uiOutput(ns("body"))
       )
     )

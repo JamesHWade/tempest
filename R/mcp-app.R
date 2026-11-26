@@ -46,6 +46,7 @@ tempest_mcp_app <- function(research, name = "tempest-research") {
   supports <- tempest_claim_supports(research)
   sources <- tempest_sources(research)
   rm(research)
+  input_selection <- review$knowledge$input_selection
   summary <- list(
     review_id = review$review_id,
     research_run_id = review$product$research_run_id,
@@ -56,6 +57,16 @@ tempest_mcp_app <- function(research, name = "tempest-research") {
     sources = nrow(sources),
     stages = review$stages$total,
     agent_runs = review$agent_runs$total,
+    input_selection_id = if (is.null(input_selection)) {
+      NULL
+    } else {
+      input_selection$selection_id
+    },
+    input_purpose = if (is.null(input_selection)) {
+      NULL
+    } else {
+      input_selection$purpose
+    },
     acceptance = "provisional; acceptance is a separate host decision"
   )
   claim_choices <- stats::setNames(claims$claim_id, claims$claim_text)
