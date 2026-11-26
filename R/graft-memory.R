@@ -389,6 +389,7 @@ tempest_graft_withdraw_stream <- function(
   stream,
   actor,
   reason,
+  expected = NULL,
   key = NULL
 ) {
   tempest_graft_memory_require("Withdrawing research from project memory")
@@ -425,11 +426,26 @@ tempest_graft_withdraw_stream <- function(
       "Stream {.val {stream}} is not currently accepted."
     )
   }
+  expected_decision <- if (is.null(expected)) {
+    head
+  } else {
+    expected_id <- if (S7::S7_inherits(expected, graft::Decision)) {
+      expected@id
+    } else {
+      expected
+    }
+    if (!identical(head@id, expected_id)) {
+      tempest_graft_memory_abort(
+        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before withdrawing."
+      )
+    }
+    expected
+  }
   request_key <- key %||% paste0("withdraw-", tempest_uuid("graft"))
   graft::graft_withdraw(
     store,
     stream = stream,
-    expected = head,
+    expected = expected_decision,
     key = request_key,
     actor = actor,
     reason = reason

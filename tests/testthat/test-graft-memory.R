@@ -80,12 +80,26 @@ test_that("graft memory helpers manage streams, corrections, withdrawal, and reu
     "accepted"
   )
 
-  # Withdrawing removes active eligibility while keeping history readable.
+  # Stale withdrawal targeting the superseded decision fails closed.
+  expect_error(
+    tempest:::tempest_graft_withdraw_stream(
+      store,
+      stream = "battery-recycling",
+      actor = "alice",
+      reason = "Stale withdrawal",
+      expected = dec_1@id
+    ),
+    class = "tempest_graft_memory_error"
+  )
+
+  # Withdrawing the current reviewed decision removes active eligibility while
+  # keeping history readable.
   dec_3 <- tempest:::tempest_graft_withdraw_stream(
     store,
     stream = "battery-recycling",
     actor = "bob",
-    reason = "Needs reassessment"
+    reason = "Needs reassessment",
+    expected = dec_2@id
   )
   expect_identical(dec_3@action, "withdraw")
   status_withdrawn <- tempest:::tempest_graft_selection_status(store, sel_b)

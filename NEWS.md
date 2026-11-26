@@ -1,6 +1,7 @@
 # tempest 0.0.0.9000
 
 * `tempest_app()` groups evidence and session records in the navigation and refreshes discussion setup, scripted runs, review, and report reading on desktop and mobile.
+* `tempest_researcher_app()` now accepts optional `graft_store`, `memory_purpose`, `memory_actor`, and `memory_eligible` arguments; background workers publish completed research as unaccepted Graft candidates, attach read-only `graft::graft_tools()` to experts, and support pinning an accepted stream as comparison knowledge, while the app adds an in-app Review and project memory panel and Graft status badges/filters in the saved-report library (#198).
 
 * Saved research products now retain scientific review records with workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 (state schema 5), and promotion bundle schema 2. Readers accept only the current format; older bundles require their matching package version (#188).
 

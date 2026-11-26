@@ -117,7 +117,11 @@ test_that("proposed claims cannot become accepted through workspace mutation", {
   expect_equal("accepted" %in% S7::prop_names(claim), FALSE)
   expect_equal(workspace$list_proposed_claims(), list(claim))
 
-  expect_snapshot(error = TRUE, S7::set_props(claim, accepted = TRUE))
+  expect_error(
+    S7::set_props(claim, accepted = TRUE),
+    regexp = "Property not found|Can't find property",
+    class = "error"
+  )
 })
 
 test_that("ResearchWorkspace exposes copies instead of mutable backing stores", {

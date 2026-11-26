@@ -359,14 +359,18 @@ test_that("reconstructed reviews enforce bounded and canonical input identities"
       expect_error(
         rebuild(altered),
         "bounded opaque identifier",
-        class = "simpleError"
+        class = s7_validation_error_class()
       )
     }
   }
   for (label in c(strrep("a", 1025L), "line\nbreak", " padded ")) {
     altered <- values
     altered$knowledge$input_selection$purpose <- label
-    expect_error(rebuild(altered), "1024 bytes", class = "simpleError")
+    expect_error(
+      rebuild(altered),
+      "1024 bytes",
+      class = s7_validation_error_class()
+    )
   }
   altered <- values
   altered$knowledge$input_selection$records <- tempest_trajectory_collection(
@@ -376,7 +380,7 @@ test_that("reconstructed reviews enforce bounded and canonical input identities"
   expect_error(
     rebuild(altered),
     "canonical order",
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 })
 
@@ -414,7 +418,7 @@ test_that("decision labels retain the store bounds in reconstructed reviews", {
       expect_error(
         do.call(TempestTrajectoryReview, altered),
         "1024 bytes",
-        class = "simpleError"
+        class = s7_validation_error_class()
       )
     }
   }

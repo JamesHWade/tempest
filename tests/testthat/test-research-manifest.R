@@ -40,7 +40,7 @@ test_that("research manifests validate schema and lifecycle enums", {
   expect_error(
     manifest@schema_version <- 4L,
     regexp = "supported version 5",
-    class = "simpleError"
+    class = s7_validation_error_class()
   )
 })
 

@@ -268,7 +268,8 @@ tempest_researcher_memory_review_server <- function(
             store = store,
             stream = state$stream,
             actor = input$actor %||% default_actor,
-            reason = input$reason %||% "Withdrawn after review"
+            reason = input$reason %||% "Withdrawn after review",
+            expected = state$decision_id
           )
           feedback(sprintf(
             "Withdrew stream '%s' from active memory (decision %s). Historical reports remain readable.",
