@@ -1,69 +1,29 @@
 # Package index
 
-## Research products
+## Research workflows & apps
 
-Run scripted STORM, hold a Co-STORM session, or open the bundled app.
+Run scripted STORM, hold an interactive Co-STORM session, or launch a
+research app.
 
 - [`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
   : Run the STORM pipeline
 - [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   : Create a Co-STORM session
-- [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
-  : Run the Tempest research application
-- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
-  : Create a STORM configuration
-
-## Enriched research reports
-
-Combine cited research with reproducible calculations and illustrations.
-
 - [`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
   : Research a topic and produce an enriched report
 - [`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
   : Launch the enriched research application
-- [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
-  : Enrich completed research with computations and illustrations
-- [`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md)
-  : Create a Deputy-backed R execution callback
-- [`tempest_image_generator()`](https://jameshwade.github.io/tempest/reference/tempest_image_generator.md)
-  : Create an OpenAI image generation callback
-- [`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md)
-  : Read and verify a portable enriched report
-
-## Scientific experts
-
+- [`tempest_app()`](https://jameshwade.github.io/tempest/reference/tempest_app.md)
+  : Run the Tempest research application
+- [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
+  : Create a STORM configuration
 - [`tempest_expert()`](https://jameshwade.github.io/tempest/reference/tempest_expert.md)
   **\[experimental\]** : Create a Tempest expert profile
 
-## Host retrievers
+## Inspect reports & evidence
 
-Connect host search and fetch adapters to the research workspace.
-
-- [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
-  : Create a provisional research workspace
-- [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
-  **\[experimental\]** : Create a typed evidence resource
-- [`tempest_source_id()`](https://jameshwade.github.io/tempest/reference/tempest_source_id.md)
-  : Create a deterministic source ID from a URL
-
-## Accepted organizational knowledge
-
-Bring retained artifact evidence or reviewed Graft knowledge into a run.
-
-- [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
-  : Preserve completed research in a Graft artifact store
-- [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md)
-  : Inspect retained research without admitting it to execution
-- [`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
-  : Admit a current accepted research decision
-- [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
-  : Bring a retained artifact selection into a research run
-- [`print(`*`<tempest_knowledge>`*`)`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md)
-  : Print accepted organizational knowledge
-
-## Reading a completed product
-
-Read the committed report and inspect the evidence behind it.
+Read committed reports, verify claim-by-span support, inspect scientific
+reviews, or share an MCP card.
 
 - [`tempest_report()`](https://jameshwade.github.io/tempest/reference/tempest_report.md)
   : Read the committed Markdown report from a Tempest product
@@ -84,22 +44,54 @@ Read the committed report and inspect the evidence behind it.
   **\[experimental\]** : Review a completed research product in an MCP
   App
 
-## Session persistence
+## Enriched research reports
 
-Save and resume the exact current session product.
+Pair cited research with reproducible R analyses, illustrations, and
+integrity-checked bundles.
 
-- [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md)
-  **\[experimental\]** : Save a Co-STORM session bundle
-- [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)
-  : Resume a saved Co-STORM session bundle
+- [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
+  : Enrich completed research with computations and illustrations
+- [`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md)
+  : Read and verify a portable enriched report
+- [`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md)
+  : Create a Deputy-backed R execution callback
+- [`tempest_image_generator()`](https://jameshwade.github.io/tempest/reference/tempest_image_generator.md)
+  : Create an OpenAI image generation callback
 
-## Graft review and promotion
+## Reviewed memory with Graft
 
-Propose, review, commit, and verify accepted research evidence.
+Publish candidates, review and accept findings in Graft, and admit
+verified evidence into later runs.
 
+- [`tempest_publish_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_publish_artifact_research.md)
+  : Preserve completed research in a Graft artifact store
+- [`tempest_read_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_read_artifact_research.md)
+  : Inspect retained research without admitting it to execution
+- [`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md)
+  : Admit a current accepted research decision
+- [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
+  : Bring a retained artifact selection into a research run
 - [`tempest_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_promotion_bundle.md)
   : Build a deterministic proposal for reviewed Graft promotion
 - [`tempest_save_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_save_promotion_bundle.md)
   : Save a Tempest promotion bundle atomically
 - [`tempest_read_promotion_bundle()`](https://jameshwade.github.io/tempest/reference/tempest_read_promotion_bundle.md)
   : Read and validate a current Tempest promotion bundle
+- [`print(`*`<tempest_knowledge>`*`)`](https://jameshwade.github.io/tempest/reference/print.tempest_knowledge.md)
+  : Print accepted organizational knowledge
+
+## Persistence & host retrievers
+
+Save and resume Co-STORM sessions or connect custom host retrievers and
+source records.
+
+- [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md)
+  **\[experimental\]** : Save a Co-STORM session bundle
+- [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)
+  : Resume a saved Co-STORM session bundle
+- [`tempest_research_workspace()`](https://jameshwade.github.io/tempest/reference/tempest_research_workspace.md)
+  : Create a provisional research workspace
+- [`tempest_resource()`](https://jameshwade.github.io/tempest/reference/tempest_resource.md)
+  **\[experimental\]** : Create a typed evidence resource
+- [`tempest_source_id()`](https://jameshwade.github.io/tempest/reference/tempest_source_id.md)
+  : Create a deterministic source ID from a URL

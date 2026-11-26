@@ -1,31 +1,39 @@
 # Articles
 
-### Get started
-
-Install Tempest and run your first workflow.
+### Start here
 
 - [Get started with
   Tempest](https://jameshwade.github.io/tempest/articles/tempest.md):
 
-  Choose a Tempest workflow, configure a provider, create an
-  evidence-backed report, and continue into interactive scientific
-  research.
+  Pick the right Tempest workflow, configure models and search, produce
+  your first cited STORM report, and explore interactively with
+  Co-STORM.
 
-- [A daily briefing with persistent
-  evidence](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
+### Guides
 
-- [Reuse retained artifact
-  evidence](https://jameshwade.github.io/tempest/articles/artifact-knowledge.md):
+- [Enriched reports and the Researcher
+  app](https://jameshwade.github.io/tempest/articles/enriched-research.md):
 
-- [Research, review, retain, and
-  reuse](https://jameshwade.github.io/tempest/articles/ecosystem-demo.md):
+  Combine cited research with reproducible R analyses, conceptual
+  illustrations, custom host tools, MCP servers, a saved-report library,
+  and Graft memory.
+
+- [Research that remembers with
+  Graft](https://jameshwade.github.io/tempest/articles/research-memory.md):
+
+  Review completed Tempest research, explicitly accept or withdraw
+  findings in Graft, equip agents with multi-stream recall tools, and
+  serve reviewed memory over MCP.
+
+- [Build a recurring decision
+  briefing](https://jameshwade.github.io/tempest/articles/daily-briefing.md):
+
+  Use a pinned Graft stream as your briefing basis so Tempest
+  structurally separates what changed from what held steady, and review
+  updates deliberately.
 
 - [Scientific review and evidence
   repair](https://jameshwade.github.io/tempest/articles/scientific-review.md):
 
-- [Enriching a research report with reproducible R
-  analysis](https://jameshwade.github.io/tempest/articles/enriched-research.md):
-
-  Build a derived, auditable analysis report from the CO2 grass
-  experiment while preserving source evidence and the original research
-  product.
+  Enable advisory claim review, independent adjudication, and bounded
+  evidence repair before publishing STORM or Co-STORM reports.

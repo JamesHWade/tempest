@@ -1,251 +1,102 @@
-# Enriching a research report with reproducible R analysis
+# Enriched reports and the Researcher app
 
-Tempest enrichment adds computations and optional illustration to a
-completed STORM report or finalized Co-STORM session. It keeps the
-incoming product as the evidence authority and writes a separate,
-portable report. A calculation does not become an accepted research
-claim, and a generated image is not evidence.
-
-The default HTML presents the work as an article: a readable text
-column, wide figures, margin navigation, and expandable methods. Its
-styling is self-contained and works offline, including responsive and
-print layouts.
-
-This worked example uses the built-in
-[`datasets::CO2`](https://rdrr.io/r/datasets/zCO2.html) data for
-chilling treatment and carbon uptake in *Echinochloa crus-galli*. The
-numerical analyses are real R computations. The offline STORM
-conversation is an authored replay fixture: it exercises Tempest’s
-public product path without evaluating a live model, search provider, or
-the quality of a live model response.
-
-## Read the study design before analyzing
-
-The [R `datasets::CO2` help
-page](https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html)
-describes 84 rows from 12 plants: six from Quebec and six from
-Mississippi. Each plant was measured over seven ambient CO2
-concentrations. Half the plants of each origin are described by the help
-page as having been chilled overnight.
-
-The original study by Potvin, Lechowicz, and Tardif (1990), [*The
-Statistical Analysis of Ecophysiological Response Curves Obtained from
-Experiments Involving Repeated
-Measures*](https://doi.org/10.2307/1938276), reports that control and
-chilled plants were paired within each origin before treatment. Its
-[Table 1 in the authors’
-copy](https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf)
-gives the pairs and labels the measured concentration levels in µL/L.
-The R help labels `conc` in mL/L, so this report flags the unit
-discrepancy and uses the original table’s µL/L label without converting
-the dataset values. The paper’s Methods prose gives the first level as
-100, while its table and the R dataset give 95; the worked example
-follows the tabulated dataset value.
-
-The help page summarizes treatment as chilling overnight; the article’s
-Methods give the protocol more precisely as 14 hours at 7°C followed by
-10 hours of recovery at 20°C. This example reports both descriptions
-with their source and does not substitute one for the other.
-
-The article’s table numbers map to R’s plant IDs as follows:
-
-| Origin      | Matched control and chilled plants |
-|-------------|------------------------------------|
-| Quebec      | Qn1–Qc3, Qn2–Qc1, Qn3–Qc2          |
-| Mississippi | Mn1–Mc3, Mn2–Mc2, Mn3–Mc1          |
-
-The example records those mappings in its analysis output files.
-Repeated concentrations are not counted as independent plants.
-
-## What the analyses measure
-
-The first analysis selects the highest value in the dataset’s
-concentration column. It computes the chilled-minus-control uptake
-difference within each pre-specified plant pair, averages those
-differences within origin, and then calculates an equal-origin average
-and an origin-by-treatment interaction. A seeded percentile bootstrap
-resamples the three pair differences within each origin.
-
-The second analysis plots every plant’s response curve with the mean
-curve for each origin and treatment. It also calculates a trapezoidal
-area for each plant across the seven recorded concentrations, then
-bootstraps the paired area differences within origin. This area is an
-integrated descriptive index; it is not total carbon fixed and does not
-replace a repeated-measures model.
-
-There are only three matched pairs per origin. The bootstrap intervals
-are exploratory and sensitive to individual pairs. These estimates
-describe this dataset; they do not establish a general causal effect or
-support population-wide generalization. The data figure and both
-analyses are descriptive. The example does not reproduce the paper’s
-original model comparisons.
-
-The executed scripts give the following paired contrasts. The bootstrap
-resamples the three matched differences within each origin 20,000 times
-with seed `20261114`; intervals are 95% percentile intervals.
-
-| Quantity | Estimate | Bootstrap interval |
-|----|---:|---:|
-| Highest level, Quebec chilled-minus-control uptake (µmol m⁻² s⁻¹) | -2.33 | \[-5.60, 1.70\] |
-| Highest level, Mississippi chilled-minus-control uptake (µmol m⁻² s⁻¹) | -12.87 | \[-17.10, -5.90\] |
-| Highest level, equal-origin average (µmol m⁻² s⁻¹) | -7.60 | \[-10.68, -4.12\] |
-| Highest-level interaction: Mississippi minus Quebec (µmol m⁻² s⁻¹) | -10.53 | \[-16.70, -3.57\] |
-| Integrated curve, Quebec chilled-minus-control (µmol m⁻² s⁻¹ × µL/L) | -3236.6 | \[-5445.2, 85.5\] |
-| Integrated curve, Mississippi chilled-minus-control (µmol m⁻² s⁻¹ × µL/L) | -10579.1 | \[-15307.2, -6075.8\] |
-| Integrated-curve interaction: Mississippi minus Quebec (µmol m⁻² s⁻¹ × µL/L) | -7342.5 | \[-12263.2, -2421.8\] |
-
-The point estimates are more negative in Mississippi for both summaries.
-The Quebec intervals include zero; the other displayed intervals do not.
-With three pairs per origin, these resampling intervals are descriptive
-and unstable, not a substitute for a design-appropriate inferential
-analysis or a basis for a population claim.
-
-## Reproduce the offline report
-
-The example folder contains the authored replay, two analysis scripts,
-the static plan, source notes, and a generated illustration:
-
-``` r
-
-example_dir <- system.file("examples", "enriched-research", package = "tempest")
-list.files(example_dir, recursive = TRUE)
-```
-
-Run the driver with a new output directory. It uses the actual
+When a research question calls for calculations and figures—not just
+prose— Tempest can pair a completed STORM report or Co-STORM session
+with reproducible R analyses and conceptual illustrations. The original
+research remains the evidence authority while
 [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
-path and checks the result with
-[`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md):
+produces a separate, self-contained HTML article and integrity-checked
+bundle.
+
+**Inspect a published live report:** see the [hosted CO2 grass
+experiment
+report](https://jameshwade.github.io/tempest/live-research/index.md)
+with executed charts, downloadable CSVs, source notes, and provenance
+records.
+
+## Launch the Researcher app
+
+[`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
+wraps this workflow in a dedicated Shiny app with starter briefs,
+optional R code execution and image generation, selectable host tools
+and MCP servers, a searchable library of saved reports, and optional
+Graft project memory:
 
 ``` r
 
-Rscript <- file.path(R.home("bin"), "Rscript")
-system2(
-  Rscript,
-  c(file.path(example_dir, "run-example.R"), "co2-enriched-report")
+library(tempest)
+
+tempest_researcher_app(
+  output_dir = "research-reports",
+  report_library = TRUE,
+  graft_store = "research-memory"
 )
 ```
 
-The driver creates a valid completed STORM product with
-[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md)
-using the authored replay chat and local source records. It does not
-forge a product object or call the network. The analysis then reads the
-installed [`datasets::CO2`](https://rdrr.io/r/datasets/zCO2.html) data.
-The response-curve task also writes the exact input rows to
-`co2-input.csv`; report hashes cover that file, the pair mappings,
-output tables, code, plot, original report, and illustration. The bundle
-assigns safe names to outputs; each task’s `file_map` in `report.json`
-maps original filenames to their archived paths.
+Key capabilities in the app:
 
-The `run-example.R` callback copies the bundled generated image into the
-task directory. It does not contact an image API, so the example runs
-offline. The report labels the image as AI-generated conceptual artwork
-and provides alt text; it depicts neither the original apparatus nor a
-measured outcome.
+- **Editable starter briefs**: pick a template (evidence comparison,
+  public-data analysis, or visual explainer), edit the prompt, and
+  launch research in an isolated background R process that you can
+  cancel cleanly at any time.
+- **Evidence navigator**: inspect recorded sources alongside which
+  analysis and illustration tasks succeeded, failed, or were skipped.
+- **Saved-report library (`report_library = TRUE`)**: search and reopen
+  previously published reports for reading or ZIP download. When
+  `graft_store` is set, each report displays its live Graft status
+  (`Accepted`, `Provisional`, `Superseded`, or `Withdrawn`).
+- **Project memory (`graft_store = ...`)**: review any completed report
+  and explicitly accept it into a named Graft stream, record a
+  correction, or withdraw it. New runs can consult accepted streams
+  through read-only
+  [`graft::graft_tools()`](https://jameshwade.github.io/graft/reference/graft_tools.html)
+  or pin one stream as a comparison basis.
+- **Ragnar corpus support**: if `config` includes a `ragnar` store, each
+  job runs against a private copy of the existing corpus so runs stay
+  isolated and never corrupt the host database.
 
-## Use a deterministic enrichment plan
+### Connect custom R tools and MCP servers
 
-A plan is a named list with exactly four fields. Every analysis names
-its source IDs, question, R code, and assumptions. Every illustration
-includes a prompt, caption, and alt text.
+Pass named zero-argument tool factories via `tools` so experts can query
+local datasets or internal APIs under Deputy’s read-only research
+permissions:
 
 ``` r
 
-list(
-  title = "Cold treatment, contrasting responses",
-  summary = "Proposed synthesis, not a new verified claim.",
-  analyses = list(list(
-    id = "high-co2-uptake",
-    title = "Paired plant contrast at the highest CO2 concentration",
-    question = "What are the within-origin paired uptake contrasts?",
-    code = paste(readLines("analysis/high-co2.R"), collapse = "\n"),
-    source_ids = source_ids,
-    assumptions = c("Use the original study's plant pairs.")
-  )),
-  illustrations = list(list(
-    id = "greenhouse-concept",
-    title = "Conceptual greenhouse scene",
-    prompt = "Conceptual barnyard grass artwork; no measurements or labels.",
-    alt = "Potted grass plants beside a cool greenhouse chamber.",
-    caption = "AI-generated conceptual artwork, not evidence."
-  ))
+tempest_researcher_app(
+  tools = list(plant_data = function() {
+    list(ellmer::tool(
+      function() as.data.frame(datasets::CO2),
+      name = "read_co2_data",
+      description = "Read the built-in CO2 plant experiment data",
+      arguments = list(),
+      annotations = ellmer::tool_annotations(
+        read_only_hint = TRUE,
+        open_world_hint = FALSE
+      )
+    ))
+  }),
+  mcp_config = "mcp.json",
+  output_dir = "research-reports",
+  report_library = TRUE,
+  graft_store = "research-memory"
 )
 ```
 
-The real plan in `plan.R` contains two analyses and one illustration,
-within the configured task budgets. Its `source_ids` come from the
-completed product’s `tempest_sources(research)$id` table. A supplied
-plan avoids model-based planning, which makes this fixture
-deterministic.
+For MCP servers, supply `mcp_config = "mcp.json"` (or upload a JSON file
+in the sidebar). Discovery lists available tools without enabling them;
+only servers owning the tools you explicitly select are connected when
+research starts.
 
-## Callbacks and code execution
+## Scripted workflow: `tempest_researcher()`
 
-[`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
-accepts injected planner, executor, and image callbacks. The R executor
-uses a fresh Deputy `RSession`; it captures text, warnings, plots, and
-files created under the task directory. It uses the local account’s R
-access and is not an operating-system sandbox. Set `allow_code = TRUE`
-only when you explicitly trust the code being executed. The fixture’s
-scripts are authored, bundled R code; model-proposed code needs review
-before granting that permission.
-
-``` r
-
-report <- tempest_enrich_report(
-  research,
-  output_dir = "co2-enriched-report",
-  plan = plan,
-  executor = tempest_r_executor(timeout = 120),
-  image_generator = local_image_copy_callback,
-  allow_code = TRUE,
-  max_analyses = 2L,
-  max_illustrations = 1L
-)
-```
-
-The image adapter \[tempest_image_generator()\] calls the OpenAI Images
-API when invoked and reads `OPENAI_API_KEY` at that time. Its callback
-and report metadata do not retain the key. An illustration failure does
-not erase a successful R analysis, and failed or skipped task results
-remain visible.
-
-## Keep research evidence separate from derived results
-
-The `research` member returned by
+From R scripts, call
 [`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
-is the canonical research product. The enriched report preserves its
-Markdown, source list, and run identity, then records each analysis
-status, output, code, and files. The summary is explicitly a proposed
-synthesis. Computed values belong to the reproducible analysis record;
-they do not change the original claims, publish accepted knowledge, or
-prove the original sources correct.
-
-[`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md)
-verifies that declared files match their SHA-256 hashes and rejects
-missing, extra, linked, or altered files:
-
-``` r
-
-checked <- tempest_read_enriched_report(report@path)
-checked@status
-checked@manifest$files
-```
-
-These hashes detect changes within the bundle. They are not a digital
-signature or proof of who created it.
-
-## Use the live Researcher workflow
-
-[`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
-runs normal STORM research, then enriches the completed product. Its
-`...` arguments go to
-[`tempest_run()`](https://jameshwade.github.io/tempest/reference/tempest_run.md);
-`enrichment` accepts the same options as
+to run STORM and enrich the result in one step. Code execution
+(`allow_code = FALSE`) and image generation stay opt-in—you can inspect
+the proposed `plan.json` and scripts first, then re-run
 [`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
-except for `x` and `output_dir`. Without an explicit plan, the
-configured model proposes a bounded plan from the report and its
-sources. The following example saves proposed analysis code without
-running it, and enables the live image adapter. It uses credentials and
-network access, and is therefore not run while this vignette builds.
+with a reviewed plan and `allow_code = TRUE`:
 
 ``` r
 
@@ -263,50 +114,104 @@ result <- tempest_researcher(
   )
 )
 
-result$research # Canonical completed research product
-result$report   # Separate, validated enriched report
+result$research # Canonical completed STORM product
+result$report   # Separate, integrity-checked enriched report
 ```
 
-For a reproducible live integration, supply a deterministic planner that
-chooses source IDs from the returned `sources$id` and uses reviewed
-local code. The automatically proposed plan is model output. Inspect
-`plan.json` and the saved analysis scripts before supplying a reviewed
-plan in a new
-[`tempest_enrich_report()`](https://jameshwade.github.io/tempest/reference/tempest_enrich_report.md)
-call with `allow_code = TRUE`.
+Verify any saved report directory later with
+[`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md),
+which checks every declared file against its SHA-256 digest in
+`manifest.json`:
 
-## A supervised live qualification report
+``` r
+
+checked <- tempest_read_enriched_report(result$report@path)
+checked@status
+```
+
+## Worked offline example: `datasets::CO2`
+
+The package includes a complete offline replay under
+`inst/examples/enriched-research/` analyzing chilling treatment and
+carbon uptake in *Echinochloa crus-galli*
+([`datasets::CO2`](https://rdrr.io/r/datasets/zCO2.html)). The numerical
+R analyses are real computations; the STORM dialogue is a deterministic
+replay fixture so you can inspect the entire pipeline without
+credentials or network access.
+
+### Study design notes
+
+The [R `datasets::CO2` help
+page](https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html)
+contains 84 rows across 12 plants (six Quebec, six Mississippi) measured
+over seven ambient CO2 concentrations. The original paper by Potvin,
+Lechowicz, and Tardif (1990), [*The Statistical Analysis of
+Ecophysiological Response Curves Obtained from Experiments Involving
+Repeated Measures*](https://doi.org/10.2307/1938276), establishes three
+details the worked example preserves explicitly:
+
+- Control and chilled plants were paired within origin before treatment
+  (Quebec: `Qn1–Qc3`, `Qn2–Qc1`, `Qn3–Qc2`; Mississippi: `Mn1–Mc3`,
+  `Mn2–Mc2`, `Mn3–Mc1`), so repeated concentrations are not treated as
+  independent plants.
+- Table 1 in the [authors’
+  copy](https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf)
+  labels concentration in µL/L (whereas the R help page says mL/L) and
+  sets the first level to 95 (Methods prose mentions 100); the example
+  flags both discrepancies explicitly.
+- Methods specify chilling as 14 hours at 7°C followed by 10 hours of
+  recovery at 20°C (the R help summarizes this as “chilled overnight”).
+
+### Executed paired contrasts
+
+The bundled scripts compute within-origin paired chilled-minus-control
+differences at the highest concentration and across the trapezoidal
+response curve area, with 20,000-draw seeded percentile bootstrap
+intervals (`seed = 20261114`). With only three pairs per origin, these
+intervals are descriptive summaries of this dataset rather than
+population-level inference:
+
+| Quantity | Estimate | 95% bootstrap interval |
+|----|---:|---:|
+| Highest level, Quebec chilled − control (µmol m⁻² s⁻¹) | −2.33 | \[−5.60, 1.70\] |
+| Highest level, Mississippi chilled − control (µmol m⁻² s⁻¹) | −12.87 | \[−17.10, −5.90\] |
+| Highest level, equal-origin average (µmol m⁻² s⁻¹) | −7.60 | \[−10.68, −4.12\] |
+| Highest-level interaction (Mississippi − Quebec) | −10.53 | \[−16.70, −3.57\] |
+| Integrated curve, Quebec chilled − control (µmol m⁻² s⁻¹ × µL/L) | −3236.6 | \[−5445.2, 85.5\] |
+| Integrated curve, Mississippi chilled − control (µmol m⁻² s⁻¹ × µL/L) | −10579.1 | \[−15307.2, −6075.8\] |
+| Integrated-curve interaction (Mississippi − Quebec) | −7342.5 | \[−12263.2, −2421.8\] |
+
+### Run the offline example yourself
+
+``` r
+
+example_dir <- system.file("examples", "enriched-research", package = "tempest")
+list.files(example_dir, recursive = TRUE)
+
+system2(
+  file.path(R.home("bin"), "Rscript"),
+  c(file.path(example_dir, "run-example.R"), "co2-enriched-report")
+)
+```
+
+The driver builds a deterministic plan naming exact `source_ids` from
+`tempest_sources(research)$id`, executes the two bundled R scripts via
+[`tempest_r_executor()`](https://jameshwade.github.io/tempest/reference/tempest_r_executor.md),
+attaches the bundled conceptual illustration labeled clearly as artwork
+rather than evidence, and validates the output bundle with
+[`tempest_read_enriched_report()`](https://jameshwade.github.io/tempest/reference/tempest_read_enriched_report.md).
+
+### About the hosted live qualification report
 
 The [hosted reader
-edition](https://jameshwade.github.io/tempest/live-research/index.html)
-links to the evidence briefing, executed analysis, and downloadable
-outputs. It was produced from a live research run using `gpt-6.1-sol`
-for the research roles, enrichment planning, and an additional
-reader-synthesis call, and `gpt-image-2.6-flare` for a conceptual
-illustration. The executed R analysis produced two charts and five CSV
-files; the report also includes the generated image.
-
-This was a supervised qualification with additional source preparation
-and review. The scanned 1990 paper was transcribed with OCR before the
-final run, a custom claim extractor was bounded to source-quoted claims,
-and the proposed plan and R code were reviewed. The model revised the
-plan after review, and a reader-synthesis rounding error was sent back
-for correction. These steps are documented with the report. This
-artifact is not an unattended benchmark or the expected output of a
-no-intervention
-[`tempest_researcher()`](https://jameshwade.github.io/tempest/reference/tempest_researcher.md)
-call.
-
-Its summary uses a different descriptive comparison from the offline
-paired replay above. It averages each plant’s uptake across all seven
-concentrations, then subtracts the nonchilled group mean from the
-chilled group mean within each origin: **−10.14** for Mississippi and
-**−3.58** for Quebec, in µmol m⁻² s⁻¹. The supplied live outputs do not
-include the plant-pair mapping, so these are unpaired plant-group
-averages, not paired treatment differences or contrasts at the highest
-concentration. They describe this small dataset and do not establish a
-population-level effect. OCR may contain transcription errors; the
-report also leaves the concentration-unit discrepancy unresolved.
+edition](https://jameshwade.github.io/tempest/live-research/index.md)
+was produced from a supervised live run (`gpt-6.1-sol` +
+`gpt-image-2.6-flare`) with human review of the OCR’d 1990 source,
+analysis plan, and synthesis rounding. Its descriptive unpaired group
+averages across all seven concentrations are **−10.14** for Mississippi
+and **−3.58** for Quebec (µmol m⁻² s⁻¹)—distinct from the paired
+contrasts in the offline example above. Every review step and limitation
+is recorded alongside the hosted report.
 
 ## References
 
@@ -316,93 +221,3 @@ report also leaves the concentration-unit discrepancy unresolved.
   analysis of ecophysiological response curves obtained from experiments
   involving repeated measures.” *Ecology*, 71(4), 1389–1400.
   [doi:10.2307/1938276](https://doi.org/10.2307/1938276).
-
-## Work in the dedicated app
-
-[`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
-provides a separate interface for this workflow. Enter a research brief,
-select a model and run limits, then inspect the resulting report in the
-app or download its portable bundle.
-
-``` r
-
-tempest_researcher_app(
-  model = "openai/gpt-6.1-sol",
-  report_library = TRUE,
-  output_dir = "research-reports"
-)
-```
-
-Choose a starter brief to draft a question, then edit it before
-starting. Open the evidence navigator to inspect sources and see which
-computations and illustrations completed. To revisit a report in a later
-session, select it in the report library and open it for reading or ZIP
-download. Enabling `report_library` gives all users of this app access
-to reports in the chosen output directory. Use a directory intended for
-that audience.
-
-If `config` includes a Ragnar store, each research job uses a private
-copy of its existing corpus and opens its own database connection. New
-chunks are ingested into that copy, not the host store. The copy is
-removed after the job; the completed report remains in `output_dir`.
-Embedding functions must work in a fresh R process without capturing
-open connections.
-
-### Add tools
-
-Pass named factories for host tools. A factory is invoked only when
-selected, and runs inside the research worker. It must construct fresh
-ellmer tool definitions without relying on open connections in the
-launching R session.
-
-``` r
-
-tempest_researcher_app(
-  tools = list(plant_data = function() {
-    list(ellmer::tool(
-      function() as.data.frame(datasets::CO2),
-      name = "read_co2_data",
-      description = "Read the built-in CO2 plant experiment data",
-      arguments = list(),
-      annotations = ellmer::tool_annotations(
-        read_only_hint = TRUE,
-        open_world_hint = FALSE
-      )
-    ))
-  }),
-  output_dir = "research-reports"
-)
-```
-
-### Connect MCP tools
-
-Supply `mcp_config = "mcp.json"`, or upload a configuration for the
-current app session. The JSON uses an `mcpServers` object with named
-server entries understood by Deputy’s supported mcptools client. Select
-servers, discover their tools, and select the individual tools to
-enable. No server is contacted just by uploading or reading
-configuration. Credentials stay in the host environment or private
-configuration and are not copied into the report bundle. Host tools
-remain responsible for the data they return.
-
-The application delegates transport and authentication to Deputy and
-mcptools; it does not implement a separate MCP protocol or OAuth flow.
-Deputy’s bridge is currently qualified for mcptools 1.0.2 and 1.0.3. An
-incompatible client or missing selected tool fails explicitly. Only
-servers owning selected tools are connected when research starts.
-
-Research tools retain Deputy’s existing research permissions. A
-selection does not override denied filesystem writes, shell commands, or
-other effects. Generic tool results provide research context and still
-need Tempest’s source and claim verification before they can support
-cited assertions. R analysis is a separate, explicit enrichment option
-and uses the local account’s access rather than an OS sandbox. Image
-generation uses the configured OpenAI image callback and requires
-`OPENAI_API_KEY`.
-
-The app is intended for trusted users: MCP configurations can start
-local programs, and tool factories execute host code. Each discovery or
-research job has its own worker process; cancellation and session
-closure terminate its process tree. Completed report directories are
-retained. The default output parent is temporary for the R session;
-choose a persistent `output_dir` to keep reports after R exits.

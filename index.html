@@ -4,30 +4,35 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>STORM and Co-STORM Research and Writing Agents for R • tempest</title>
+<title>tempest: Evidence-backed research agents for R • tempest</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
 <link rel="icon" sizes="any" href="favicon.ico">
 <link rel="manifest" href="site.webmanifest">
-<script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="lightswitch.js"></script><script src="deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<script src="deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="deps/Source_Sans_3-0.5.0/font.css" rel="stylesheet">
+<link href="deps/Fraunces-0.5.0/font.css" rel="stylesheet">
+<link href="deps/IBM_Plex_Mono-0.5.0/font.css" rel="stylesheet">
+<link href="deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="STORM and Co-STORM Research and Writing Agents for R">
-<meta name="description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, authoritative STORM and Co-STORM product flows, and scientific reports. It delegates execution to deputy, structured research programs to dsprrr, and accepted-knowledge publication to graft.">
-<meta property="og:description" content="Implements an R-native clone of the STORM and Co-STORM research-and-writing workflows using ellmer for LLM orchestration and shinychat for an interactive Shiny UI. Includes web retrieval tools, evidence tracking with citations, mind-map style topic planning, and evaluation helpers built on vitals. Tempest owns provisional scientific research state, claim-centered evidence, authoritative STORM and Co-STORM product flows, and scientific reports. It delegates execution to deputy, structured research programs to dsprrr, and accepted-knowledge publication to graft.">
+<script src="deps/headroom-0.11.0/headroom.min.js"></script><script src="deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="deps/search-1.0.0/fuse.min.js"></script><script src="deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="pkgdown.js"></script><meta property="og:title" content="tempest: Evidence-backed research agents for R">
+<meta name="description" content="Multi-perspective STORM and Co-STORM research agents, claim-by-span verification, reproducible R analyses, interactive apps, and reviewed project memory with graft.
+">
+<meta property="og:description" content="Multi-perspective STORM and Co-STORM research agents, claim-by-span verification, reproducible R analyses, interactive apps, and reviewed project memory with graft.
+">
 <meta property="og:image" content="https://jameshwade.github.io/tempest/logo.png">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -37,17 +42,20 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="articles/tempest.html">Get started</a></li>
-<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
-    <li><a class="dropdown-item" href="articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
-    <li><a class="dropdown-item" href="articles/ecosystem-demo.html">Research, review, retain, and reuse</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Start here</h6></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Guides</h6></li>
+    <li><a class="dropdown-item" href="articles/enriched-research.html">Enriched reports and the Researcher app</a></li>
+    <li><a class="dropdown-item" href="articles/research-memory.html">Research that remembers with Graft</a></li>
+    <li><a class="dropdown-item" href="articles/daily-briefing.html">Build a recurring decision briefing</a></li>
     <li><a class="dropdown-item" href="articles/scientific-review.html">Scientific review and evidence repair</a></li>
-    <li><a class="dropdown-item" href="articles/enriched-research.html">Enriching a research report with reproducible R analysis</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -55,6 +63,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JamesHWade/tempest/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -64,712 +80,228 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header">
-<img src="logo.png" class="logo" alt=""><h1 id="tempest-">tempest <a class="anchor" aria-label="anchor" href="#tempest-"></a>
+<img src="logo.png" class="logo" alt=""><h1 id="tempest">tempest<a class="anchor" aria-label="anchor" href="#tempest"></a>
 </h1>
 </div>
-<!-- badges: start -->
-
-<p>An R-native implementation of <a href="https://storm.genie.stanford.edu/" class="external-link">STORM</a> (Synthesis of Topic Outlines through Retrieval and Multi-perspective Question Asking) and <a href="https://github.com/stanford-oval/storm" class="external-link">Co-STORM</a> from Stanford’s STORM project.</p>
-<p>This package reproduces the core workflow primitives:</p>
-<ul>
-<li>
-<strong>Multi-perspective research</strong> with selected or automatically generated expert profiles</li>
-<li>
-<strong>Provisional evidence workspaces</strong> with citations and source attribution</li>
-<li>
-<strong>Pair-level claim support</strong> with exact claim, span, and source bindings</li>
-<li>
-<strong>Research manifests</strong> that identify configuration, programs, knowledge snapshots, traces, and deliverables</li>
-<li>
-<strong>Review-only Graft promotion</strong> with immutable acceptance receipts</li>
-<li>
-<strong>Resumable research state</strong> for scripted STORM and interactive Co-STORM</li>
-<li>
-<strong>Two-step outline refinement</strong> and <strong>at-a-glance decision synthesis</strong>
-</li>
-<li>
-<strong>Query decomposition</strong> and <strong>semantic fact retrieval</strong>
-</li>
-<li>
-<strong>Parallel section writing</strong> from already-grounded evidence (optional)</li>
-<li>
-<strong>Interactive multi-agent moderation</strong> with mind map (Co-STORM)</li>
-<li>
-<strong>Deterministic dialogue projections</strong> with an explicit expert roster</li>
-<li>
-<strong>Automated evaluation</strong> with simulated users</li>
-</ul>
-<p>Built on the R AI ecosystem:</p>
-<ul>
-<li>
-<a href="https://github.com/tidyverse/ellmer" class="external-link">ellmer</a> — LLM orchestration: tool calling, structured output, streaming</li>
-<li>
-<a href="https://github.com/tidyverse/ragnar" class="external-link">ragnar</a> — RAG: chunking, embedding, semantic retrieval</li>
-<li>
-<a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> — structured extraction/generation modules</li>
-<li>
-<a href="https://github.com/JamesHWade/deputy" class="external-link">Deputy</a> — persistent, permission-bounded Co-STORM agent execution</li>
-<li>
-<a href="https://github.com/JamesHWade/graft" class="external-link">graft</a> — exact retained evidence and explicit review decisions</li>
-<li>
-<a href="https://github.com/JamesHWade/shinymcp" class="external-link">shinymcp</a> — interactive research cards and read-only MCP tools</li>
-<li>
-<a href="https://github.com/posit-dev/shinychat" class="external-link">shinychat</a> — interactive chat UI</li>
-<li>
-<a href="https://github.com/tidyverse/vitals" class="external-link">vitals</a> — evaluation tasks</li>
-</ul>
+<div class="tempest-hero">
+<p class="tempest-eyebrow">
+STORM &amp; Co-STORM research agents for R
+</p>
+<h2 data-toc-skip>
+Research that checks its sources<br>and remembers what your team reviewed.
+</h2>
+<p class="tempest-hero-copy">
+Tempest runs multi-perspective research workflows in R, verifies every claim against exact source quotes, pairs reports with reproducible R analyses, and connects to <strong>graft</strong> so reviewed findings carry cleanly into your next session, app, or MCP client.
+</p>
+<div class="tempest-actions">
+<p><a class="btn btn-primary" href="articles/tempest.html">Get started</a> <a class="btn btn-outline-secondary" href="articles/research-memory.html">Research that remembers with Graft</a> <a class="btn btn-outline-secondary" href="live-research/index.html">Read a live report</a></p>
+</div>
+</div>
 <div class="section level2">
-<h2 id="try-the-ecosystem-together">Try the ecosystem together<a class="anchor" aria-label="anchor" href="#try-the-ecosystem-together"></a>
+<h2 id="how-tempest-works">How Tempest works<a class="anchor" aria-label="anchor" href="#how-tempest-works"></a>
+</h2>
+<div class="tempest-steps">
+<div class="tempest-step">
+<span class="tempest-step-num">Step 1</span>
+<h3>
+Investigate from multiple angles
+</h3>
+<p>
+Run a scripted <strong>STORM</strong> pipeline or hold an interactive <strong>Co-STORM</strong> panel discussion. Specialists search the web, your <code>ragnar</code> store, host R tools, or MCP servers.
+</p>
+</div>
+<div class="tempest-step">
+<span class="tempest-step-num">Step 2</span>
+<h3>
+Verify claims &amp; run analyses
+</h3>
+<p>
+Every claim is checked against an exact source span. Optionally add scientific claim review, targeted evidence repair, reproducible R computations, and conceptual illustrations.
+</p>
+</div>
+<div class="tempest-step">
+<span class="tempest-step-num">Step 3</span>
+<h3>
+Review &amp; remember with Graft
+</h3>
+<p>
+Nothing becomes organizational knowledge automatically. Review reports in the app, explicitly accept or withdraw streams in <strong>graft</strong>, and let future agents consult only what is currently approved.
+</p>
+</div>
+</div>
+</div>
+<div class="section level2">
+<h2 id="quick-start-in-r">Quick start in R<a class="anchor" aria-label="anchor" href="#quick-start-in-r"></a>
 </h2>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu">tempest</span><span class="fu">::</span><span class="fu"><a href="reference/tempest_app.html">tempest_app</a></span><span class="op">(</span>demo <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>The offline demonstration runs actual deputy agents and dsprrr stages against synthetic evidence, shows a shinymcp research card, and lets you explicitly accept, correct, withdraw, and reopen exact evidence through graft. No model credentials or network requests are needed after installation. Install the optional shinymcp, graft, shiny, bslib, and callr packages to run it.</p>
-<p>Use <code>tempest_mcp_app(result)</code> with your own completed STORM or Co-STORM research to give people and models the same read-only claim and evidence inspection. See <a href="https://jameshwade.github.io/tempest/articles/ecosystem-demo.html">the ecosystem walkthrough</a>.</p>
-</div>
-<div class="section level2">
-<h2 id="reuse-retained-artifacts">Reuse retained artifacts<a class="anchor" aria-label="anchor" href="#reuse-retained-artifacts"></a>
-</h2>
-<p><code>tempest_artifact_knowledge(selection, contents)</code> supplies exact retained evidence without a Graft view. The host checks current eligibility and resolves the bytes; Tempest checks complete selection coverage, SHA-256 digests, allowed evidence classes, and exact declared dependencies. STORM and Co-STORM retain this input in their research workspace and current save/resume formats. Saved evidence cannot register tools or bind executable procedures.</p>
-<p>See <a href="https://jameshwade.github.io/tempest/articles/artifact-knowledge.html">artifact knowledge</a> for the input contract and a local example. This is an evidence consumer API; it does not implement artifact storage, approval, withdrawal, or future acceptance.</p>
-</div>
-<div class="section level2">
-<h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
-</h2>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"JamesHWade/tempest"</span><span class="op">)</span></span></code></pre></div>
-<p>After installation, run <code><a href="articles/tempest.html">vignette("tempest", package = "tempest")</a></code> for the package tour and a first STORM workflow.</p>
-</div>
-<div class="section level2">
-<h2 id="setup">Setup<a class="anchor" aria-label="anchor" href="#setup"></a>
-</h2>
-<div class="section level3">
-<h3 id="llm-provider-credentials">LLM provider credentials<a class="anchor" aria-label="anchor" href="#llm-provider-credentials"></a>
-</h3>
-<p>By default, Tempest creates OpenAI clients with <code><a href="https://ellmer.tidyverse.org/reference/chat_openai.html" class="external-link">ellmer::chat_openai()</a></code>. Which credential it needs depends on the installed ellmer:</p>
-<ul>
-<li>
-<p><strong>Released ellmer (0.5.0 or later from CRAN)</strong> authenticates with an API key. Set it outside your R source files:</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Sys.setenv.html" class="external-link">Sys.setenv</a></span><span class="op">(</span>OPENAI_API_KEY <span class="op">=</span> <span class="st">"&lt;your key&gt;"</span><span class="op">)</span></span></code></pre></div>
-</li>
-<li><p><strong>ellmer with the subscription-authentication port</strong> (<code>chat_openai(auth = )</code>, tidyverse/ellmer#1067) lets Tempest pass <code>auth = "codex"</code> and reuse the file-backed ChatGPT subscription managed by an installed Codex CLI; no <code>OPENAI_API_KEY</code> is required. If Codex has not stored file-backed credentials, run <code>codex login -c 'cli_auth_credentials_store="file"'</code>.</p></li>
-</ul>
-<p>Tempest detects which it has and tells you once per session when it falls back to the API key. Alternative providers and custom chat factories use the credential mechanism configured for that provider.</p>
-</div>
-<div class="section level3">
-<h3 id="search-provider">Search provider<a class="anchor" aria-label="anchor" href="#search-provider"></a>
-</h3>
-<p>By default, <code>tempest</code> uses <strong>native provider web search</strong> when available (OpenAI, Anthropic, Google). This leverages each provider’s built-in web search capabilities for better results.</p>
-<p>To use alternative search providers:</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
-<span>  search_provider <span class="op">=</span> <span class="st">"wikipedia"</span>  <span class="co"># or "you", "bing", "serper", "brave", "duckduckgo", "tavily", "searxng", "google", "azure_ai_search"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Provider-specific API keys for alternative search:</p>
-<ul>
-<li>Wikipedia: no API key required (fallback when native not available)</li>
-<li>You.com: set <code>YDC_API_KEY</code>
-</li>
-<li>Bing: set <code>BING_SEARCH_API_KEY</code>
-</li>
-<li>Serper: set <code>SERPER_API_KEY</code>
-</li>
-<li>Brave: set <code>BRAVE_API_KEY</code>
-</li>
-<li>DuckDuckGo: no API key required</li>
-<li>Tavily: set <code>TAVILY_API_KEY</code>
-</li>
-<li>SearXNG: set <code>SEARXNG_API_URL</code>; optionally set <code>SEARXNG_API_KEY</code>
-</li>
-<li>Google Custom Search: set <code>GOOGLE_SEARCH_API_KEY</code> and <code>GOOGLE_CSE_ID</code>
-</li>
-<li>Azure AI Search: set <code>AZURE_AI_SEARCH_API_KEY</code>, <code>AZURE_AI_SEARCH_ENDPOINT</code>, and <code>AZURE_AI_SEARCH_INDEX_NAME</code>
-</li>
-</ul>
-<p>Completed STORM products are read through <code><a href="reference/tempest_report.html">tempest_report()</a></code>, <code><a href="reference/tempest_sources.html">tempest_sources()</a></code>, <code><a href="reference/tempest_claims.html">tempest_claims()</a></code>, <code><a href="reference/tempest_claim_supports.html">tempest_claim_supports()</a></code>, and <code><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code>. Internal manifests, mutable workspaces, retrievers, and state remain implementation details used to validate those reads. A Co-STORM session exposes only its supported operations and read-only projections. Retained artifact evidence enters through <code><a href="reference/tempest_artifact_knowledge.html">tempest_artifact_knowledge()</a></code>; <code><a href="reference/tempest_reuse_artifact_research.html">tempest_reuse_artifact_research()</a></code> rechecks Graft decisions and host eligibility. New research remains provisional until the host explicitly reviews and accepts it.</p>
-<p>Internally, every evidence value is one exact <code>TempestResource</code>. Retriever fetches, provider-native tools, caches, and restored products must agree on that shape. <code><a href="reference/tempest_sources.html">tempest_sources()</a></code> returns a read-only presentation table rather than a writable evidence object, and Tempest provides no legacy list conversion path.</p>
-<p>Co-STORM moderator and expert chats run through required persistent Deputy agents. Tempest disables ambient file, shell, R, and package-install authority at that boundary and allowlists only the Tempest tools already attached to each chat. Web authority is limited to that frozen tool surface, including an explicit provider-native search tool when configured. Each product-owned Deputy session identifier is passed to the Agent constructor and checked against the live runtime before use. Session persistence stores credential-safe opaque run, session, agent, stage, role, expert, and correlation references; it never serializes a Deputy Agent or provider credentials.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="verify-and-promote-research-evidence">Verify and promote research evidence<a class="anchor" aria-label="anchor" href="#verify-and-promote-research-evidence"></a>
-</h2>
-<p>Claim verification is authoritative at the exact claim-by-evidence-span pair. Publication replaces the complete support set atomically, and <code><a href="reference/tempest_claim_supports.html">tempest_claim_supports()</a></code> exposes each deterministic pair identity, claim text, evidence-span quote and location, source binding, status, score, and rationale. Claim-level status and citation-audit tables are derived views of those records; they are not separate evidence authority.</p>
-<p>A succeeded STORM product can be packaged for explicit Graft review:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">supports</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_promotion_bundle.html">tempest_promotion_bundle</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="va">trusted_bundle_id</span> <span class="op">&lt;-</span> <span class="va">bundle</span><span class="op">@</span><span class="va">bundle_id</span></span>
-<span><span class="fu"><a href="reference/tempest_save_promotion_bundle.html">tempest_save_promotion_bundle</a></span><span class="op">(</span><span class="va">bundle</span>, <span class="st">"promotion/grid-battery-recycling"</span><span class="op">)</span></span>
-<span><span class="va">bundle</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_read_promotion_bundle.html">tempest_read_promotion_bundle</a></span><span class="op">(</span></span>
-<span>  <span class="st">"promotion/grid-battery-recycling"</span>,</span>
-<span>  expected_bundle_id <span class="op">=</span> <span class="va">trusted_bundle_id</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_store.html" class="external-link">graft_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">store</span><span class="op">)</span></span>
-<span><span class="co"># The host explicitly reviews the complete evidence and report.</span></span>
-<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_accept.html" class="external-link">graft_accept</a></span><span class="op">(</span></span>
-<span>  <span class="va">store</span>, <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_read_selection.html" class="external-link">graft_read_selection</a></span><span class="op">(</span><span class="va">store</span>, <span class="va">selection</span><span class="op">)</span>, <span class="st">"battery-recycling"</span>,</span>
-<span>  expected <span class="op">=</span> <span class="cn">NULL</span>, key <span class="op">=</span> <span class="st">"review-1"</span>,</span>
-<span>  actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Evidence reviewed"</span>, purpose <span class="op">=</span> <span class="st">"research"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Graft retains exact bytes and decision history. Tempest owns the scientific record contract and verifies report, source, span, claim, support, and program provenance. No graph schema compiler or native database is required.</p>
-<p>Promotion accepts only a completed <code><a href="reference/tempest_run.html">tempest_run()</a></code> result or a succeeded, quiescent <code>TempestSession</code>. A loose Workspace, Manifest, or StageRecord tuple cannot reconstruct publication authority. The bundle contains the selected Sources, Claims, EvidenceSpans, ClaimSupports, and exact extraction and verification ProgramArtifacts. Its closed proof projection retains the exact resources, claims, spans, and supports needed to recompute each retained StageRecord digest. A selection must include every output bound by each retained extraction or verification record; Tempest rejects partial stage-output selection instead of packaging unselected evidence. Publishing retains a candidate: Tempest never records host acceptance itself. The promotion directory is a closed current-format bundle, its destination must not already exist, and any older or extra shape is rejected. Reading requires the original bundle id as an out-of-band trust pin; checksums stored inside the directory establish internal consistency but are not a signature. Research promotion never creates executable authority; stored program references are provenance only.</p>
-</div>
-<div class="section level2">
-<h2 id="review-a-completed-run">Review a completed run<a class="anchor" aria-label="anchor" href="#review-a-completed-run"></a>
-</h2>
-<p>For an independent scientific review before publication, enable it in the configuration used by either STORM or Co-STORM:</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
-<span>  research_review <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  repair_evidence <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  max_review_claims <span class="op">=</span> <span class="fl">5</span>,</span>
-<span>  review_concurrency <span class="op">=</span> <span class="fl">2</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Your research question"</span>, config <span class="op">=</span> <span class="va">config</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/tempest_claim_reviews.html">tempest_claim_reviews</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
-<p>The report retains confirmed concerns, dismissed concerns, unresolved questions, and cases where no issue was found. Each finding binds to captured source excerpts and exact quotes. Evidence repair permits one targeted search and at most two fetched sources per selected claim. These advisory findings remain separate from citation support and accepted knowledge. See <a href="https://jameshwade.github.io/tempest/articles/scientific-review.html">Scientific review and evidence repair</a> for limits, persistence, and evaluation guidance.</p>
-<p><code><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review()</a></code> reconstructs a bounded, read-only review from one exact completed STORM result or succeeded, quiescent Co-STORM session:</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">review</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
-<span><span class="va">proposed_review</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span></span>
-<span>  <span class="va">result</span>,</span>
-<span>  promotion_bundle <span class="op">=</span> <span class="va">bundle</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">artifact_store</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_store.html" class="external-link">graft_store</a></span><span class="op">(</span><span class="st">"research-artifacts"</span>, create <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">selection</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research</a></span><span class="op">(</span><span class="va">result</span>, <span class="va">artifact_store</span><span class="op">)</span></span>
-<span><span class="va">accepted</span> <span class="op">&lt;-</span> <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_accept.html" class="external-link">graft_accept</a></span><span class="op">(</span></span>
-<span>  <span class="va">artifact_store</span>, <span class="fu">graft</span><span class="fu">::</span><span class="fu"><a href="https://jameshwade.github.io/graft/reference/graft_read_selection.html" class="external-link">graft_read_selection</a></span><span class="op">(</span><span class="va">artifact_store</span>, <span class="va">selection</span><span class="op">)</span>,</span>
-<span>  <span class="st">"research"</span>, expected <span class="op">=</span> <span class="cn">NULL</span>, key <span class="op">=</span> <span class="st">"review-1"</span>,</span>
-<span>  actor <span class="op">=</span> <span class="st">"reviewer"</span>, reason <span class="op">=</span> <span class="st">"Reviewed the evidence"</span>, purpose <span class="op">=</span> <span class="st">"briefing"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">accepted_review</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_trajectory_review.html">tempest_trajectory_review</a></span><span class="op">(</span></span>
-<span>  <span class="va">result</span>, store <span class="op">=</span> <span class="va">artifact_store</span>, selection <span class="op">=</span> <span class="va">selection</span>,</span>
-<span>  stream <span class="op">=</span> <span class="st">"research"</span>, decision <span class="op">=</span> <span class="va">accepted</span><span class="op">@</span><span class="va">id</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The ten-field value identifies the product and contains ordered StageRecord summaries, safe terminal Deputy identities, the fixed ProgramSet references, input and optional promotion knowledge, evidence identities, explicit joins, and structural findings. Variable lanes retain at most 250 records and report the complete count and digest when rows are omitted. The review contains no prompts, responses, source text, paths, credentials, live objects, or capabilities, and it is reconstructable rather than persisted.</p>
-<p>Every join names its relation and proof. Exact run, stage, program, artifact selection, bundle, publication, and recorded decision identities establish explicit bindings; <code>correlation_id</code> can establish only <code>correlated_with</code> with <code>correlation_only</code> proof. It never establishes authorship or causation. Mutable progress events are intentionally outside the review identity. A promotion bundle or publication is shown as proposed; an exact recorded accept decision is shown as historically accepted. Withdrawal does not erase that history or alter the original input selection. An input <code>reported_decision</code> is unverified host provenance, not authenticated acceptance; malformed metadata is omitted from the projection. Current reuse still requires fresh admission through <code><a href="reference/tempest_reuse_artifact_research.html">tempest_reuse_artifact_research()</a></code>. Schema 3 directly replaces native-snapshot and receipt-based reviews; cross-product publications are rejected.</p>
-<p>The current persistence line accepts only <code>ResearchWorkspace</code> snapshot schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 with state schema 5, ProgramSet schema 2, research-manifest schema 5, StageRecord output-digest payload schema 3, and promotion-bundle schema 2. Readers reject every other version; missing fields, extra fields, and values that only become valid after coercion are errors.</p>
-</div>
-<div class="section level2">
-<h2 id="product-boundary">Product boundary<a class="anchor" aria-label="anchor" href="#product-boundary"></a>
-</h2>
-<p>Tempest 0.2 supports only the STORM and Co-STORM product APIs. Use <code><a href="reference/tempest_run.html">tempest_run()</a></code> for scripted research and <code><a href="reference/tempest_session.html">tempest_session()</a></code> for interactive research. The former application-neutral workflow, runtime, capability, connection, skill, deliverable, and artifact kernel and its symbols have been removed. There is no compatibility or generic-kernel migration layer.</p>
-<p>Product bundles contain the exact research manifest, provisional workspace, product state, report, and retained artifact selection. Fixed scientific transformations carry dsprrr program identity, while open-ended agent calls carry Deputy execution identity. Those identities support correlation and audit joins only; they do not claim that an execution caused, authored, or validated report content.</p>
-</div>
-<div class="section level2">
-<h2 id="enriched-research-reports">Enriched research reports<a class="anchor" aria-label="anchor" href="#enriched-research-reports"></a>
-</h2>
-<p>Turn a completed research product into a portable HTML report with computed figures, inspectable R code, source links, and clearly labeled AI illustrations:</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">delivery</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_researcher.html">tempest_researcher</a></span><span class="op">(</span></span>
-<span>  <span class="st">"What does the available evidence say about my research question?"</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"reports/my-research"</span>,</span>
-<span>  config <span class="op">=</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  enrichment <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    allow_code <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>    executor <span class="op">=</span> <span class="fu"><a href="reference/tempest_r_executor.html">tempest_r_executor</a></span><span class="op">(</span>timeout <span class="op">=</span> <span class="fl">60</span><span class="op">)</span>,</span>
-<span>    image_generator <span class="op">=</span> <span class="fu"><a href="reference/tempest_image_generator.html">tempest_image_generator</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>    max_analyses <span class="op">=</span> <span class="fl">3</span>,</span>
-<span>    max_illustrations <span class="op">=</span> <span class="fl">2</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/utils/browseURL.html" class="external-link">browseURL</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">delivery</span><span class="op">$</span><span class="va">report</span><span class="op">@</span><span class="va">path</span>, <span class="st">"index.html"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/tempest_read_enriched_report.html">tempest_read_enriched_report</a></span><span class="op">(</span><span class="va">delivery</span><span class="op">$</span><span class="va">report</span><span class="op">@</span><span class="va">path</span><span class="op">)</span></span></code></pre></div>
-<p>The planner proposes analyses only when accessible data support them. Code execution is disabled by default; the built-in R executor runs trusted code with your account’s access in a Deputy process, not an OS sandbox. The image provider uses <code>OPENAI_API_KEY</code>. Supply a reviewed <code>plan</code> to avoid a planning model call, and inject your own execution or image providers when needed. <code>tempest_enrich_report(result, ...)</code> also accepts a finalized Co-STORM session.</p>
-<p>Reports retain the original research and its publication authority. Calculations and illustrations do not become verified claims or accepted knowledge. Failed or skipped tasks yield a visible <code>partial</code> report. Each new report directory contains the plan, source ledger, scripts, outputs, images, and file checksums. The default HTML uses a spacious article layout with a readable text column, wide figures, and expandable methods. Styling is bundled into the report, so reading it does not require a server, web fonts, or JavaScript. ### Dedicated researcher app</p>
-<p>Launch a focused app for research briefs, optional computations and illustrations, and the resulting article:</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="st">"openai/gpt-6.1-sol"</span>,</span>
-<span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span>,</span>
-<span>  mcp_config <span class="op">=</span> <span class="st">"mcp.json"</span> <span class="co"># optional</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Choose a starter brief to draft a question, then edit it before starting. Open the evidence navigator to inspect sources and see which computations and illustrations completed. To revisit a report in a later session, select it in the report library and open it for reading or ZIP download. Enabling <code>report_library</code> gives all users of this app access to reports in the chosen output directory. Use a directory intended for that audience.</p>
-<p>The app discovers tools from the MCP servers you select. Choose individual tools before starting research; discovery alone does not enable them. You can upload a session-local MCP JSON configuration without changing the host configuration. Host-supplied R tools are added as named, zero-argument factories through the <code>tools</code> argument. Both kinds of tool are created in an isolated run worker and attached to research experts under the existing Deputy permission policy.</p>
-<p>Research runs in the background and can be cancelled. R code execution and image generation are separate opt-ins. Completed reports open in the app and download as portable bundles containing their evidence, figures, code, and checksums. See <code><a href="reference/tempest_researcher_app.html">?tempest_researcher_app</a></code> for tool factories, MCP compatibility, and the trusted-user deployment boundary.</p>
-<p>See <code><a href="articles/enriched-research.html">vignette("enriched-research")</a></code> for the plan contract and an offline botanical example with real R calculations, repeated-measures limitations, and a generated illustration.</p>
-<p>See the <a href="https://jameshwade.github.io/tempest/live-research/index.html">supervised live qualification report</a> for a reader edition built from a live Tempest research run. It records the additional source preparation, review, extraction, analysis, and reader synthesis used for that example; it is not an unattended benchmark or the expected output of a bare <code><a href="reference/tempest_researcher.html">tempest_researcher()</a></code> call.</p>
-</div>
-<div class="section level2">
-<h2 id="scripted-storm">Scripted STORM<a class="anchor" aria-label="anchor" href="#scripted-storm"></a>
-</h2>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># 1. Run a scripted STORM report</span></span>
 <span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
-<span>  <span class="co"># search_provider = "native" is the default (uses OpenAI/Anthropic/Google native search)</span></span>
-<span>  models <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    coordinator <span class="op">=</span> <span class="st">"openai/gpt-5.6-sol"</span>,</span>
-<span>    expert <span class="op">=</span> <span class="st">"openai/gpt-5.6-luna"</span>,</span>
-<span>    writer <span class="op">=</span> <span class="st">"openai/gpt-5.6-sol"</span>,</span>
-<span>    judge <span class="op">=</span> <span class="st">"openai/gpt-5.6-luna"</span>,</span>
-<span>    mindmap <span class="op">=</span> <span class="st">"openai/gpt-5.6-luna"</span></span>
-<span>  <span class="op">)</span></span>
+<span>  models <span class="op">=</span> <span class="st">"openai/gpt-5.6-luna"</span>,</span>
+<span>  search_provider <span class="op">=</span> <span class="st">"wikipedia"</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
+<span>  <span class="st">"Technical and policy barriers to grid-scale battery recycling"</span>,</span>
+<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
+<span>  n_experts <span class="op">=</span> <span class="fl">2</span>,</span>
+<span>  max_questions_per_perspective <span class="op">=</span> <span class="fl">2</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Life cycle assessment of lithium-ion batteries"</span>, config <span class="op">=</span> <span class="va">cfg</span>, verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>Hosts can supply the same immutable scientific profiles used by generated expert panels:</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">recycling_expert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Dr. Rivera"</span>,</span>
-<span>  title <span class="op">=</span> <span class="st">"Battery recovery specialist"</span>,</span>
-<span>  description <span class="op">=</span> <span class="st">"Studies process yield, safety, and industrial scale-up."</span>,</span>
-<span>  instructions <span class="op">=</span> <span class="st">"Separate demonstrated performance from projections."</span>,</span>
-<span>  focus_areas <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"hydrometallurgy"</span>, <span class="st">"process safety"</span><span class="op">)</span>,</span>
-<span>  initial_questions <span class="op">=</span> <span class="st">"Which recovery steps constrain full-scale yield?"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Life cycle assessment of lithium-ion batteries"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  experts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">recycling_expert</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Generated and supplied experts use the same canonical constructor. Tempest derives <code>expert_id</code> and <code>version</code> from its six authored fields. Profiles do not contain runtime clients, tools, capabilities, or roster state.</p>
-<div class="section level3">
-<h3 id="experimental-opentelemetry-traces">Experimental OpenTelemetry traces<a class="anchor" aria-label="anchor" href="#experimental-opentelemetry-traces"></a>
-</h3>
-<p>Tempest can project bounded STORM, stage-execution, and Co-STORM moderator-completion, turn-commit, warmup, and report traces through a provider configured by the host. Start R with the exact Tempest-only scope and generative AI content capture disabled:</p>
-<div class="sourceCode" id="cb12"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb12-1"><a href="#cb12-1" tabindex="-1"></a><span class="va">OTEL_R_EMIT_SCOPES</span><span class="op">=</span>io.github.jameshwade.tempest <span class="dt">\</span></span>
-<span id="cb12-2"><a href="#cb12-2" tabindex="-1"></a><span class="va">OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</span><span class="op">=</span>false <span class="dt">\</span></span>
-<span id="cb12-3"><a href="#cb12-3" tabindex="-1"></a><span class="ex">R</span></span></code></pre></div>
-<p>Then opt in for that R process before starting a run:</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>tempest.otel.enabled <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>The integration is experimental and off by default. Tempest does not configure the OpenTelemetry provider, exporter, endpoint, credentials, or shutdown; the host owns those settings. The Tempest projection excludes prompts, responses, queries, evidence, source content, URLs, paths, identifiers, and progress payloads.</p>
-<p>Set the privacy environment before starting R and any Mirai workers. The exact Tempest-only scope suppresses automatic Shiny, Mirai, ellmer, and httr2 spans, which are separate telemetry contracts that Tempest has not audited. In particular, httr2 records the complete request URL as <code>url.full</code>. Tempest’s Google Custom Search request places both <code>GOOGLE_SEARCH_API_KEY</code> and the research query in URL query parameters, so enabling the httr2 scope could expose a credential and research content. Do not broaden the supported scope without a separate privacy review.</p>
-<div class="section level4">
-<h4 id="local-otlphttp-collector">Local OTLP/HTTP Collector<a class="anchor" aria-label="anchor" href="#local-otlphttp-collector"></a>
-</h4>
-<p>Install <a href="https://otelsdk.r-lib.org/reference/collecting.html" class="external-link"><code>otelsdk</code></a> in the host environment, then save this traces-only Collector configuration as <code>otel-collector.yaml</code>:</p>
-<div class="sourceCode" id="cb14"><pre class="sourceCode yaml"><code class="sourceCode yaml"><span id="cb14-1"><a href="#cb14-1" tabindex="-1"></a><span class="fu">receivers</span><span class="kw">:</span></span>
-<span id="cb14-2"><a href="#cb14-2" tabindex="-1"></a><span class="at">  </span><span class="fu">otlp</span><span class="kw">:</span></span>
-<span id="cb14-3"><a href="#cb14-3" tabindex="-1"></a><span class="at">    </span><span class="fu">protocols</span><span class="kw">:</span></span>
-<span id="cb14-4"><a href="#cb14-4" tabindex="-1"></a><span class="at">      </span><span class="fu">http</span><span class="kw">:</span></span>
-<span id="cb14-5"><a href="#cb14-5" tabindex="-1"></a><span class="at">        </span><span class="fu">endpoint</span><span class="kw">:</span><span class="at"> 0.0.0.0:4318</span></span>
-<span id="cb14-6"><a href="#cb14-6" tabindex="-1"></a></span>
-<span id="cb14-7"><a href="#cb14-7" tabindex="-1"></a><span class="fu">exporters</span><span class="kw">:</span></span>
-<span id="cb14-8"><a href="#cb14-8" tabindex="-1"></a><span class="at">  </span><span class="fu">debug</span><span class="kw">:</span></span>
-<span id="cb14-9"><a href="#cb14-9" tabindex="-1"></a><span class="at">    </span><span class="fu">verbosity</span><span class="kw">:</span><span class="at"> detailed</span></span>
-<span id="cb14-10"><a href="#cb14-10" tabindex="-1"></a></span>
-<span id="cb14-11"><a href="#cb14-11" tabindex="-1"></a><span class="fu">service</span><span class="kw">:</span></span>
-<span id="cb14-12"><a href="#cb14-12" tabindex="-1"></a><span class="at">  </span><span class="fu">pipelines</span><span class="kw">:</span></span>
-<span id="cb14-13"><a href="#cb14-13" tabindex="-1"></a><span class="at">    </span><span class="fu">traces</span><span class="kw">:</span></span>
-<span id="cb14-14"><a href="#cb14-14" tabindex="-1"></a><span class="at">      </span><span class="fu">receivers</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">otlp</span><span class="kw">]</span></span>
-<span id="cb14-15"><a href="#cb14-15" tabindex="-1"></a><span class="at">      </span><span class="fu">exporters</span><span class="kw">:</span><span class="at"> </span><span class="kw">[</span><span class="at">debug</span><span class="kw">]</span></span></code></pre></div>
-<p>Run the Collector with its OTLP/HTTP port bound only to the local interface:</p>
-<div class="sourceCode" id="cb15"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb15-1"><a href="#cb15-1" tabindex="-1"></a><span class="ex">docker</span> run <span class="at">--rm</span> <span class="at">--name</span> tempest-otel-collector <span class="dt">\</span></span>
-<span id="cb15-2"><a href="#cb15-2" tabindex="-1"></a>  <span class="at">-p</span> 127.0.0.1:4318:4318 <span class="dt">\</span></span>
-<span id="cb15-3"><a href="#cb15-3" tabindex="-1"></a>  <span class="at">-v</span> <span class="st">"</span><span class="va">$PWD</span><span class="st">/otel-collector.yaml:/etc/otelcol/config.yaml:ro"</span> <span class="dt">\</span></span>
-<span id="cb15-4"><a href="#cb15-4" tabindex="-1"></a>  otel/opentelemetry-collector:0.158.0</span></code></pre></div>
-<p>Start a fresh R process configured to send only Tempest traces to that local Collector:</p>
-<div class="sourceCode" id="cb16"><pre class="sourceCode sh"><code class="sourceCode bash"><span id="cb16-1"><a href="#cb16-1" tabindex="-1"></a><span class="va">OTEL_TRACES_EXPORTER</span><span class="op">=</span>http <span class="dt">\</span></span>
-<span id="cb16-2"><a href="#cb16-2" tabindex="-1"></a><span class="va">OTEL_EXPORTER_OTLP_ENDPOINT</span><span class="op">=</span>http://127.0.0.1:4318 <span class="dt">\</span></span>
-<span id="cb16-3"><a href="#cb16-3" tabindex="-1"></a><span class="va">OTEL_EXPORTER_OTLP_PROTOCOL</span><span class="op">=</span>http/protobuf <span class="dt">\</span></span>
-<span id="cb16-4"><a href="#cb16-4" tabindex="-1"></a><span class="va">OTEL_R_EMIT_SCOPES</span><span class="op">=</span>io.github.jameshwade.tempest <span class="dt">\</span></span>
-<span id="cb16-5"><a href="#cb16-5" tabindex="-1"></a><span class="va">OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT</span><span class="op">=</span>false <span class="dt">\</span></span>
-<span id="cb16-6"><a href="#cb16-6" tabindex="-1"></a><span class="va">OTEL_SERVICE_NAME</span><span class="op">=</span>tempest-local <span class="dt">\</span></span>
-<span id="cb16-7"><a href="#cb16-7" tabindex="-1"></a><span class="ex">R</span></span></code></pre></div>
-<p>The local example needs no exporter header or credential. For a short-lived smoke test, the host may also set <code>OTEL_BSP_SCHEDULE_DELAY=100</code> so the SDK’s batch processor exports promptly. Tempest does not flush or shut down the provider.</p>
-<p><a href="https://pydantic.dev/docs/logfire/guides/otel-collector/otel-collector-overview/" class="external-link">Logfire</a> is one optional operator-selected destination downstream of the Collector. It is not a Tempest dependency, API, default, endpoint, SDK, or schema. Keep any backend token and exporter configuration in operator-owned Collector secrets, never in Tempest configuration, source code, examples, snapshots, or bundles.</p>
-<p>Report polishing is deterministic.</p>
-<p>You can also use a single model for all roles:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span>models <span class="op">=</span> <span class="st">"anthropic/claude-sonnet-4-20250514"</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level3">
-<h3 id="parallel-section-writing">Parallel section writing<a class="anchor" aria-label="anchor" href="#parallel-section-writing"></a>
-</h3>
-<p>Perspective research is deliberately sequential so each open-ended expert turn can be synchronously bound to one terminal Deputy trace. Already-grounded report sections can be written in parallel using <a href="https://github.com/r-lib/mirai" class="external-link">mirai</a>:</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Quantum computing applications"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  parallel_writing <span class="op">=</span> <span class="cn">TRUE</span>,  <span class="co"># requires mirai</span></span>
-<span>  verbose <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/tempest_claims.html">tempest_claims</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span>
+<span><span class="fu"><a href="reference/tempest_claim_supports.html">tempest_claim_supports</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
+<p>Or launch the Researcher app with a persistent report library and Graft project memory:</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
+<span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span>,</span>
+<span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  graft_store <span class="op">=</span> <span class="st">"research-memory"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 </div>
-<div class="section level3">
-<h3 id="storm-persistence">STORM persistence<a class="anchor" aria-label="anchor" href="#storm-persistence"></a>
+<div class="section level2">
+<h2 id="choose-your-interactive-app">Choose your interactive app<a class="anchor" aria-label="anchor" href="#choose-your-interactive-app"></a>
+</h2>
+<div class="tempest-apps">
+<div class="tempest-app-card">
+<h3>
+Researcher app
 </h3>
-<p>Save intermediate STORM artifacts to disk and resume interrupted runs:</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Quantum computing applications"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"storm-runs"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Later: loads completed stages from storm-runs/quantum-computing-applications</span></span>
-<span><span class="co"># and continues from the first incomplete stage.</span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Quantum computing applications"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">cfg</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"storm-runs"</span>,</span>
-<span>  resume <span class="op">=</span> <span class="cn">TRUE</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Each run directory is an exact current schema-11 STORM product bundle with schema-5 state. It includes checksummed JSON state for perspectives, experts, sources, claims, outlines, and references; Markdown drafts; and the final Markdown report. Resume rejects older, future, missing, extra, coerced, or mismatched shapes rather than migrating them.</p>
-<p>Every typed ProgramSet attempt also has a durable record of its stage, program, evaluator, trace, support decision, and execution or fallback path. Tempest evaluates a complete structured output before changing product state, so malformed output cannot leave a partial update. On resume, persisted running attempts become cancelled records. Final reports append a deterministic <code>Execution review</code> when an attempt failed, was cancelled, used a policy fallback, or produced a grounded result that was not verified.</p>
+<p>
+Draft or pick a starter brief, attach host R tools or MCP servers, run optional R analyses, browse saved reports, and accept findings into Graft.
+</p>
+<p>
+<code>tempest_researcher_app(graft_store = “memory”)</code>
+</p>
 </div>
-<div class="section level3">
-<h3 id="pipeline-details">Pipeline Details<a class="anchor" aria-label="anchor" href="#pipeline-details"></a>
+<div class="tempest-app-card">
+<h3>
+Co-STORM workspace
 </h3>
-<p><code><a href="reference/tempest_run.html">tempest_run()</a></code> executes five steps: <code>perspectives</code>, <code>research</code>, <code>outline</code>, <code>write</code>, <code>polish</code>. Key features:</p>
-<ul>
-<li>
-<strong>Persistent staged runs</strong> – pass <code>output_dir</code> to save run artifacts after each completed stage; pass <code>resume = TRUE</code> to load saved artifacts and skip completed stages.</li>
-<li>
-<strong>ToC-enriched perspective discovery</strong> – seed URLs are fetched and their table-of-contents headings are extracted to give the coordinator richer context for generating expert perspectives.</li>
-<li>
-<strong>Query decomposition</strong> – each expert research question is decomposed into 2-3 targeted search queries before retrieval.</li>
-<li>
-<strong>Semantic fact retrieval</strong> – when ragnar is configured, section writing uses semantic similarity to select the most relevant facts (falls back to keyword matching otherwise).</li>
-<li>
-<strong>Two-step outline</strong> – a draft outline is generated from the LLM’s parametric knowledge, then refined with research findings.</li>
-<li>
-<strong>At-a-glance decision brief</strong> – verified observations are kept distinct from evidence-bound assessments and review actions; no-change signals copy an explicit verified claim and are omitted when evidence is inconclusive.</li>
-<li>
-<strong>Parallel section writing</strong> – pass <code>parallel_writing = TRUE</code> to write report sections concurrently with mirai, then assemble the already-grounded sections and evidence in deterministic outline order.</li>
-<li>
-<strong>Governed dsprrr programs</strong> – every structured stage resolves an exact addressable program from a <code>TempestProgramSet</code>, including its verified dsprrr artifact ID, stage contract, and evaluator identity.</li>
-</ul>
+<p>
+Explore an open-ended question interactively with a panel of experts, live mind map, evidence tables, shinychat memory cards, and report publishing.
+</p>
+<p>
+<code>tempest_app(graft_store = “memory”)</code>
+</p>
 </div>
-<div class="section level3">
-<h3 id="compiling-dsprrr-programs">Compiling dsprrr programs<a class="anchor" aria-label="anchor" href="#compiling-dsprrr-programs"></a>
+<div class="tempest-app-card">
+<h3>
+Offline ecosystem demo
 </h3>
-<p>Tempest resolves its builtin dsprrr programs internally. Program identity, contract version, and evaluator are recorded in the run manifest and rechecked before any program executes; runtime registries, model clients, credentials, and executable objects never enter that metadata.</p>
-<p>Resuming a run recomputes every program artifact ID and continues only when they match the persisted run.</p>
+<p>
+Try real deputy, dsprrr, shinymcp, and graft execution locally with zero API keys or network calls—accept, correct, withdraw, and reopen exact evidence.
+</p>
+<p>
+<code>tempest_app(demo = TRUE)</code>
+</p>
 </div>
-<div class="section level3">
-<h3 id="keep-stored-knowledge-separate-from-execution">Keep stored knowledge separate from execution<a class="anchor" aria-label="anchor" href="#keep-stored-knowledge-separate-from-execution"></a>
-</h3>
-<p>The host selects the programs used by a research run. Accepted evidence and stored program references cannot select, replace, or authorize executable programs. Tempest no longer resolves <code>GovernedProcedure</code> records from Graft or passes live Graft views into stage execution. Retained procedure references in research manifests and trajectory reviews are inert provenance; they cannot be loaded into a live ProgramSet.</p>
-<p>Accepted evidence uses exact artifact selections. The host recipe retains a reviewed decision and its complete evidence closure:</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/source.html" class="external-link">source</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"briefing-basis.R"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu">capture_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="st">"battery-recycling"</span>, <span class="va">accepted</span><span class="op">@</span><span class="va">id</span>, <span class="st">"research"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">saveRDS</a></span><span class="op">(</span><span class="va">basis</span>, <span class="st">"accepted-basis.rds"</span><span class="op">)</span></span>
-<span><span class="va">historical</span> <span class="op">&lt;-</span> <span class="fu">read_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span>
-<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu">reuse_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span>, eligible <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">event</span><span class="op">)</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>The eligibility callback represents the host’s current access and purpose check. Historical inspection remains available after correction; it does not authorize new research or resume.</p>
-<p>On later days, reopen the matching store and trusted checkpoint. Changes to the selected evidence require host review before another automatic run:</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">basis</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"accepted-basis.rds"</span><span class="op">)</span></span>
-<span><span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="fu">briefing_changes</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span><span class="op">)</span> <span class="op">&gt;</span> <span class="fl">0L</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="kw"><a href="https://rdrr.io/r/base/stop.html" class="external-link">stop</a></span><span class="op">(</span><span class="st">"Review the selected evidence before research."</span><span class="op">)</span></span>
-<span><span class="op">}</span></span>
-<span><span class="va">knowledge</span> <span class="op">&lt;-</span> <span class="fu">read_briefing_basis</span><span class="op">(</span><span class="va">store</span>, <span class="va">basis</span><span class="op">)</span></span></code></pre></div>
-<p>An unchanged day keeps the full selection. After accepting additional research, append its complete selection to <code>basis$selections</code> and capture a new checkpoint. For repeated record IDs, the newest selected receipt revision wins. If current records differ from those reviewed revisions, checkpoint creation stops for review. The recipe also stops above 1,000 records instead of dropping evidence. Historical inspection can still reconstruct the earlier pinned answer.</p>
-<p>A report remains host-owned synthesis linked to its selected evidence, not a new source or an execution grant. The <a href="https://jameshwade.github.io/tempest/articles/accepted-research.html">offline acceptance and correction example</a> shows the complete restart and correction workflow. The <a href="https://jameshwade.github.io/tempest/articles/daily-briefing.html">daily briefing guide</a> applies the same recipe to a scheduled host.</p>
-<p>Accepted <code>Claim</code> records give the briefing its change signal: a verified claim that restates one of them is a no-change finding, and every other verified claim is something that changed.</p>
-<p>Accepted record text is evidence, never instruction. It travels in a data channel and cannot change prompts, message roles, tools, or executable programs. A record Tempest cannot materialize exactly is rejected rather than truncated. The host selects programs independently, and Tempest verifies each program’s artifact identity and output contract before execution. Stored program and procedure references remain inspection data.</p>
 </div>
-<div class="section level3">
-<h3 id="configuration-options">Configuration options<a class="anchor" aria-label="anchor" href="#configuration-options"></a>
-</h3>
-<p><code><a href="reference/tempest_config.html">tempest_config()</a></code> accepts the following parameters:</p>
-<table style="width:100%;" class="table">
+</div>
+<div class="section level2">
+<h2 id="tempest-in-the-ellmer-ecosystem">Tempest in the ellmer ecosystem<a class="anchor" aria-label="anchor" href="#tempest-in-the-ellmer-ecosystem"></a>
+</h2>
+<p>Tempest focuses on scientific research, claim-centered evidence, and reports, delegating horizontal concerns to companion packages:</p>
+<table class="table">
 <colgroup>
 <col width="33%">
-<col width="27%">
-<col width="39%">
+<col width="33%">
+<col width="33%">
 </colgroup>
 <thead><tr>
-<th>Parameter</th>
-<th>Default</th>
-<th>Description</th>
+<th>Package</th>
+<th>Role</th>
+<th>How it pairs with Tempest</th>
 </tr></thead>
 <tbody>
 <tr>
-<td><code>models</code></td>
-<td>role-specific OpenAI defaults</td>
-<td>Single model string or named list with <code>coordinator</code>, <code>expert</code>, <code>writer</code>, <code>mindmap</code>, <code>judge</code>
+<td>
+<strong>ellmer</strong> &amp; <strong>shinychat</strong>
+</td>
+<td>LLM calls, tools, and streaming chat UI</td>
+<td>Drives every model role and renders interactive Co-STORM conversations and reviewed-memory tool cards</td>
+</tr>
+<tr>
+<td><strong>deputy</strong></td>
+<td>Permission-bounded agent runtime</td>
+<td>Runs moderator and expert sessions with explicit tool allowlists and terminal execution traces</td>
+</tr>
+<tr>
+<td><strong>dsprrr</strong></td>
+<td>Typed structured language programs</td>
+<td>Executes structured stages (perspectives, claim extraction, verification, outline, writing)</td>
+</tr>
+<tr>
+<td><strong>graft</strong></td>
+<td>Reviewed project memory &amp; persistent artifacts</td>
+<td>Stores immutable research candidates, explicit human accept/withdraw decisions, and multi-stream recall tools (<code>graft_tools()</code>)</td>
+</tr>
+<tr>
+<td><strong>ragnar</strong></td>
+<td>Chunking &amp; semantic retrieval (RAG)</td>
+<td>Finds candidate passages across large corpora; pair with Graft so <strong>ragnar finds and graft verifies</strong>
 </td>
 </tr>
 <tr>
-<td><code>search_provider</code></td>
-<td><code>"native"</code></td>
-<td>Search backend: <code>"native"</code>, <code>"wikipedia"</code>, <code>"you"</code>, <code>"bing"</code>, <code>"serper"</code>, <code>"brave"</code>, <code>"duckduckgo"</code>, <code>"tavily"</code>, <code>"searxng"</code>, <code>"google"</code>, <code>"azure_ai_search"</code>
+<td>
+<strong>shinymcp</strong> &amp; <strong>mcptools</strong>
 </td>
+<td>MCP Apps &amp; MCP tool servers</td>
+<td>Inspect completed research in read-only cards (<code><a href="reference/tempest_mcp_app.html">tempest_mcp_app()</a></code>) and serve reviewed Graft streams to IDE agents</td>
 </tr>
 <tr>
-<td><code>embed_fn</code></td>
-<td><code>NULL</code></td>
-<td>Embedding function for RAG (e.g., <code><a href="https://ragnar.tidyverse.org/reference/embed_ollama.html" class="external-link">ragnar::embed_openai()</a></code>)</td>
-</tr>
-<tr>
-<td><code>ragnar_store</code></td>
-<td><code>NULL</code></td>
-<td>Pre-built ragnar store; auto-created if <code>embed_fn</code> provided</td>
-</tr>
-<tr>
-<td><code>chat_fn</code></td>
-<td><code>NULL</code></td>
-<td>Custom chat factory: <code>function(role, model, system_prompt, echo)</code>
+<td>
+<strong>scans</strong> &amp; <strong>vitals</strong>
 </td>
-</tr>
-<tr>
-<td><code>cache_dir</code></td>
-<td><code>NULL</code></td>
-<td>Cache directory; defaults to <code>tempdir()/tempest-cache</code> or <code>TEMPEST_CACHE_DIR</code> env var</td>
-</tr>
-<tr>
-<td><code>cache_enabled</code></td>
-<td><code>TRUE</code></td>
-<td>Whether search and fetch calls read from and write to the cache</td>
-</tr>
-<tr>
-<td><code>cache_ttl</code></td>
-<td><code>Inf</code></td>
-<td>Maximum cache age in seconds before search/fetch entries are refreshed</td>
-</tr>
-<tr>
-<td><code>max_search_results</code></td>
-<td><code>8</code></td>
-<td>Maximum results per search query</td>
-</tr>
-<tr>
-<td><code>max_search_queries_per_turn</code></td>
-<td><code>3</code></td>
-<td>Maximum decomposed search queries per research turn</td>
-</tr>
-<tr>
-<td><code>retrieve_top_k</code></td>
-<td><code>25</code></td>
-<td>Maximum facts/chunks retrieved for each section</td>
-</tr>
-<tr>
-<td><code>max_sources</code></td>
-<td><code>24</code></td>
-<td>Maximum sources to track per session</td>
-</tr>
-<tr>
-<td><code>max_active_experts</code></td>
-<td><code>5</code></td>
-<td>Co-STORM: maximum concurrent active experts</td>
+<td>Trajectory inspection &amp; evaluation</td>
+<td>Audit completed trajectories and <code>@extra$graft</code> consultations with <code>scans</code>; evaluate models offline with <code>vitals</code>
+</td>
 </tr>
 </tbody>
 </table>
-<p>By default, coordinator and writer roles use <code>openai/gpt-5.6-sol</code>; expert, mind map, and judge roles use <code>openai/gpt-5.6-luna</code>. Tempest constructs these clients with <code><a href="https://ellmer.tidyverse.org/reference/chat_openai.html" class="external-link">ellmer::chat_openai()</a></code>, passing <code>auth = "codex"</code> to reuse the ChatGPT subscription authenticated by Codex CLI when the installed ellmer supports it and using <code>OPENAI_API_KEY</code> otherwise (see <em>LLM provider credentials</em>). Built-in clients use lower reasoning effort for mind-map and judge calls; explicit <code>params</code> values override these defaults. <code><a href="reference/tempest_app.html">tempest_app()</a></code> limits individual provider requests to 120 seconds by default, configurable with <code>tempest.shiny.provider_timeout_s</code>. The bundled app’s warmup asks each active expert for one brief, bounded, evidence-backed orientation. Each expert reuses session evidence or runs one targeted search, inspects at most two results, and preserves at least one citation. Tempest then commits source-backed claims in stable expert order and updates the shared mind map once for the complete panel. The summary says explicitly when no citable evidence was collected. Warmup concurrency and its 120-second safety timeout are configurable with <code>tempest.shiny.warmup_*</code> options.</p>
-<p>To set a personal default model, add the <code>tempest.chat</code> option to your <code>.Rprofile</code>, using the same provider/model format as <code><a href="https://ellmer.tidyverse.org/reference/chat-any.html" class="external-link">ellmer::chat()</a></code>:</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span>tempest.chat <span class="op">=</span> <span class="st">"anthropic/claude-sonnet-4-20250514"</span><span class="op">)</span></span></code></pre></div>
-<p>You can also supply a configured ellmer Chat object:</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/options.html" class="external-link">options</a></span><span class="op">(</span></span>
-<span>  tempest.chat <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/chat_ollama.html" class="external-link">chat_ollama</a></span><span class="op">(</span>model <span class="op">=</span> <span class="st">"qwen3.5:9b"</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Tempest clones a configured Chat for each role, prepends its role-specific system prompt, and retains the Chat’s provider settings and existing system instructions. Explicit <code>models</code> and <code>chat_fn</code> arguments take precedence over the option. Use either override when API-key authentication or another provider is preferred.</p>
-</div>
 </div>
 <div class="section level2">
-<h2 id="rag-with-ragnar">RAG with ragnar<a class="anchor" aria-label="anchor" href="#rag-with-ragnar"></a>
+<h2 id="guides">Guides<a class="anchor" aria-label="anchor" href="#guides"></a>
 </h2>
-<p>Enable semantic search over fetched sources by providing an embedding function:</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
-<span>  embed_fn <span class="op">=</span> <span class="fu">ragnar</span><span class="fu">::</span><span class="fu"><a href="https://ragnar.tidyverse.org/reference/embed_ollama.html" class="external-link">embed_openai</a></span><span class="op">(</span><span class="op">)</span>,  <span class="co"># or embed_ollama(), custom function</span></span>
-<span>  search_provider <span class="op">=</span> <span class="st">"wikipedia"</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">res</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_run.html">tempest_run</a></span><span class="op">(</span><span class="st">"Quantum computing applications"</span>, config <span class="op">=</span> <span class="va">cfg</span><span class="op">)</span></span></code></pre></div>
-<p>When <code>embed_fn</code> is provided, tempest automatically:</p>
-<ul>
-<li>Chunks fetched web content using <code><a href="https://ragnar.tidyverse.org/reference/markdown_chunk.html" class="external-link">ragnar::markdown_chunk()</a></code>
-</li>
-<li>Stores chunks with metadata (source_id, url, title, perspective)</li>
-<li>Registers a semantic retrieve tool with chat agents</li>
-</ul>
-<p>You can also provide a pre-built ragnar store:</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">store</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_create_ragnar_store.html">tempest_create_ragnar_store</a></span><span class="op">(</span></span>
-<span>  embed_fn <span class="op">=</span> <span class="fu">ragnar</span><span class="fu">::</span><span class="fu"><a href="https://ragnar.tidyverse.org/reference/embed_ollama.html" class="external-link">embed_openai</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>  cache_dir <span class="op">=</span> <span class="st">"~/.tempest_cache"</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span>ragnar_store <span class="op">=</span> <span class="va">store</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="custom-chat-functions">Custom chat functions<a class="anchor" aria-label="anchor" href="#custom-chat-functions"></a>
-</h2>
-<p>Use custom LLM providers (e.g., internal APIs) with the <code>chat_fn</code> parameter:</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
-<span>  chat_fn <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="va">role</span>, <span class="va">model</span>, <span class="va">system_prompt</span>, <span class="va">echo</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu">my_company_chat</span><span class="op">(</span></span>
-<span>      model <span class="op">=</span> <span class="va">model</span>,</span>
-<span>      system_prompt <span class="op">=</span> <span class="va">system_prompt</span>,</span>
-<span>      echo <span class="op">=</span> <span class="va">echo</span></span>
-<span>    <span class="op">)</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="deputy-execution-identity">Deputy execution identity<a class="anchor" aria-label="anchor" href="#deputy-execution-identity"></a>
-</h2>
-<p>Co-STORM moderator and expert calls run through Deputy with product-owned tools. The product-owned session identifier is the live Deputy Agent’s constructor identity, not parallel adapter metadata. Tempest persists only credential-safe terminal execution identities for correlation and audit joins. These references do not grant authority and do not assert causal content provenance.</p>
-</div>
-<div class="section level2">
-<h2 id="interactive-co-storm">Interactive Co-STORM<a class="anchor" aria-label="anchor" href="#interactive-co-storm"></a>
-</h2>
-<p>Co-STORM provides an interactive multi-expert research experience with selected or automatically generated expert profiles.</p>
-<div class="section level3">
-<h3 id="console-usage">Console Usage<a class="anchor" aria-label="anchor" href="#console-usage"></a>
+<div class="tempest-guides">
+<section><h3>
+Get started with Tempest
 </h3>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Create a session - expert profiles are generated automatically</span></span>
-<span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"AI safety and alignment"</span>, n_experts <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># See who's on the panel</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">get_expert_names</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="co">#&gt; [1] "Dr. Sarah Chen" "Prof. Marcus Webb" "Dr. Aisha Patel"</span></span>
-<span></span>
-<span><span class="co"># Optional: Run warmup phase (experts research their initial questions)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">warmup</span><span class="op">(</span>verbose <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co">#&gt; ℹ Warmup: Dr. Sarah Chen (3 questions)</span></span>
-<span><span class="co">#&gt;   Q: What are the current technical approaches to AI alignment?</span></span>
-<span><span class="co">#&gt; ℹ Warmup: Prof. Marcus Webb (3 questions)</span></span>
-<span><span class="co">#&gt;   Q: What governance frameworks exist for AI safety?</span></span>
-<span><span class="co">#&gt; ℹ Warmup complete: 18 facts, 12 sources</span></span>
-<span></span>
-<span><span class="co"># Interactive Q&amp;A - moderator delegates to experts via tools</span></span>
-<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"What are the main risks from advanced AI systems?"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">answer</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Generate and commit a report (styles: "technical" or "executive")</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">publish</span><span class="op">(</span>style <span class="op">=</span> <span class="st">"technical"</span>, include_references <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">committed_report</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="va">committed_report</span><span class="op">)</span></span></code></pre></div>
-<p><code>session$publish()</code> validates and commits the canonical Co-STORM report. <code><a href="reference/tempest_report.html">tempest_report()</a></code> only reads those exact committed bytes from a succeeded, quiescent session; it does not generate or repair a report. There is no separate public renderer that can finalize a product or grant promotion authority.</p>
-</div>
-<div class="section level3">
-<h3 id="expert-delegation">Expert delegation<a class="anchor" aria-label="anchor" href="#expert-delegation"></a>
+<p>
+Pick a workflow, configure models and search, produce your first cited STORM report, and explore Co-STORM.
+</p>
+<p>
+<a href="articles/tempest.html">Read the getting-started guide</a>
+</p>
+</section><section><h3>
+Enriched reports &amp; the Researcher app
 </h3>
-<p>The moderator receives one scoped <code>delegate_to_expert(expert_id, question)</code> tool. It resolves the active roster by content-derived expert id, so duplicate display names cannot redirect work. Each expert:</p>
-<ul>
-<li>Has one persistent Deputy-backed chat session with conversation continuity</li>
-<li>Receives only the role-specific tools needed for that run</li>
-<li>Can use host-provided web or evidence tools to find and cite sources</li>
-<li>Extracts claims automatically after each response</li>
-<li>Keeps an opaque, host-inaccessible chat session binding for continuity</li>
-</ul>
-<p>The moderator uses the same bounded Deputy runtime. Each completed moderator or expert run records an opaque terminal trace that is carried through Co-STORM snapshot and bundle persistence.</p>
-<p>Co-STORM save, snapshot, restore, and resume accept only the exact current schema-14 product. Expert, transcript, mind-map, StageRecord, Workspace, report, suggested-question, and artifact selection state must pass integrity checks. Live chats, tools, credentials, clients, callbacks, and Shiny reactives are recreated rather than serialized.</p>
-</div>
-<div class="section level3">
-<h3 id="warmup-phase">Warmup Phase<a class="anchor" aria-label="anchor" href="#warmup-phase"></a>
+<p>
+Combine cited research with reproducible R analyses, custom tools, MCP servers, and a saved-report library.
+</p>
+<p>
+<a href="articles/enriched-research.html">Build enriched research reports</a>
+</p>
+</section><section><h3>
+Research that remembers with Graft
 </h3>
-<p>The optional warmup phase has each expert research their initial questions before interactive Q&amp;A begins. This primes the knowledge base with foundational research:</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Skip warmup - jump straight into Q&amp;A</span></span>
-<span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"Quantum computing"</span><span class="op">)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"What is quantum supremacy?"</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># With warmup - experts research first</span></span>
-<span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"Quantum computing"</span><span class="op">)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">warmup</span><span class="op">(</span><span class="op">)</span>  <span class="co"># Each expert answers 2-4 initial questions</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"What is quantum supremacy?"</span><span class="op">)</span>  <span class="co"># Benefits from prior research</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="dynamic-expert-roster">Dynamic Expert Roster<a class="anchor" aria-label="anchor" href="#dynamic-expert-roster"></a>
+<p>
+Review, accept, correct, and withdraw research streams, enable multi-stream agent recall, and serve memory over MCP.
+</p>
+<p>
+<a href="articles/research-memory.html">Connect Graft project memory</a>
+</p>
+</section><section><h3>
+Decision briefings &amp; scientific review
 </h3>
-<p>Experts can be added or retired during a session:</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">error_correction_expert</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_expert.html">tempest_expert</a></span><span class="op">(</span></span>
-<span>  name <span class="op">=</span> <span class="st">"Dr. Sarah Chen"</span>,</span>
-<span>  title <span class="op">=</span> <span class="st">"Quantum error-correction researcher"</span>,</span>
-<span>  description <span class="op">=</span> <span class="st">"Studies fault-tolerant quantum architectures."</span>,</span>
-<span>  instructions <span class="op">=</span> <span class="st">"Distinguish demonstrated thresholds from projections."</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/tempest_session.html">tempest_session</a></span><span class="op">(</span></span>
-<span>  <span class="st">"Quantum computing"</span>,</span>
-<span>  experts <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="va">error_correction_expert</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">add_expert</span><span class="op">(</span><span class="st">"quantum networking"</span><span class="op">)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">retire_expert</span><span class="op">(</span><span class="va">error_correction_expert</span><span class="op">@</span><span class="va">expert_id</span><span class="op">)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="va">experts</span></span></code></pre></div>
-<p>Expert profiles remain immutable. Retirement is manager-owned session-roster state, persisted separately from the profile. The roster respects <code>max_active_experts</code> (default 5), and retired experts’ tools return a notice that the expert is no longer available.</p>
+<p>
+Run recurring briefings that flag what changed against accepted claims, or enable adversarial claim review and evidence repair.
+</p>
+<p>
+<a href="articles/daily-briefing.html">Daily briefings</a> · <a href="articles/scientific-review.html">Scientific review</a>
+</p>
+</section>
 </div>
-<div class="section level3">
-<h3 id="report-generation">Report Generation<a class="anchor" aria-label="anchor" href="#report-generation"></a>
-</h3>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">session</span><span class="op">$</span><span class="fu">reorganize_mindmap</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">report</span> <span class="op">&lt;-</span> <span class="va">session</span><span class="op">$</span><span class="fu">publish</span><span class="op">(</span>style <span class="op">=</span> <span class="st">"technical"</span>, include_references <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="shiny-app">Shiny App<a class="anchor" aria-label="anchor" href="#shiny-app"></a>
-</h3>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/tempest_app.html">tempest_app</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>Untouched model fields inherit <code>options(tempest.chat = )</code>; otherwise the app uses Tempest’s GPT-5.6 Sol/Luna defaults with ChatGPT subscription authentication where the installed ellmer supports it, else <code>OPENAI_API_KEY</code>. Editing any model field switches the app to those explicit per-role model selections.</p>
-<p>Start a multi-expert Co-STORM discussion in <strong>Chat</strong> or use <strong>STORM</strong> for a scripted run. In <strong>Evidence</strong>, inspect retrieved sources, proposed facts and their citations, or explore the knowledge map and its text outline. <strong>Session record</strong> contains the public transcript and a run review with recorded stages and live progress. Open <strong>Report</strong> to read or download the published result.</p>
-<p>Features:</p>
-<ul>
-<li>Configurable number of experts and optional warmup phase</li>
-<li>Report style selection (technical or executive)</li>
-<li>Bounded Co-STORM session download and upload with archive validation</li>
-<li>Polite live status for progress, persistence, and publication, with alerts for validation, cancellation, and publication failures</li>
-<li>Dark mode toggle</li>
-</ul>
-<p>Session archives are explicit downloads and uploads. The app does not claim browser-temporary autosave, and its STORM panel does not expose unsupported parallel perspective research. STORM runs in a <code><a href="https://rdrr.io/pkg/shiny/man/ExtendedTask.html" class="external-link">shiny::ExtendedTask</a></code> backed by Mirai so the Shiny session remains responsive.</p>
-<p>The Shiny modules and their store are Tempest implementation details. Use <code><a href="reference/tempest_app.html">tempest_app()</a></code> for this Co-STORM application, or <code><a href="reference/tempest_researcher_app.html">tempest_researcher_app()</a></code> for the separate enriched researcher. There is no supported contract for embedding the internal panels in a host app.</p>
-<p>The app currently depends on the shinychat development version that provides <code>chat_server()</code>, installed from GitHub through <code>Remotes</code> in <code>DESCRIPTION</code>.</p>
-</div>
-</div>
-<div class="section level2">
-<h2 id="notes">Notes<a class="anchor" aria-label="anchor" href="#notes"></a>
-</h2>
-<ul>
-<li>This package is designed as a starting point and reference implementation.</li>
-<li>For production use, you may want to:
-<ul>
-<li>use ragnar with domain-specific content (internal docs, databases)</li>
-<li>add guardrails (policy, bias checks) and more systematic evaluations</li>
-<li>customize prompts in <code>inst/prompts/</code>
-</li>
-</ul>
-</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
-</h2>
-<p>Papers:</p>
-<ul>
-<li>
-<strong>STORM</strong>: Shao, Y., et al. (2024). <a href="https://arxiv.org/abs/2402.14207" class="external-link">Assisting in Writing Wikipedia-like Articles From Scratch with Large Language Models</a>. NAACL 2024.</li>
-<li>
-<strong>Co-STORM</strong>: Jiang, Y., et al. (2024). <a href="https://arxiv.org/abs/2408.15232" class="external-link">Into the Unknown Unknowns: Engaged Human Learning through Participation in Language Model Agent Conversations</a>. EMNLP 2024.</li>
-<li>
-<strong>DSPy</strong>: Khattab, O., et al. (2024). <a href="https://arxiv.org/abs/2310.03714" class="external-link">DSPy: Compiling Declarative Language Model Calls into Self-Improving Pipelines</a>. ICLR 2024.</li>
-</ul>
-<p>Code that inspired tempest:</p>
-<ul>
-<li>
-<a href="https://github.com/stanford-oval/storm" class="external-link">stanford-oval/storm</a> — the reference STORM and Co-STORM implementation this package ports to R.</li>
-<li>
-<a href="https://github.com/stanfordnlp/dspy" class="external-link">stanfordnlp/dspy</a> — the DSPy framework that <a href="https://github.com/JamesHWade/dsprrr" class="external-link">dsprrr</a> brings to R for tempest’s optimizable modules.</li>
-<li>
-<a href="https://storm.genie.stanford.edu/" class="external-link">Stanford STORM project</a> — live demo and project overview.</li>
-</ul>
-</div>
-<div class="section level2">
-<h2 id="retain-reviewed-research-across-runs">Retain reviewed research across runs<a class="anchor" aria-label="anchor" href="#retain-reviewed-research-across-runs"></a>
-</h2>
-<p>Use <code><a href="reference/tempest_publish_artifact_research.html">tempest_publish_artifact_research()</a></code> to preserve a completed report and its full evidence through Graft’s artifact store. After explicit host acceptance, <code><a href="reference/tempest_reuse_artifact_research.html">tempest_reuse_artifact_research()</a></code> checks the current decision and host policy before research admission. Historical inspection uses <code><a href="reference/tempest_read_artifact_research.html">tempest_read_artifact_research()</a></code> and grants no current permission. See <a href="https://jameshwade.github.io/tempest/articles/artifact-knowledge.html">retained artifact evidence</a> for an executable offline example and session resume rules.</p>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -804,13 +336,7 @@
 </ul>
 </div>
 
-<div class="dev-status">
-<h2 data-toc-skip>Dev status</h2>
-<ul class="list-unstyled">
-<li><a href="https://github.com/JamesHWade/tempest/actions/workflows/R-CMD-check.yaml" class="external-link"><img src="https://github.com/JamesHWade/tempest/actions/workflows/R-CMD-check.yaml/badge.svg" alt="R-CMD-check"></a></li>
-<li><a href="https://app.codecov.io/gh/JamesHWade/tempest" class="external-link"><img src="https://codecov.io/gh/JamesHWade/tempest/graph/badge.svg" alt="Codecov test coverage"></a></li>
-</ul>
-</div>
+
 
   </aside>
 </div>

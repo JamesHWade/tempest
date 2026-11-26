@@ -4,20 +4,23 @@
 <meta charset="UTF-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>Enriching a research report with reproducible R analysis • tempest</title>
+<title>Enriched reports and the Researcher app • tempest</title>
 <!-- favicons --><link rel="icon" type="image/png" sizes="96x96" href="../favicon-96x96.png">
 <link rel="icon" type="”image/svg+xml”" href="../favicon.svg">
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/Source_Sans_3-0.5.0/font.css" rel="stylesheet">
+<link href="../deps/Fraunces-0.5.0/font.css" rel="stylesheet">
+<link href="../deps/IBM_Plex_Mono-0.5.0/font.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Enriching a research report with reproducible R analysis">
-<meta name="description" content="Build a derived, auditable analysis report from the CO2 grass experiment while preserving source evidence and the original research product.
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Enriched reports and the Researcher app">
+<meta name="description" content="Combine cited research with reproducible R analyses, conceptual illustrations, custom host tools, MCP servers, a saved-report library, and Graft memory.
 ">
-<meta property="og:description" content="Build a derived, auditable analysis report from the CO2 grass experiment while preserving source evidence and the original research product.
+<meta property="og:description" content="Combine cited research with reproducible R analyses, conceptual illustrations, custom host tools, MCP servers, a saved-report library, and Graft memory.
 ">
 <meta property="og:image" content="https://jameshwade.github.io/tempest/logo.png">
 </head>
@@ -25,11 +28,11 @@
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -39,17 +42,20 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
-<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
-    <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
-    <li><a class="dropdown-item" href="../articles/ecosystem-demo.html">Research, review, retain, and reuse</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Start here</h6></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/enriched-research.html">Enriched reports and the Researcher app</a></li>
+    <li><a class="dropdown-item" href="../articles/research-memory.html">Research that remembers with Graft</a></li>
+    <li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a recurring decision briefing</a></li>
     <li><a class="dropdown-item" href="../articles/scientific-review.html">Scientific review and evidence repair</a></li>
-    <li><a class="dropdown-item" href="../articles/enriched-research.html">Enriching a research report with reproducible R analysis</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -57,6 +63,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JamesHWade/tempest/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -69,7 +83,7 @@
 
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
-      <img src="../logo.png" class="logo" alt=""><h1>Enriching a research report with reproducible R analysis</h1>
+      <img src="../logo.png" class="logo" alt=""><h1>Enriched reports and the Researcher app</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/JamesHWade/tempest/blob/main/vignettes/enriched-research.Rmd" class="external-link"><code>vignettes/enriched-research.Rmd</code></a></small>
@@ -78,280 +92,104 @@
 
     
     
-<p>Tempest enrichment adds computations and optional illustration to a
-completed STORM report or finalized Co-STORM session. It keeps the
-incoming product as the evidence authority and writes a separate,
-portable report. A calculation does not become an accepted research
-claim, and a generated image is not evidence.</p>
-<p>The default HTML presents the work as an article: a readable text
-column, wide figures, margin navigation, and expandable methods. Its
-styling is self-contained and works offline, including responsive and
-print layouts.</p>
-<p>This worked example uses the built-in <code><a href="https://rdrr.io/r/datasets/zCO2.html" class="external-link">datasets::CO2</a></code> data
-for chilling treatment and carbon uptake in <em>Echinochloa
-crus-galli</em>. The numerical analyses are real R computations. The
-offline STORM conversation is an authored replay fixture: it exercises
-Tempest’s public product path without evaluating a live model, search
-provider, or the quality of a live model response.</p>
-<div class="section level2">
-<h2 id="read-the-study-design-before-analyzing">Read the study design before analyzing<a class="anchor" aria-label="anchor" href="#read-the-study-design-before-analyzing"></a>
-</h2>
-<p>The <a href="https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" class="external-link">R
-<code>datasets::CO2</code> help page</a> describes 84 rows from 12
-plants: six from Quebec and six from Mississippi. Each plant was
-measured over seven ambient CO2 concentrations. Half the plants of each
-origin are described by the help page as having been chilled
-overnight.</p>
-<p>The original study by Potvin, Lechowicz, and Tardif (1990), <a href="https://doi.org/10.2307/1938276" class="external-link"><em>The Statistical Analysis of
-Ecophysiological Response Curves Obtained from Experiments Involving
-Repeated Measures</em></a>, reports that control and chilled plants were
-paired within each origin before treatment. Its <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" class="external-link">Table
-1 in the authors’ copy</a> gives the pairs and labels the measured
-concentration levels in µL/L. The R help labels <code>conc</code> in
-mL/L, so this report flags the unit discrepancy and uses the original
-table’s µL/L label without converting the dataset values. The paper’s
-Methods prose gives the first level as 100, while its table and the R
-dataset give 95; the worked example follows the tabulated dataset
-value.</p>
-<p>The help page summarizes treatment as chilling overnight; the
-article’s Methods give the protocol more precisely as 14 hours at 7°C
-followed by 10 hours of recovery at 20°C. This example reports both
-descriptions with their source and does not substitute one for the
-other.</p>
-<p>The article’s table numbers map to R’s plant IDs as follows:</p>
-<table class="table">
-<thead><tr class="header">
-<th>Origin</th>
-<th>Matched control and chilled plants</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Quebec</td>
-<td>Qn1–Qc3, Qn2–Qc1, Qn3–Qc2</td>
-</tr>
-<tr class="even">
-<td>Mississippi</td>
-<td>Mn1–Mc3, Mn2–Mc2, Mn3–Mc1</td>
-</tr>
-</tbody>
-</table>
-<p>The example records those mappings in its analysis output files.
-Repeated concentrations are not counted as independent plants.</p>
+<p>When a research question calls for calculations and figures—not just
+prose— Tempest can pair a completed STORM report or Co-STORM session
+with reproducible R analyses and conceptual illustrations. The original
+research remains the evidence authority while
+<code><a href="../reference/tempest_enrich_report.html">tempest_enrich_report()</a></code> produces a separate, self-contained
+HTML article and integrity-checked bundle.</p>
+<div class="tempest-callout">
+<p><strong>Inspect a published live report:</strong> see the
+<a href="../live-research/index.html">hosted CO2 grass experiment
+report</a> with executed charts, downloadable CSVs, source notes, and
+provenance records.</p>
 </div>
 <div class="section level2">
-<h2 id="what-the-analyses-measure">What the analyses measure<a class="anchor" aria-label="anchor" href="#what-the-analyses-measure"></a>
+<h2 id="launch-the-researcher-app">Launch the Researcher app<a class="anchor" aria-label="anchor" href="#launch-the-researcher-app"></a>
 </h2>
-<p>The first analysis selects the highest value in the dataset’s
-concentration column. It computes the chilled-minus-control uptake
-difference within each pre-specified plant pair, averages those
-differences within origin, and then calculates an equal-origin average
-and an origin-by-treatment interaction. A seeded percentile bootstrap
-resamples the three pair differences within each origin.</p>
-<p>The second analysis plots every plant’s response curve with the mean
-curve for each origin and treatment. It also calculates a trapezoidal
-area for each plant across the seven recorded concentrations, then
-bootstraps the paired area differences within origin. This area is an
-integrated descriptive index; it is not total carbon fixed and does not
-replace a repeated-measures model.</p>
-<p>There are only three matched pairs per origin. The bootstrap
-intervals are exploratory and sensitive to individual pairs. These
-estimates describe this dataset; they do not establish a general causal
-effect or support population-wide generalization. The data figure and
-both analyses are descriptive. The example does not reproduce the
-paper’s original model comparisons.</p>
-<p>The executed scripts give the following paired contrasts. The
-bootstrap resamples the three matched differences within each origin
-20,000 times with seed <code>20261114</code>; intervals are 95%
-percentile intervals.</p>
-<table class="table">
-<colgroup>
-<col width="27%">
-<col width="36%">
-<col width="36%">
-</colgroup>
-<thead><tr class="header">
-<th>Quantity</th>
-<th align="right">Estimate</th>
-<th align="right">Bootstrap interval</th>
-</tr></thead>
-<tbody>
-<tr class="odd">
-<td>Highest level, Quebec chilled-minus-control uptake (µmol m⁻²
-s⁻¹)</td>
-<td align="right">-2.33</td>
-<td align="right">[-5.60, 1.70]</td>
-</tr>
-<tr class="even">
-<td>Highest level, Mississippi chilled-minus-control uptake (µmol m⁻²
-s⁻¹)</td>
-<td align="right">-12.87</td>
-<td align="right">[-17.10, -5.90]</td>
-</tr>
-<tr class="odd">
-<td>Highest level, equal-origin average (µmol m⁻² s⁻¹)</td>
-<td align="right">-7.60</td>
-<td align="right">[-10.68, -4.12]</td>
-</tr>
-<tr class="even">
-<td>Highest-level interaction: Mississippi minus Quebec (µmol m⁻²
-s⁻¹)</td>
-<td align="right">-10.53</td>
-<td align="right">[-16.70, -3.57]</td>
-</tr>
-<tr class="odd">
-<td>Integrated curve, Quebec chilled-minus-control (µmol m⁻² s⁻¹ ×
-µL/L)</td>
-<td align="right">-3236.6</td>
-<td align="right">[-5445.2, 85.5]</td>
-</tr>
-<tr class="even">
-<td>Integrated curve, Mississippi chilled-minus-control (µmol m⁻² s⁻¹ ×
-µL/L)</td>
-<td align="right">-10579.1</td>
-<td align="right">[-15307.2, -6075.8]</td>
-</tr>
-<tr class="odd">
-<td>Integrated-curve interaction: Mississippi minus Quebec (µmol m⁻² s⁻¹
-× µL/L)</td>
-<td align="right">-7342.5</td>
-<td align="right">[-12263.2, -2421.8]</td>
-</tr>
-</tbody>
-</table>
-<p>The point estimates are more negative in Mississippi for both
-summaries. The Quebec intervals include zero; the other displayed
-intervals do not. With three pairs per origin, these resampling
-intervals are descriptive and unstable, not a substitute for a
-design-appropriate inferential analysis or a basis for a population
-claim.</p>
-</div>
-<div class="section level2">
-<h2 id="reproduce-the-offline-report">Reproduce the offline report<a class="anchor" aria-label="anchor" href="#reproduce-the-offline-report"></a>
-</h2>
-<p>The example folder contains the authored replay, two analysis
-scripts, the static plan, source notes, and a generated
-illustration:</p>
+<p><code><a href="../reference/tempest_researcher_app.html">tempest_researcher_app()</a></code> wraps this workflow in a
+dedicated Shiny app with starter briefs, optional R code execution and
+image generation, selectable host tools and MCP servers, a searchable
+library of saved reports, and optional Graft project memory:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">example_dir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"enriched-research"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">example_dir</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>Run the driver with a new output directory. It uses the actual
-<code><a href="../reference/tempest_enrich_report.html">tempest_enrich_report()</a></code> path and checks the result with
-<code><a href="../reference/tempest_read_enriched_report.html">tempest_read_enriched_report()</a></code>:</p>
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
+<span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span>,</span>
+<span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  graft_store <span class="op">=</span> <span class="st">"research-memory"</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Key capabilities in the app:</p>
+<ul>
+<li>
+<strong>Editable starter briefs</strong>: pick a template (evidence
+comparison, public-data analysis, or visual explainer), edit the prompt,
+and launch research in an isolated background R process that you can
+cancel cleanly at any time.</li>
+<li>
+<strong>Evidence navigator</strong>: inspect recorded sources
+alongside which analysis and illustration tasks succeeded, failed, or
+were skipped.</li>
+<li>
+<strong>Saved-report library
+(<code>report_library = TRUE</code>)</strong>: search and reopen
+previously published reports for reading or ZIP download. When
+<code>graft_store</code> is set, each report displays its live Graft
+status (<code>Accepted</code>, <code>Provisional</code>,
+<code>Superseded</code>, or <code>Withdrawn</code>).</li>
+<li>
+<strong>Project memory (<code>graft_store = ...</code>)</strong>:
+review any completed report and explicitly accept it into a named Graft
+stream, record a correction, or withdraw it. New runs can consult
+accepted streams through read-only <code><a href="https://jameshwade.github.io/graft/reference/graft_tools.html" class="external-link">graft::graft_tools()</a></code> or
+pin one stream as a comparison basis.</li>
+<li>
+<strong>Ragnar corpus support</strong>: if <code>config</code>
+includes a <code>ragnar</code> store, each job runs against a private
+copy of the existing corpus so runs stay isolated and never corrupt the
+host database.</li>
+</ul>
+<div class="section level3">
+<h3 id="connect-custom-r-tools-and-mcp-servers">Connect custom R tools and MCP servers<a class="anchor" aria-label="anchor" href="#connect-custom-r-tools-and-mcp-servers"></a>
+</h3>
+<p>Pass named zero-argument tool factories via <code>tools</code> so
+experts can query local datasets or internal APIs under Deputy’s
+read-only research permissions:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">Rscript</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Rhome.html" class="external-link">R.home</a></span><span class="op">(</span><span class="st">"bin"</span><span class="op">)</span>, <span class="st">"Rscript"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2</a></span><span class="op">(</span></span>
-<span>  <span class="va">Rscript</span>,</span>
-<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">example_dir</span>, <span class="st">"run-example.R"</span><span class="op">)</span>, <span class="st">"co2-enriched-report"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
+<span>  tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>plant_data <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
+<span>      <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu">datasets</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/r/datasets/zCO2.html" class="external-link">CO2</a></span><span class="op">)</span>,</span>
+<span>      name <span class="op">=</span> <span class="st">"read_co2_data"</span>,</span>
+<span>      description <span class="op">=</span> <span class="st">"Read the built-in CO2 plant experiment data"</span>,</span>
+<span>      arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>      annotations <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool_annotations.html" class="external-link">tool_annotations</a></span><span class="op">(</span></span>
+<span>        read_only_hint <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>        open_world_hint <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>      <span class="op">)</span></span>
+<span>    <span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="op">}</span><span class="op">)</span>,</span>
+<span>  mcp_config <span class="op">=</span> <span class="st">"mcp.json"</span>,</span>
+<span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span>,</span>
+<span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  graft_store <span class="op">=</span> <span class="st">"research-memory"</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>The driver creates a valid completed STORM product with
-<code><a href="../reference/tempest_run.html">tempest_run()</a></code> using the authored replay chat and local
-source records. It does not forge a product object or call the network.
-The analysis then reads the installed <code><a href="https://rdrr.io/r/datasets/zCO2.html" class="external-link">datasets::CO2</a></code> data.
-The response-curve task also writes the exact input rows to
-<code>co2-input.csv</code>; report hashes cover that file, the pair
-mappings, output tables, code, plot, original report, and illustration.
-The bundle assigns safe names to outputs; each task’s
-<code>file_map</code> in <code>report.json</code> maps original
-filenames to their archived paths.</p>
-<p>The <code>run-example.R</code> callback copies the bundled generated
-image into the task directory. It does not contact an image API, so the
-example runs offline. The report labels the image as AI-generated
-conceptual artwork and provides alt text; it depicts neither the
-original apparatus nor a measured outcome.</p>
+<p>For MCP servers, supply <code>mcp_config = "mcp.json"</code> (or
+upload a JSON file in the sidebar). Discovery lists available tools
+without enabling them; only servers owning the tools you explicitly
+select are connected when research starts.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="use-a-deterministic-enrichment-plan">Use a deterministic enrichment plan<a class="anchor" aria-label="anchor" href="#use-a-deterministic-enrichment-plan"></a>
+<h2 id="scripted-workflow-tempest_researcher">Scripted workflow: <code>tempest_researcher()</code><a class="anchor" aria-label="anchor" href="#scripted-workflow-tempest_researcher"></a>
 </h2>
-<p>A plan is a named list with exactly four fields. Every analysis names
-its source IDs, question, R code, and assumptions. Every illustration
-includes a prompt, caption, and alt text.</p>
+<p>From R scripts, call <code><a href="../reference/tempest_researcher.html">tempest_researcher()</a></code> to run STORM
+and enrich the result in one step. Code execution
+(<code>allow_code = FALSE</code>) and image generation stay opt-in—you
+can inspect the proposed <code>plan.json</code> and scripts first, then
+re-run <code><a href="../reference/tempest_enrich_report.html">tempest_enrich_report()</a></code> with a reviewed plan and
+<code>allow_code = TRUE</code>:</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>  title <span class="op">=</span> <span class="st">"Cold treatment, contrasting responses"</span>,</span>
-<span>  summary <span class="op">=</span> <span class="st">"Proposed synthesis, not a new verified claim."</span>,</span>
-<span>  analyses <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    id <span class="op">=</span> <span class="st">"high-co2-uptake"</span>,</span>
-<span>    title <span class="op">=</span> <span class="st">"Paired plant contrast at the highest CO2 concentration"</span>,</span>
-<span>    question <span class="op">=</span> <span class="st">"What are the within-origin paired uptake contrasts?"</span>,</span>
-<span>    code <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/readLines.html" class="external-link">readLines</a></span><span class="op">(</span><span class="st">"analysis/high-co2.R"</span><span class="op">)</span>, collapse <span class="op">=</span> <span class="st">"\n"</span><span class="op">)</span>,</span>
-<span>    source_ids <span class="op">=</span> <span class="va">source_ids</span>,</span>
-<span>    assumptions <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Use the original study's plant pairs."</span><span class="op">)</span></span>
-<span>  <span class="op">)</span><span class="op">)</span>,</span>
-<span>  illustrations <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
-<span>    id <span class="op">=</span> <span class="st">"greenhouse-concept"</span>,</span>
-<span>    title <span class="op">=</span> <span class="st">"Conceptual greenhouse scene"</span>,</span>
-<span>    prompt <span class="op">=</span> <span class="st">"Conceptual barnyard grass artwork; no measurements or labels."</span>,</span>
-<span>    alt <span class="op">=</span> <span class="st">"Potted grass plants beside a cool greenhouse chamber."</span>,</span>
-<span>    caption <span class="op">=</span> <span class="st">"AI-generated conceptual artwork, not evidence."</span></span>
-<span>  <span class="op">)</span><span class="op">)</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The real plan in <code>plan.R</code> contains two analyses and one
-illustration, within the configured task budgets. Its
-<code>source_ids</code> come from the completed product’s
-<code>tempest_sources(research)$id</code> table. A supplied plan avoids
-model-based planning, which makes this fixture deterministic.</p>
-</div>
-<div class="section level2">
-<h2 id="callbacks-and-code-execution">Callbacks and code execution<a class="anchor" aria-label="anchor" href="#callbacks-and-code-execution"></a>
-</h2>
-<p><code><a href="../reference/tempest_enrich_report.html">tempest_enrich_report()</a></code> accepts injected planner,
-executor, and image callbacks. The R executor uses a fresh Deputy
-<code>RSession</code>; it captures text, warnings, plots, and files
-created under the task directory. It uses the local account’s R access
-and is not an operating-system sandbox. Set
-<code>allow_code = TRUE</code> only when you explicitly trust the code
-being executed. The fixture’s scripts are authored, bundled R code;
-model-proposed code needs review before granting that permission.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">report</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_enrich_report.html">tempest_enrich_report</a></span><span class="op">(</span></span>
-<span>  <span class="va">research</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"co2-enriched-report"</span>,</span>
-<span>  plan <span class="op">=</span> <span class="va">plan</span>,</span>
-<span>  executor <span class="op">=</span> <span class="fu"><a href="../reference/tempest_r_executor.html">tempest_r_executor</a></span><span class="op">(</span>timeout <span class="op">=</span> <span class="fl">120</span><span class="op">)</span>,</span>
-<span>  image_generator <span class="op">=</span> <span class="va">local_image_copy_callback</span>,</span>
-<span>  allow_code <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  max_analyses <span class="op">=</span> <span class="fl">2L</span>,</span>
-<span>  max_illustrations <span class="op">=</span> <span class="fl">1L</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>The image adapter [tempest_image_generator()] calls the OpenAI Images
-API when invoked and reads <code>OPENAI_API_KEY</code> at that time. Its
-callback and report metadata do not retain the key. An illustration
-failure does not erase a successful R analysis, and failed or skipped
-task results remain visible.</p>
-</div>
-<div class="section level2">
-<h2 id="keep-research-evidence-separate-from-derived-results">Keep research evidence separate from derived results<a class="anchor" aria-label="anchor" href="#keep-research-evidence-separate-from-derived-results"></a>
-</h2>
-<p>The <code>research</code> member returned by
-<code><a href="../reference/tempest_researcher.html">tempest_researcher()</a></code> is the canonical research product. The
-enriched report preserves its Markdown, source list, and run identity,
-then records each analysis status, output, code, and files. The summary
-is explicitly a proposed synthesis. Computed values belong to the
-reproducible analysis record; they do not change the original claims,
-publish accepted knowledge, or prove the original sources correct.</p>
-<p><code><a href="../reference/tempest_read_enriched_report.html">tempest_read_enriched_report()</a></code> verifies that declared
-files match their SHA-256 hashes and rejects missing, extra, linked, or
-altered files:</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">checked</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_read_enriched_report.html">tempest_read_enriched_report</a></span><span class="op">(</span><span class="va">report</span><span class="op">@</span><span class="va">path</span><span class="op">)</span></span>
-<span><span class="va">checked</span><span class="op">@</span><span class="va">status</span></span>
-<span><span class="va">checked</span><span class="op">@</span><span class="va">manifest</span><span class="op">$</span><span class="va">files</span></span></code></pre></div>
-<p>These hashes detect changes within the bundle. They are not a digital
-signature or proof of who created it.</p>
-</div>
-<div class="section level2">
-<h2 id="use-the-live-researcher-workflow">Use the live Researcher workflow<a class="anchor" aria-label="anchor" href="#use-the-live-researcher-workflow"></a>
-</h2>
-<p><code><a href="../reference/tempest_researcher.html">tempest_researcher()</a></code> runs normal STORM research, then
-enriches the completed product. Its <code>...</code> arguments go to
-<code><a href="../reference/tempest_run.html">tempest_run()</a></code>; <code>enrichment</code> accepts the same
-options as <code><a href="../reference/tempest_enrich_report.html">tempest_enrich_report()</a></code> except for
-<code>x</code> and <code>output_dir</code>. Without an explicit plan,
-the configured model proposes a bounded plan from the report and its
-sources. The following example saves proposed analysis code without
-running it, and enables the live image adapter. It uses credentials and
-network access, and is therefore not run while this vignette builds.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_researcher.html">tempest_researcher</a></span><span class="op">(</span></span>
 <span>  <span class="st">"How does overnight chilling relate to CO2 uptake in Echinochloa crus-galli?"</span>,</span>
 <span>  output_dir <span class="op">=</span> <span class="st">"live-co2-enriched-report"</span>,</span>
@@ -366,46 +204,144 @@ network access, and is therefore not run while this vignette builds.</p>
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">result</span><span class="op">$</span><span class="va">research</span> <span class="co"># Canonical completed research product</span></span>
-<span><span class="va">result</span><span class="op">$</span><span class="va">report</span>   <span class="co"># Separate, validated enriched report</span></span></code></pre></div>
-<p>For a reproducible live integration, supply a deterministic planner
-that chooses source IDs from the returned <code>sources$id</code> and
-uses reviewed local code. The automatically proposed plan is model
-output. Inspect <code>plan.json</code> and the saved analysis scripts
-before supplying a reviewed plan in a new
-<code><a href="../reference/tempest_enrich_report.html">tempest_enrich_report()</a></code> call with
-<code>allow_code = TRUE</code>.</p>
+<span><span class="va">result</span><span class="op">$</span><span class="va">research</span> <span class="co"># Canonical completed STORM product</span></span>
+<span><span class="va">result</span><span class="op">$</span><span class="va">report</span>   <span class="co"># Separate, integrity-checked enriched report</span></span></code></pre></div>
+<p>Verify any saved report directory later with
+<code><a href="../reference/tempest_read_enriched_report.html">tempest_read_enriched_report()</a></code>, which checks every declared
+file against its SHA-256 digest in <code>manifest.json</code>:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">checked</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_read_enriched_report.html">tempest_read_enriched_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">$</span><span class="va">report</span><span class="op">@</span><span class="va">path</span><span class="op">)</span></span>
+<span><span class="va">checked</span><span class="op">@</span><span class="va">status</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="a-supervised-live-qualification-report">A supervised live qualification report<a class="anchor" aria-label="anchor" href="#a-supervised-live-qualification-report"></a>
+<h2 id="worked-offline-example-datasetsco2">Worked offline example: <code>datasets::CO2</code><a class="anchor" aria-label="anchor" href="#worked-offline-example-datasetsco2"></a>
 </h2>
-<p>The <a href="https://jameshwade.github.io/tempest/live-research/index.html">hosted
-reader edition</a> links to the evidence briefing, executed analysis,
-and downloadable outputs. It was produced from a live research run using
-<code>gpt-6.1-sol</code> for the research roles, enrichment planning,
-and an additional reader-synthesis call, and
-<code>gpt-image-2.6-flare</code> for a conceptual illustration. The
-executed R analysis produced two charts and five CSV files; the report
-also includes the generated image.</p>
-<p>This was a supervised qualification with additional source
-preparation and review. The scanned 1990 paper was transcribed with OCR
-before the final run, a custom claim extractor was bounded to
-source-quoted claims, and the proposed plan and R code were reviewed.
-The model revised the plan after review, and a reader-synthesis rounding
-error was sent back for correction. These steps are documented with the
-report. This artifact is not an unattended benchmark or the expected
-output of a no-intervention <code><a href="../reference/tempest_researcher.html">tempest_researcher()</a></code> call.</p>
-<p>Its summary uses a different descriptive comparison from the offline
-paired replay above. It averages each plant’s uptake across all seven
-concentrations, then subtracts the nonchilled group mean from the
-chilled group mean within each origin: <strong>−10.14</strong> for
-Mississippi and <strong>−3.58</strong> for Quebec, in µmol m⁻² s⁻¹. The
-supplied live outputs do not include the plant-pair mapping, so these
-are unpaired plant-group averages, not paired treatment differences or
-contrasts at the highest concentration. They describe this small dataset
-and do not establish a population-level effect. OCR may contain
-transcription errors; the report also leaves the concentration-unit
-discrepancy unresolved.</p>
+<p>The package includes a complete offline replay under
+<code>inst/examples/enriched-research/</code> analyzing chilling
+treatment and carbon uptake in <em>Echinochloa crus-galli</em>
+(<code><a href="https://rdrr.io/r/datasets/zCO2.html" class="external-link">datasets::CO2</a></code>). The numerical R analyses are real
+computations; the STORM dialogue is a deterministic replay fixture so
+you can inspect the entire pipeline without credentials or network
+access.</p>
+<div class="section level3">
+<h3 id="study-design-notes">Study design notes<a class="anchor" aria-label="anchor" href="#study-design-notes"></a>
+</h3>
+<p>The <a href="https://www.stat.ethz.ch/R-manual/R-devel/library/datasets/html/zCO2.html" class="external-link">R
+<code>datasets::CO2</code> help page</a> contains 84 rows across 12
+plants (six Quebec, six Mississippi) measured over seven ambient CO2
+concentrations. The original paper by Potvin, Lechowicz, and Tardif
+(1990), <a href="https://doi.org/10.2307/1938276" class="external-link"><em>The Statistical
+Analysis of Ecophysiological Response Curves Obtained from Experiments
+Involving Repeated Measures</em></a>, establishes three details the
+worked example preserves explicitly:</p>
+<ul>
+<li>Control and chilled plants were paired within origin before
+treatment (Quebec: <code>Qn1–Qc3</code>, <code>Qn2–Qc1</code>,
+<code>Qn3–Qc2</code>; Mississippi: <code>Mn1–Mc3</code>,
+<code>Mn2–Mc2</code>, <code>Mn3–Mc1</code>), so repeated concentrations
+are not treated as independent plants.</li>
+<li>Table 1 in the <a href="https://biology.mcgill.ca/faculty/potvin/articles/PotvinLech_90.pdf" class="external-link">authors’
+copy</a> labels concentration in µL/L (whereas the R help page says
+mL/L) and sets the first level to 95 (Methods prose mentions 100); the
+example flags both discrepancies explicitly.</li>
+<li>Methods specify chilling as 14 hours at 7°C followed by 10 hours of
+recovery at 20°C (the R help summarizes this as “chilled
+overnight”).</li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="executed-paired-contrasts">Executed paired contrasts<a class="anchor" aria-label="anchor" href="#executed-paired-contrasts"></a>
+</h3>
+<p>The bundled scripts compute within-origin paired
+chilled-minus-control differences at the highest concentration and
+across the trapezoidal response curve area, with 20,000-draw seeded
+percentile bootstrap intervals (<code>seed = 20261114</code>). With only
+three pairs per origin, these intervals are descriptive summaries of
+this dataset rather than population-level inference:</p>
+<table class="table">
+<colgroup>
+<col width="27%">
+<col width="36%">
+<col width="36%">
+</colgroup>
+<thead><tr class="header">
+<th>Quantity</th>
+<th align="right">Estimate</th>
+<th align="right">95% bootstrap interval</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>Highest level, Quebec chilled − control (µmol m⁻² s⁻¹)</td>
+<td align="right">−2.33</td>
+<td align="right">[−5.60, 1.70]</td>
+</tr>
+<tr class="even">
+<td>Highest level, Mississippi chilled − control (µmol m⁻² s⁻¹)</td>
+<td align="right">−12.87</td>
+<td align="right">[−17.10, −5.90]</td>
+</tr>
+<tr class="odd">
+<td>Highest level, equal-origin average (µmol m⁻² s⁻¹)</td>
+<td align="right">−7.60</td>
+<td align="right">[−10.68, −4.12]</td>
+</tr>
+<tr class="even">
+<td>Highest-level interaction (Mississippi − Quebec)</td>
+<td align="right">−10.53</td>
+<td align="right">[−16.70, −3.57]</td>
+</tr>
+<tr class="odd">
+<td>Integrated curve, Quebec chilled − control (µmol m⁻² s⁻¹ ×
+µL/L)</td>
+<td align="right">−3236.6</td>
+<td align="right">[−5445.2, 85.5]</td>
+</tr>
+<tr class="even">
+<td>Integrated curve, Mississippi chilled − control (µmol m⁻² s⁻¹ ×
+µL/L)</td>
+<td align="right">−10579.1</td>
+<td align="right">[−15307.2, −6075.8]</td>
+</tr>
+<tr class="odd">
+<td>Integrated-curve interaction (Mississippi − Quebec)</td>
+<td align="right">−7342.5</td>
+<td align="right">[−12263.2, −2421.8]</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level3">
+<h3 id="run-the-offline-example-yourself">Run the offline example yourself<a class="anchor" aria-label="anchor" href="#run-the-offline-example-yourself"></a>
+</h3>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">example_dir</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/system.file.html" class="external-link">system.file</a></span><span class="op">(</span><span class="st">"examples"</span>, <span class="st">"enriched-research"</span>, package <span class="op">=</span> <span class="st">"tempest"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/list.files.html" class="external-link">list.files</a></span><span class="op">(</span><span class="va">example_dir</span>, recursive <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/system2.html" class="external-link">system2</a></span><span class="op">(</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Rhome.html" class="external-link">R.home</a></span><span class="op">(</span><span class="st">"bin"</span><span class="op">)</span>, <span class="st">"Rscript"</span><span class="op">)</span>,</span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/file.path.html" class="external-link">file.path</a></span><span class="op">(</span><span class="va">example_dir</span>, <span class="st">"run-example.R"</span><span class="op">)</span>, <span class="st">"co2-enriched-report"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The driver builds a deterministic plan naming exact
+<code>source_ids</code> from <code>tempest_sources(research)$id</code>,
+executes the two bundled R scripts via
+<code><a href="../reference/tempest_r_executor.html">tempest_r_executor()</a></code>, attaches the bundled conceptual
+illustration labeled clearly as artwork rather than evidence, and
+validates the output bundle with
+<code><a href="../reference/tempest_read_enriched_report.html">tempest_read_enriched_report()</a></code>.</p>
+</div>
+<div class="section level3">
+<h3 id="about-the-hosted-live-qualification-report">About the hosted live qualification report<a class="anchor" aria-label="anchor" href="#about-the-hosted-live-qualification-report"></a>
+</h3>
+<p>The <a href="../live-research/index.html">hosted reader edition</a>
+was produced from a supervised live run (<code>gpt-6.1-sol</code> +
+<code>gpt-image-2.6-flare</code>) with human review of the OCR’d 1990
+source, analysis plan, and synthesis rounding. Its descriptive unpaired
+group averages across all seven concentrations are
+<strong>−10.14</strong> for Mississippi and <strong>−3.58</strong> for
+Quebec (µmol m⁻² s⁻¹)—distinct from the paired contrasts in the offline
+example above. Every review step and limitation is recorded alongside
+the hosted report.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="references">References<a class="anchor" aria-label="anchor" href="#references"></a>
@@ -418,89 +354,6 @@ statistical analysis of ecophysiological response curves obtained from
 experiments involving repeated measures.” <em>Ecology</em>, 71(4),
 1389–1400. <a href="https://doi.org/10.2307/1938276" class="external-link">doi:10.2307/1938276</a>.</li>
 </ul>
-</div>
-<div class="section level2">
-<h2 id="work-in-the-dedicated-app">Work in the dedicated app<a class="anchor" aria-label="anchor" href="#work-in-the-dedicated-app"></a>
-</h2>
-<p><code><a href="../reference/tempest_researcher_app.html">tempest_researcher_app()</a></code> provides a separate interface
-for this workflow. Enter a research brief, select a model and run
-limits, then inspect the resulting report in the app or download its
-portable bundle.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
-<span>  model <span class="op">=</span> <span class="st">"openai/gpt-6.1-sol"</span>,</span>
-<span>  report_library <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>Choose a starter brief to draft a question, then edit it before
-starting. Open the evidence navigator to inspect sources and see which
-computations and illustrations completed. To revisit a report in a later
-session, select it in the report library and open it for reading or ZIP
-download. Enabling <code>report_library</code> gives all users of this
-app access to reports in the chosen output directory. Use a directory
-intended for that audience.</p>
-<p>If <code>config</code> includes a Ragnar store, each research job
-uses a private copy of its existing corpus and opens its own database
-connection. New chunks are ingested into that copy, not the host store.
-The copy is removed after the job; the completed report remains in
-<code>output_dir</code>. Embedding functions must work in a fresh R
-process without capturing open connections.</p>
-<div class="section level3">
-<h3 id="add-tools">Add tools<a class="anchor" aria-label="anchor" href="#add-tools"></a>
-</h3>
-<p>Pass named factories for host tools. A factory is invoked only when
-selected, and runs inside the research worker. It must construct fresh
-ellmer tool definitions without relying on open connections in the
-launching R session.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="../reference/tempest_researcher_app.html">tempest_researcher_app</a></span><span class="op">(</span></span>
-<span>  tools <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>plant_data <span class="op">=</span> <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="op">{</span></span>
-<span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool.html" class="external-link">tool</a></span><span class="op">(</span></span>
-<span>      <span class="kw">function</span><span class="op">(</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/as.data.frame.html" class="external-link">as.data.frame</a></span><span class="op">(</span><span class="fu">datasets</span><span class="fu">::</span><span class="va"><a href="https://rdrr.io/r/datasets/zCO2.html" class="external-link">CO2</a></span><span class="op">)</span>,</span>
-<span>      name <span class="op">=</span> <span class="st">"read_co2_data"</span>,</span>
-<span>      description <span class="op">=</span> <span class="st">"Read the built-in CO2 plant experiment data"</span>,</span>
-<span>      arguments <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
-<span>      annotations <span class="op">=</span> <span class="fu">ellmer</span><span class="fu">::</span><span class="fu"><a href="https://ellmer.tidyverse.org/reference/tool_annotations.html" class="external-link">tool_annotations</a></span><span class="op">(</span></span>
-<span>        read_only_hint <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>        open_world_hint <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>      <span class="op">)</span></span>
-<span>    <span class="op">)</span><span class="op">)</span></span>
-<span>  <span class="op">}</span><span class="op">)</span>,</span>
-<span>  output_dir <span class="op">=</span> <span class="st">"research-reports"</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="connect-mcp-tools">Connect MCP tools<a class="anchor" aria-label="anchor" href="#connect-mcp-tools"></a>
-</h3>
-<p>Supply <code>mcp_config = "mcp.json"</code>, or upload a
-configuration for the current app session. The JSON uses an
-<code>mcpServers</code> object with named server entries understood by
-Deputy’s supported mcptools client. Select servers, discover their
-tools, and select the individual tools to enable. No server is contacted
-just by uploading or reading configuration. Credentials stay in the host
-environment or private configuration and are not copied into the report
-bundle. Host tools remain responsible for the data they return.</p>
-<p>The application delegates transport and authentication to Deputy and
-mcptools; it does not implement a separate MCP protocol or OAuth flow.
-Deputy’s bridge is currently qualified for mcptools 1.0.2 and 1.0.3. An
-incompatible client or missing selected tool fails explicitly. Only
-servers owning selected tools are connected when research starts.</p>
-<p>Research tools retain Deputy’s existing research permissions. A
-selection does not override denied filesystem writes, shell commands, or
-other effects. Generic tool results provide research context and still
-need Tempest’s source and claim verification before they can support
-cited assertions. R analysis is a separate, explicit enrichment option
-and uses the local account’s access rather than an OS sandbox. Image
-generation uses the configured OpenAI image callback and requires
-<code>OPENAI_API_KEY</code>.</p>
-<p>The app is intended for trusted users: MCP configurations can start
-local programs, and tool factories execute host code. Each discovery or
-research job has its own worker process; cancellation and session
-closure terminate its process tree. Completed report directories are
-retained. The default output parent is temporary for the R session;
-choose a persistent <code>output_dir</code> to keep reports after R
-exits.</p>
-</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

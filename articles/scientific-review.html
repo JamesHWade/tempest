@@ -10,21 +10,29 @@
 <link rel="apple-touch-icon" sizes="180x180" href="../apple-touch-icon.png">
 <link rel="icon" sizes="any" href="../favicon.ico">
 <link rel="manifest" href="../site.webmanifest">
-<script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+<script src="../lightswitch.js"></script><script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/Source_Sans_3-0.5.0/font.css" rel="stylesheet">
+<link href="../deps/Fraunces-0.5.0/font.css" rel="stylesheet">
+<link href="../deps/IBM_Plex_Mono-0.5.0/font.css" rel="stylesheet">
+<link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Scientific review and evidence repair">
+<meta name="description" content="Enable advisory claim review, independent adjudication, and bounded evidence repair before publishing STORM or Co-STORM reports.
+">
+<meta property="og:description" content="Enable advisory claim review, independent adjudication, and bounded evidence repair before publishing STORM or Co-STORM reports.
+">
+<meta property="og:image" content="https://jameshwade.github.io/tempest/logo.png">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top " aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">tempest</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.0.0.9000</small>
+    <small class="nav-text text-danger me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="Unreleased version">0.0.0.9000</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -34,17 +42,20 @@
     <div id="navbar" class="collapse navbar-collapse ms-3">
       <ul class="navbar-nav me-auto">
 <li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
-<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="active nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
   <ul class="dropdown-menu" aria-labelledby="dropdown-articles">
-<li><a class="dropdown-item" href="../articles/daily-briefing.html">A daily briefing with persistent evidence</a></li>
-    <li><a class="dropdown-item" href="../articles/artifact-knowledge.html">Reuse retained artifact evidence</a></li>
-    <li><a class="dropdown-item" href="../articles/ecosystem-demo.html">Research, review, retain, and reuse</a></li>
+<li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Start here</h6></li>
+    <li><hr class="dropdown-divider"></li>
+    <li><h6 class="dropdown-header" data-toc-skip>Guides</h6></li>
+    <li><a class="dropdown-item" href="../articles/enriched-research.html">Enriched reports and the Researcher app</a></li>
+    <li><a class="dropdown-item" href="../articles/research-memory.html">Research that remembers with Graft</a></li>
+    <li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a recurring decision briefing</a></li>
     <li><a class="dropdown-item" href="../articles/scientific-review.html">Scientific review and evidence repair</a></li>
-    <li><a class="dropdown-item" href="../articles/enriched-research.html">Enriching a research report with reproducible R analysis</a></li>
   </ul>
 </li>
+<li class="nav-item"><a class="nav-link" href="../reference/index.html">Reference</a></li>
 <li class="nav-item"><a class="nav-link" href="../news/index.html">Changelog</a></li>
       </ul>
 <ul class="navbar-nav">
@@ -52,6 +63,14 @@
  <input class="form-control" type="search" name="search-input" id="search-input" autocomplete="off" aria-label="Search site" placeholder="Search for" data-search-index="../search.json">
 </form></li>
 <li class="nav-item"><a class="external-link nav-link" href="https://github.com/JamesHWade/tempest/" aria-label="GitHub"><span class="fa fab fa-github fa-lg"></span></a></li>
+<li class="nav-item dropdown">
+  <button class="nav-link dropdown-toggle" type="button" id="dropdown-lightswitch" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true" aria-label="Light switch"><span class="fa fa-sun"></span></button>
+  <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="dropdown-lightswitch">
+<li><button class="dropdown-item" data-bs-theme-value="light"><span class="fa fa-sun"></span> Light</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="dark"><span class="fa fa-moon"></span> Dark</button></li>
+    <li><button class="dropdown-item" data-bs-theme-value="auto"><span class="fa fa-adjust"></span> Auto</button></li>
+  </ul>
+</li>
       </ul>
 </div>
 
@@ -73,114 +92,117 @@
 
     
     
-<p>Tempest can review a bounded selection of claims before publishing
-either a STORM report or a Co-STORM session. Citation verification asks
-whether a source supports a statement. Scientific review asks whether
-the statement has an unstated assumption, a methodological flaw, or a
-conflict that needs more evidence. The two judgments remain
-separate.</p>
+<p>Citation verification asks one question: <em>does this source say
+what the claim says?</em> Scientific review asks a harder one: <em>does
+the claim hide an unstated assumption, overstate scope, rely on flawed
+methods, or conflict with other evidence?</em></p>
+<p>Tempest keeps those two checks separate. When enabled, scientific
+review inspects a bounded set of claims before publishing a STORM report
+or Co-STORM session, pairs each initial review with an independent
+adjudicator, and can optionally run one targeted follow-up search to
+repair missing evidence.</p>
 <div class="section level2">
-<h2 id="enable-review">Enable review<a class="anchor" aria-label="anchor" href="#enable-review"></a>
+<h2 id="enable-review-and-evidence-repair">Enable review and evidence repair<a class="anchor" aria-label="anchor" href="#enable-review-and-evidence-repair"></a>
 </h2>
+<p>Turn review on through <code><a href="../reference/tempest_config.html">tempest_config()</a></code> (or under
+<strong>Workspace settings → Scientific review</strong> in
+<code><a href="../reference/tempest_app.html">tempest_app()</a></code>):</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://jameshwade.github.io/tempest/">tempest</a></span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">config</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
+<span><span class="va">cfg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_config.html">tempest_config</a></span><span class="op">(</span></span>
 <span>  research_review <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  repair_evidence <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  max_review_claims <span class="op">=</span> <span class="fl">5</span>,</span>
 <span>  review_concurrency <span class="op">=</span> <span class="fl">2</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">research</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
+<span><span class="va">result</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_run.html">tempest_run</a></span><span class="op">(</span></span>
 <span>  <span class="st">"What evidence supports the reproducibility of this measurement method?"</span>,</span>
-<span>  config <span class="op">=</span> <span class="va">config</span></span>
+<span>  config <span class="op">=</span> <span class="va">cfg</span></span>
 <span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">research</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">reviews</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_reviews.html">tempest_claim_reviews</a></span><span class="op">(</span><span class="va">research</span><span class="op">)</span></span></code></pre></div>
-<p>The same configuration works with <code><a href="../reference/tempest_session.html">tempest_session()</a></code>.
-Review runs when the session is published, after the conversation has
-supplied its research claims. The bundled app exposes the controls in
-its settings.</p>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/cat.html" class="external-link">cat</a></span><span class="op">(</span><span class="fu"><a href="../reference/tempest_report.html">tempest_report</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">reviews</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_claim_reviews.html">tempest_claim_reviews</a></span><span class="op">(</span><span class="va">result</span><span class="op">)</span></span></code></pre></div>
+<p>The same configuration applies to Co-STORM sessions—review runs when
+you call <code>session$publish()</code>, once the conversation has
+gathered its claims:</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"Measurement reproducibility"</span>, config <span class="op">=</span> <span class="va">config</span><span class="op">)</span></span>
-<span><span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"Compare the assumptions and validation evidence."</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">session</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/tempest_session.html">tempest_session</a></span><span class="op">(</span><span class="st">"Measurement reproducibility"</span>, config <span class="op">=</span> <span class="va">cfg</span><span class="op">)</span></span>
+<span><span class="va">session</span><span class="op">$</span><span class="fu">step</span><span class="op">(</span><span class="st">"Compare the core assumptions and validation evidence."</span><span class="op">)</span></span>
 <span><span class="va">session</span><span class="op">$</span><span class="fu">publish</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
 <span><span class="fu"><a href="../reference/tempest_claim_reviews.html">tempest_claim_reviews</a></span><span class="op">(</span><span class="va">session</span><span class="op">)</span></span></code></pre></div>
-<p>Review is off by default. The limit is 1–20 claims, with 1–4
-independent claim reviews in flight. Each selected claim receives an
-initial review and a separate adjudication. Enabling repair permits at
-most one search and two fetched sources per selected claim. This bounds
-requests and retrieval work, rather than making a promise about token
-cost or elapsed time. Cancellation is checked between operations; it
-cannot interrupt a synchronous retrieval call already running. An
-already-started model request can finish, but its late result cannot
-start follow-up work or publish a review after cancellation. A dossier
-contains at most 12 sources and 20,000 characters per source. It is
-bounded context, not a claim that every method or result in a paper was
-read. Custom retrievers used for repair must return captured resources
-without mutating the publication workspace; Tempest admits validated
-additions itself. Accepted Graft knowledge remains outside review
-dossiers. A knowledge-backed run can review claims grounded in retrieved
-sources, but accepted records are not added as optional evidence. A
-selected claim that requires an accepted record as evidence fails
-explicitly before review calls begin.</p>
-</div>
-<div class="section level2">
-<h2 id="read-the-result">Read the result<a class="anchor" aria-label="anchor" href="#read-the-result"></a>
-</h2>
-<p>The report’s <strong>Scientific review</strong> section
-distinguishes:</p>
+<div class="section level3">
+<h3 id="budgets-and-boundaries">Budgets and boundaries<a class="anchor" aria-label="anchor" href="#budgets-and-boundaries"></a>
+</h3>
+<p>Review is off by default and strictly bounded so costs stay
+predictable:</p>
 <ul>
 <li>
-<strong>Concern confirmed by adjudicator:</strong> the adjudicator
-found evidence for the reviewer’s specific concern. It is still a model
-judgment for human review.</li>
+<strong><code>max_review_claims</code></strong> (1–20): contradicted
+and weakly supported claims are prioritized first after citation
+verification.</li>
 <li>
-<strong>Concern dismissed by adjudicator:</strong> additional
-context did not support the proposed flaw.</li>
+<strong><code>review_concurrency</code></strong> (1–4): independent
+claim reviews can run in parallel; each selected claim gets an initial
+review and a separate adjudication pass.</li>
 <li>
-<strong>Unresolved:</strong> the available evidence could not settle
-the question.</li>
+<strong><code>repair_evidence = TRUE</code></strong>: permits at
+most one targeted search and two fetched sources per selected
+claim.</li>
 <li>
-<strong>No issue found:</strong> no issue was identified within this
-review’s scope and budget. This does not certify correctness.</li>
+<strong>Dossier bounds</strong>: up to 12 sources and 20,000
+characters per source. Review findings remain advisory—they never alter
+citation verification or auto-accept claims into Graft.</li>
 </ul>
-<p>Only selected claims are reviewed, with contradicted and weakly
-supported claims selected first after citation verification. A completed
-evidence search means retrieval finished, not that the research question
-was resolved. A failed retrieval stops publication; empty and
-budget-limited searches retain distinct outcomes. Source excerpts and
-exact quotes accompany findings; unsupported source identifiers and
-invented quotes fail validation.</p>
-<p><code><a href="../reference/tempest_claim_reviews.html">tempest_claim_reviews()</a></code> returns versioned plain records
-with the claim, captured source excerpts and hashes, reviewer and
-adjudicator outputs, search outcome, model identifiers, and dsprrr
-program identities. Their content hashes bind the report to the retained
-records. Saving and resuming a session retains these records without
-rerunning published research. Research artifacts carry the advisory
-records alongside their proof; they are not materialized as accepted
-claims or claim-support judgments.</p>
+</div>
 </div>
 <div class="section level2">
-<h2 id="evaluate-changes-before-adopting-them">Evaluate changes before adopting them<a class="anchor" aria-label="anchor" href="#evaluate-changes-before-adopting-them"></a>
+<h2 id="read-the-review-outcomes">Read the review outcomes<a class="anchor" aria-label="anchor" href="#read-the-review-outcomes"></a>
+</h2>
+<p>The published report’s <strong>Scientific review</strong> section
+reports one of four outcomes for each reviewed claim:</p>
+<ul>
+<li>
+<strong>Concern confirmed by adjudicator</strong>: the adjudicator
+found concrete evidence supporting the reviewer’s concern. Treat this as
+a priority signal for human review.</li>
+<li>
+<strong>Concern dismissed by adjudicator</strong>: broader context
+did not support the proposed flaw.</li>
+<li>
+<strong>Unresolved</strong>: available evidence could not settle the
+question within the configured budget.</li>
+<li>
+<strong>No issue found</strong>: no defect was identified within the
+dossier and budget. Absence of detected flaws is not proof of
+correctness.</li>
+</ul>
+<p><code><a href="../reference/tempest_claim_reviews.html">tempest_claim_reviews()</a></code> returns plain structured records
+containing each claim, captured source excerpts and hashes, reviewer and
+adjudicator outputs, search outcomes, and model/program identifiers.
+Those records survive session save/resume and travel alongside research
+artifacts in Graft as advisory context—separate from accepted
+claims.</p>
+</div>
+<div class="section level2">
+<h2 id="evaluate-changes-offline-before-adopting-them">Evaluate changes offline before adopting them<a class="anchor" aria-label="anchor" href="#evaluate-changes-offline-before-adopting-them"></a>
 </h2>
 <p>The repository includes <code>tools/research-eval.R</code> and a
-synthetic corpus under <code>inst/extdata/research-eval/</code>. These
-cases test support, scope, caveats, contradictions, abstention, and
-misleading evidence. They are engineering fixtures, not
-human-adjudicated scientific gold data.</p>
-<p>The developer harness separates topic-disjoint training, validation,
-and test sets and supports opt-in dsprrr optimization. Keep held-out
-examples out of prompt optimization, inspect generated prompts, and
-measure false support separately from coverage. Package tests run
-without API keys or network calls. Passing them verifies implementation
-behavior; it does not establish an improvement in a model’s scientific
-accuracy.</p>
-<p>The review design draws on Google’s <a href="https://research.google/blog/analyzing-technical-documents-with-deep-review/" class="external-link">Deep
-Review</a> and the retrieval-feedback approach in <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12935541/" class="external-link">OpenScholar</a>.
-These are design inspirations, not evidence that Tempest reproduces
-their published results.</p>
+synthetic test corpus under <code>inst/extdata/research-eval/</code>
+covering support, scope inflation, omitted caveats, contradictions,
+abstention, and misleading sources.</p>
+<p>Use topic-disjoint training, validation, and test splits when
+experimenting with prompt changes or <code>dsprrr</code> optimization,
+and measure false-support errors separately from coverage.</p>
+</div>
+<div class="section level2">
+<h2 id="design-inspiration">Design inspiration<a class="anchor" aria-label="anchor" href="#design-inspiration"></a>
+</h2>
+<p>The review and repair design draws on Google’s <a href="https://research.google/blog/analyzing-technical-documents-with-deep-review/" class="external-link">Deep
+Review</a> (bounded dossiers, adaptive attention, and independent
+adjudication) and the retrieval-feedback loop in <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC12935541/" class="external-link">OpenScholar</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>
