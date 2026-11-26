@@ -43,6 +43,7 @@ Imports:
     tibble,
     xml2
 Suggests:
+    brand.yml,
     bslib (>= 0.6.0),
     callr,
     dplyr,

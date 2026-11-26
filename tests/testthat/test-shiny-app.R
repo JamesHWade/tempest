@@ -47,7 +47,7 @@ test_that("evidence tabs prioritize the graph and curated table shells", {
   facts_html <- paste(as.character(app$mod_facts_ui("facts")), collapse = "")
 
   expect_match(mindmap_html, "tempest-mindmap-card", fixed = TRUE)
-  expect_match(mindmap_html, "height:620px", fixed = TRUE)
+  expect_match(mindmap_html, "mindmap-graph_view", fixed = TRUE)
   expect_match(mindmap_html, "<details", fixed = TRUE)
   expect_match(mindmap_html, "Accessible mind map outline", fixed = TRUE)
   expect_match(sources_html, "tempest-evidence-card", fixed = TRUE)
@@ -338,9 +338,10 @@ test_that("the chat module provides an interactive landing greeting", {
   )
 
   expect_match(html, "tempest-chat-welcome", fixed = TRUE)
-  expect_match(html, "Welcome to tempest", fixed = TRUE)
+  expect_match(html, "Co-STORM discussion", fixed = TRUE)
+  expect_match(html, "Start a research discussion", fixed = TRUE)
   expect_match(html, "cited evidence", fixed = TRUE)
-  expect_match(html, "one-shot report", fixed = TRUE)
+  expect_no_match(html, "one-shot report", fixed = TRUE)
   expect_match(html, "chat-topic", fixed = TRUE)
   expect_match(html, "chat-n_experts", fixed = TRUE)
   expect_match(html, "chat-start", fixed = TRUE)
@@ -500,11 +501,14 @@ test_that("chat UI delegates presentation features to shinychat", {
     as.character(app$mod_chat_ui("chat", shiny::div())),
     collapse = ""
   )
-  css <- paste(as.character(app$tempest_app_styles()), collapse = "")
+  css <- paste(
+    readLines(system.file("shiny", "www", "app.css", package = "tempest")),
+    collapse = "\n"
+  )
 
   expect_match(html, "<shiny-chat-container", fixed = TRUE)
   expect_match(html, "<shiny-chat-footer", fixed = TRUE)
-  expect_match(html, "Welcome to tempest", fixed = TRUE)
+  expect_match(html, "Start a research discussion", fixed = TRUE)
   expect_no_match(html, "submit-key", fixed = TRUE)
   expect_match(html, "application/pdf", fixed = TRUE)
   expect_match(html, "image/png", fixed = TRUE)
@@ -513,7 +517,7 @@ test_that("chat UI delegates presentation features to shinychat", {
   expect_no_match(css, "shiny-chat-suggestion", fixed = TRUE)
   expect_no_match(css, ".shiny-chat-footer", fixed = TRUE)
   expect_match(css, "@media (max-width: 575.98px)", fixed = TRUE)
-  expect_match(css, "--shiny-chat-greeting-max-width: 680px", fixed = TRUE)
+  expect_match(css, "--shiny-chat-greeting-max-width:", fixed = TRUE)
   expect_match(css, "tempest-chat-welcome-actions", fixed = TRUE)
   expect_match(css, "--tempest-chat-welcome-control-height", fixed = TRUE)
   expect_match(css, "bslib-toolbar-input-button[data-type=", fixed = TRUE)
@@ -926,6 +930,11 @@ test_that("the mind map module counts nodes, sources, facts, and turns", {
   ses$.__enclos_env__$private$add_turn("user", "user", "q1")
 
   shiny::testServer(app$mod_mindmap_server, args = list(store = store), {
+    expect_match(
+      output$graph_view$html,
+      "Start a discussion in Chat",
+      fixed = TRUE
+    )
     store$set_costorm_session(ses)
     session$flushReact()
     expect_equal(output$n_turns, "1")
@@ -1234,13 +1243,16 @@ test_that("the chat greeting prioritizes one-time session controls", {
   expect_match(html, "chat-start", fixed = TRUE)
   expect_match(html, "chat-research_options", fixed = TRUE)
   expect_match(html, "chat-setup_settings_toggle", fixed = TRUE)
-  expect_match(html, "Welcome to tempest", fixed = TRUE)
+  expect_match(html, "Co-STORM discussion", fixed = TRUE)
+  expect_match(html, "Start a research discussion", fixed = TRUE)
   expect_no_match(html, "tempest-chat-card-header", fixed = TRUE)
   expect_no_match(html, "chat-progress", fixed = TRUE)
   expect_no_match(html, "detailed workspace settings", fixed = TRUE)
-  expect_match(html, 'role=\\&quot;switch\\&quot;', fixed = TRUE)
+  expect_match(html, "tempest-chat-details", fixed = TRUE)
+  expect_match(html, "chat-warmup", fixed = TRUE)
   expect_match(html, "chat-suggest")
   expect_match(html, "Suggest follow-up questions")
+  expect_no_match(html, "bslib-popover", fixed = TRUE)
 })
 
 test_that("the bundled app enables user-configured expert panels", {
@@ -1355,7 +1367,10 @@ test_that("the settings drawer controller owns mobile keyboard behavior", {
     )),
     collapse = ""
   )
-  css <- paste(as.character(app$tempest_app_styles()), collapse = "")
+  css <- paste(
+    readLines(system.file("shiny", "www", "app.css", package = "tempest")),
+    collapse = "\n"
+  )
   required <- c(
     "(max-width: 575.98px)",
     "main.setAttribute('inert', '')",

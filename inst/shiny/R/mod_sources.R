@@ -7,7 +7,7 @@ mod_sources_ui <- function(id) {
     value = "Sources",
     bslib::card(
       full_screen = TRUE,
-      class = "tempest-evidence-card",
+      class = "tempest-evidence-card tempest-source-browser",
       bslib::card_header(evidence_table_header(
         ns = ns,
         title = "Collected sources",
@@ -36,20 +36,59 @@ mod_sources_server <- function(id, store) {
     output$body <- shiny::renderUI({
       df <- sources()
       if (is.null(df)) {
-        return(empty_state("link", "Start a session to collect sources."))
+        return(evidence_panel_empty_state(
+          "link",
+          "No active session",
+          "Start a session to collect sources."
+        ))
       }
       if (nrow(df) == 0) {
-        return(empty_state("link", "No sources collected yet."))
+        return(evidence_panel_empty_state(
+          "link",
+          "No sources collected yet",
+          "Ask a research question to gather source material."
+        ))
       }
-      if (has_pkg("DT")) {
+
+      table <- if (has_pkg("DT")) {
         shiny::div(
           class = "tempest-evidence-table",
+          role = "region",
+          `aria-label` = "Collected sources",
           DT::DTOutput(session$ns("table"))
         )
       } else {
         shiny::div(
           class = "tempest-evidence-table p-3",
+          role = "region",
+          `aria-label` = "Collected sources",
           shiny::tableOutput(session$ns("table_basic"))
+        )
+      }
+
+      if (has_pkg("DT")) {
+        shiny::div(
+          class = "tempest-evidence-panel",
+          shiny::div(
+            class = "tempest-evidence-toolbar tempest-evidence-toolbar-copy",
+            shiny::p(
+              class = "mb-0 small text-muted",
+              "Search the table to filter by title, location, excerpt, or source ID."
+            )
+          ),
+          table
+        )
+      } else {
+        shiny::div(
+          class = "tempest-evidence-panel",
+          shiny::div(
+            class = "tempest-evidence-toolbar tempest-evidence-toolbar-copy",
+            shiny::p(
+              class = "mb-0 small text-muted",
+              "The table lists the title, location, excerpt, type, and source ID."
+            )
+          ),
+          table
         )
       }
     })
@@ -71,7 +110,7 @@ mod_sources_server <- function(id, store) {
           df[["Source ID"]]
         )
         df$Location <- NULL
-        styled_datatable(
+        widget <- styled_datatable(
           df,
           html_columns = "Source",
           search_placeholder = "Search sources",
@@ -98,6 +137,8 @@ mod_sources_server <- function(id, store) {
             )
           )
         )
+        widget$x$options$language$search <- "Search sources:"
+        widget
       })
     } else {
       output$table_basic <- shiny::renderTable(

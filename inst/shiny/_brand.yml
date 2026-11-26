@@ -41,7 +41,7 @@ color:
     gray: rain-gray
   foreground: storm-navy
   background: white
-  primary: storm-teal
+  primary: deep-teal
   secondary: rain-gray
   tertiary: deep-teal
   success: meadow-green
@@ -52,25 +52,15 @@ color:
   dark: storm-navy
 
 typography:
-  fonts:
-    - family: Inter
-      source: google
-      weight: [400, 500, 600, 700]
-    - family: Fraunces
-      source: google
-      weight: [400, 500, 600, 700]
-      style: [normal, italic]
-    - family: JetBrains Mono
-      source: google
-      weight: [400, 500]
   base:
-    family: Inter
-    line-height: 1.5
+    family: system-ui
+    line-height: 1.55
   headings:
-    family: Fraunces
-    weight: 600
-    line-height: 1.2
-  monospace: JetBrains Mono
+    family: Georgia
+    weight: 500
+    line-height: 1.15
+  monospace:
+    family: monospace
   link:
     color: primary
     weight: 500

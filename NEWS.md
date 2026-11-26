@@ -1,5 +1,7 @@
 # tempest 0.0.0.9000
 
+* `tempest_app()` groups evidence and session records in the navigation and refreshes discussion setup, scripted runs, review, and report reading on desktop and mobile.
+
 * Saved research products now retain scientific review records with workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM bundle schema 11 (state schema 5), and promotion bundle schema 2. Readers accept only the current format; older bundles require their matching package version (#188).
 
 * Tempest rejects provider-truncated Deputy answers before issuing a completion and validates the resolved structured metadata of asynchronous dsprrr stages (#188).
