@@ -347,7 +347,8 @@ mod_memory_report_server <- function(
             store = memory_ctx$store,
             stream = state$stream,
             actor = input$actor %||% memory_ctx$actor,
-            reason = input$reason %||% "Withdrawn after review"
+            reason = input$reason %||% "Withdrawn after review",
+            expected = state$decision_id
           )
           feedback(sprintf(
             "Withdrew stream '%s' from active memory (decision %s).",
@@ -526,21 +527,97 @@ mod_memory_report_server <- function(
   })
 }
 
+shiny_active_report_product <- function(
+  report_md,
+  report_workspace,
+  costorm_session = NULL,
+  storm_product = NULL
+) {
+  if (
+    !is.character(report_md) ||
+      length(report_md) != 1L ||
+      is.na(report_md) ||
+      !nzchar(report_md) ||
+      is.null(report_workspace)
+  ) {
+    return(NULL)
+  }
+  if (
+    !is.null(storm_product) &&
+      tempest:::tempest_is_product_result(storm_product) &&
+      identical(storm_product@manifest@status, "succeeded") &&
+      identical(storm_product@workspace, report_workspace) &&
+      identical(storm_product@report_md, report_md)
+  ) {
+    return(storm_product)
+  }
+  if (inherits(costorm_session, "TempestSession")) {
+    manifest <- tryCatch(
+      tempest:::tempest_session_manifest(costorm_session),
+      error = function(error) NULL
+    )
+    workspace <- tryCatch(
+      tempest:::tempest_session_workspace(costorm_session),
+      error = function(error) NULL
+    )
+    session_report <- tryCatch(
+      tempest::tempest_report(costorm_session),
+      error = function(error) NULL
+    )
+    if (
+      !is.null(manifest) &&
+        identical(manifest@status, "succeeded") &&
+        identical(workspace, report_workspace) &&
+        identical(session_report, report_md)
+    ) {
+      return(costorm_session)
+    }
+  }
+  NULL
+}
+
 shiny_product_graft_consultations <- function(product) {
   empty <- tempest:::tempest_graft_consultations(NULL)
   if (is.null(product) || !inherits(product, "TempestSession")) {
     return(empty)
   }
-  priv <- tryCatch(product$.__enclos_env__$private, error = function(e) NULL)
-  if (is.null(priv)) {
-    return(empty)
-  }
   chats <- list()
-  if (!is.null(priv$moderator_chat)) {
-    chats[[length(chats) + 1L]] <- priv$moderator_chat
+  moderator_chat <- tryCatch(
+    tempest:::tempest_session_chat(product, "moderator"),
+    error = function(error) NULL
+  )
+  if (!is.null(moderator_chat)) {
+    chats[[length(chats) + 1L]] <- moderator_chat
   }
-  if (is.list(priv$expert_chats)) {
-    chats <- c(chats, unname(priv$expert_chats))
+  manager <- tryCatch(
+    tempest:::tempest_session_expert_manager(product),
+    error = function(error) NULL
+  )
+  if (!is.null(manager)) {
+    mgr_priv <- tryCatch(
+      manager$.__enclos_env__$private,
+      error = function(error) NULL
+    )
+    sessions_env <- if (is.list(mgr_priv) || is.environment(mgr_priv)) {
+      mgr_priv$sessions
+    } else {
+      NULL
+    }
+    if (is.environment(sessions_env)) {
+      session_ids <- tryCatch(
+        manager$list_sessions(),
+        error = function(error) character()
+      )
+      for (session_id in session_ids) {
+        if (exists(session_id, envir = sessions_env, inherits = FALSE)) {
+          chats[[length(chats) + 1L]] <- get(
+            session_id,
+            envir = sessions_env,
+            inherits = FALSE
+          )
+        }
+      }
+    }
   }
   if (!length(chats)) {
     return(empty)
@@ -555,5 +632,7 @@ shiny_product_graft_consultations <- function(product) {
   if (!length(frames)) {
     return(empty)
   }
-  do.call(rbind, frames)
+  out <- do.call(rbind, frames)
+  rownames(out) <- NULL
+  out
 }

@@ -172,3 +172,158 @@ test_that("tempest_mcp_app() preserves read-only Graft input summary fields", {
   expect_true("input_selection_id" %in% names(overview$structuredContent))
   expect_true("input_purpose" %in% names(overview$structuredContent))
 })
+
+test_that("shiny_active_report_product() tracks published STORM and restored Co-STORM reports", {
+  skip_if_not_installed("shiny")
+  env <- tempest:::tempest_shiny_module_env()
+  storm_fixture <- test_promotion_storm_fixture(
+    run_id = "active-storm-1",
+    evidence_text = "Storm active report evidence."
+  )
+  costorm_fixture <- test_promotion_costorm_fixture()
+  storm_prod <- storm_fixture$research
+  costorm_ses <- costorm_fixture$research
+
+  expect_null(env$shiny_active_report_product(
+    report_md = NULL,
+    report_workspace = NULL,
+    costorm_session = costorm_ses,
+    storm_product = storm_prod
+  ))
+
+  # STORM report matches immediately upon publication without a navigation click.
+  expect_identical(
+    env$shiny_active_report_product(
+      report_md = storm_prod@report_md,
+      report_workspace = storm_prod@workspace,
+      costorm_session = costorm_ses,
+      storm_product = storm_prod
+    ),
+    storm_prod
+  )
+
+  # Restored or published Co-STORM report matches its exact workspace and markdown.
+  expect_identical(
+    env$shiny_active_report_product(
+      report_md = tempest_report(costorm_ses),
+      report_workspace = tempest:::tempest_session_workspace(costorm_ses),
+      costorm_session = costorm_ses,
+      storm_product = storm_prod
+    ),
+    costorm_ses
+  )
+})
+
+test_that("shiny_product_graft_consultations() reads moderator and expert manager chats", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("ellmer")
+  env <- tempest:::tempest_shiny_module_env()
+  costorm_ses <- test_promotion_costorm_fixture()$research
+
+  make_graft_chat <- function(stream, selection_id) {
+    tr <- ellmer::ContentToolResult(
+      value = paste("Recalled", stream),
+      extra = list(
+        graft = list(
+          status = "accepted",
+          stream = stream,
+          selection_id = selection_id,
+          decision_id = paste0("dec-", stream),
+          purpose = "research"
+        )
+      )
+    )
+    turn <- ellmer::UserTurn(contents = list(tr))
+    chat_env <- new.env(parent = emptyenv())
+    chat_env$get_turns <- function() list(turn)
+    chat_env
+  }
+
+  ses_priv <- costorm_ses$.__enclos_env__$private
+  ses_priv$chats_value$moderator <- make_graft_chat("mod-stream", "sel-mod-1")
+  mgr <- tempest:::tempest_session_expert_manager(costorm_ses)
+  mgr_priv <- mgr$.__enclos_env__$private
+  assign(
+    "expert-session-1",
+    make_graft_chat("expert-stream", "sel-exp-1"),
+    envir = mgr_priv$sessions
+  )
+
+  consultations <- env$shiny_product_graft_consultations(costorm_ses)
+  expect_setequal(consultations$stream, c("mod-stream", "expert-stream"))
+  expect_setequal(consultations$selection_id, c("sel-mod-1", "sel-exp-1"))
+})
+
+test_that("Co-STORM report memory panel rejects stale withdrawal when stream head changed", {
+  skip_if_not_installed("shiny")
+  skip_if_not_installed("bslib")
+  skip_if_not_installed("graft")
+  skip_if_not("graft_store" %in% getNamespaceExports("graft"))
+
+  store <- graft::graft_store(
+    file.path(withr::local_tempdir(), "stale-withdraw-memory"),
+    create = TRUE
+  )
+  f1 <- test_promotion_storm_fixture(
+    run_id = "stale-1",
+    evidence_text = "First report evidence."
+  )
+  f2 <- test_promotion_storm_fixture(
+    run_id = "stale-2",
+    evidence_text = "Second report evidence."
+  )
+  env <- tempest:::tempest_shiny_module_env()
+  ctx <- list(
+    store = store,
+    store_path = tempest:::tempest_graft_store_path(store),
+    purpose = "research",
+    actor = "alice",
+    eligible = function(stream) TRUE
+  )
+  prod <- shiny::reactiveVal(f1$research)
+  mem_rev <- shiny::reactiveVal(0L)
+
+  shiny::testServer(
+    function(id) {
+      env$mod_memory_report_server(
+        id,
+        memory_ctx = ctx,
+        product = prod,
+        memory_revision = mem_rev
+      )
+    },
+    {
+      session$setInputs(
+        stream = "shared-stream",
+        actor = "alice",
+        reason = "Initial accept",
+        reviewed = TRUE,
+        accept = 1
+      )
+      session$flushReact()
+      expect_identical(mem_rev(), 1L)
+
+      # Out-of-band correction advances the stream head before withdrawal.
+      sel2 <- tempest_publish_artifact_research(f2$research, store)
+      tempest:::tempest_graft_accept_selection(
+        store,
+        selection_id = sel2,
+        stream = "shared-stream",
+        actor = "bob",
+        reason = "Superseding correction",
+        purpose = "research"
+      )
+
+      session$setInputs(reason = "Stale withdraw", withdraw = 1)
+      session$flushReact()
+      # Must fail closed without advancing memory_revision or withdrawing bob's head.
+      expect_identical(mem_rev(), 1L)
+      active <- tempest:::tempest_graft_selection_status(
+        store,
+        selection_id = sel2,
+        purpose = "research"
+      )
+      expect_identical(active$status, "accepted")
+    }
+  )
+})
