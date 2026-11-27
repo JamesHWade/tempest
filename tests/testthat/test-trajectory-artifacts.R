@@ -423,3 +423,124 @@ test_that("decision labels retain the store bounds in reconstructed reviews", {
     }
   }
 })
+
+test_that("trajectory review records and validates @extra$graft consultations", {
+  skip_if_not_installed("ellmer")
+  costorm_ses <- test_promotion_costorm_fixture()$research
+
+  dec_mod <- strrep("a", 64L)
+  sel_mod <- strrep("b", 64L)
+  dec_exp <- strrep("c", 64L)
+
+  make_chat <- function(entries) {
+    contents <- lapply(entries, function(meta) {
+      ellmer::ContentToolResult(
+        value = "Recalled memory",
+        extra = list(graft = meta)
+      )
+    })
+    turn <- ellmer::UserTurn(contents = contents)
+    env <- new.env(parent = emptyenv())
+    env$get_turns <- function() list(turn)
+    env
+  }
+
+  ses_priv <- costorm_ses$.__enclos_env__$private
+  ses_priv$chats_value$moderator <- make_chat(list(
+    list(
+      status = "accepted",
+      stream = "grid-storage",
+      purpose = "research",
+      decision_id = dec_mod,
+      selection_id = sel_mod,
+      artifact_count = 3L,
+      text_bytes = 512L,
+      truncated = FALSE,
+      omitted_count = 0L
+    ),
+    # Malformed consultation (invalid digest on accepted) must be omitted cleanly.
+    list(
+      status = "accepted",
+      stream = "bad-stream",
+      purpose = "research",
+      decision_id = "not-a-digest",
+      selection_id = sel_mod
+    )
+  ))
+  mgr <- tempest:::tempest_session_expert_manager(costorm_ses)
+  mgr_priv <- mgr$.__enclos_env__$private
+  active_sid <- mgr$get_or_create(
+    costorm_ses$experts[[1L]]@expert_id
+  )$session_id
+  assign(
+    active_sid,
+    make_chat(list(
+      list(
+        status = "withdrawn",
+        stream = "retired-finding",
+        purpose = "research",
+        decision_id = dec_exp,
+        selection_id = NULL,
+        artifact_count = 0L,
+        text_bytes = 0L,
+        truncated = FALSE,
+        omitted_count = 0L
+      ),
+      list(
+        status = "missing",
+        stream = "uncreated-stream",
+        purpose = "research"
+      )
+    )),
+    envir = mgr_priv$sessions
+  )
+
+  review <- tempest_trajectory_review(costorm_ses)
+  expect_identical(review@schema_version, 4L)
+  expect_null(review@knowledge$input_selection)
+  expect_identical(review@knowledge$promotion_state, "none")
+  expect_null(review@knowledge$acceptance)
+
+  consults <- review@knowledge$consultations
+  expect_named(consults, tempest:::tempest_trajectory_collection_fields())
+  expect_identical(consults$total, 3L)
+  expect_identical(consults$retained, 3L)
+  expect_identical(consults$omitted, 0L)
+  expect_identical(
+    vapply(consults$items, `[[`, character(1), "stream"),
+    c("grid-storage", "retired-finding", "uncreated-stream")
+  )
+  expect_identical(
+    vapply(consults$items, `[[`, character(1), "status"),
+    c("accepted", "withdrawn", "missing")
+  )
+  expect_identical(consults$items[[1L]]$decision_id, dec_mod)
+  expect_identical(consults$items[[1L]]$selection_id, sel_mod)
+  expect_null(consults$items[[2L]]$selection_id)
+  expect_null(consults$items[[3L]]$decision_id)
+
+  # Consultations survive serialization and review-data validation.
+  roundtrip <- unserialize(serialize(review, NULL))
+  expect_identical(
+    tempest_trajectory_review_data(roundtrip),
+    tempest_trajectory_review_data(review)
+  )
+
+  # Tampered consultation items fail strict S7 validation.
+  values <- S7::props(review)
+  bad_values <- values
+  bad_values$knowledge$consultations$items[[1L]]$status <- "invented"
+  bad_values$knowledge$consultations <- tempest:::tempest_trajectory_collection(
+    bad_values$knowledge$consultations$items,
+    preserve_order = TRUE
+  )
+  bad_values$review_id <- tempest:::tempest_trajectory_digest(do.call(
+    tempest:::tempest_trajectory_review_payload,
+    bad_values[setdiff(names(bad_values), "review_id")]
+  ))
+  expect_error(
+    do.call(tempest:::TempestTrajectoryReview, bad_values),
+    "accepted, withdrawn, or missing",
+    class = s7_validation_error_class()
+  )
+})

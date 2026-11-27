@@ -32,12 +32,17 @@
 #'   When omitted with a configured Chat object, starts with that Chat's model.
 #'   A supplied Chat can change models within its provider; use a custom
 #'   `config` chat factory to support switching providers.
-#' @param graft_store Optional local directory path (or `graft::LocalArtifactStore`)
-#'   for Graft reviewed project memory. Defaults to `NULL` (disabled). When
-#'   supplied, completed runs are published as unaccepted candidates that you
-#'   can review, accept into a named stream, correct, or withdraw; new runs can
-#'   consult accepted streams through read-only `graft::graft_tools()` or pin an
-#'   accepted stream as their comparison basis.
+#' @param graft_store Optional local directory path, `graft::ArtifactStore`
+#'   (including `graft::graft_store()` and `graft::graft_store_postgres()`), or
+#'   zero-argument store factory `function()` returning a `graft::ArtifactStore`
+#'   for reviewed project memory. Defaults to `NULL` (disabled). When supplied,
+#'   completed runs are published as unaccepted candidates that you can review,
+#'   accept into a named stream, correct, or withdraw; new runs can consult
+#'   accepted streams through read-only `graft::graft_tools()` or pin an
+#'   accepted stream as their comparison basis. For PostgreSQL stores, pass a
+#'   zero-argument factory function or configure standard `libpq` credentials
+#'   (`PGPASSWORD`, `.pgpass`, or `PGSERVICE`) so isolated background workers
+#'   can reconnect without serializing credentials to disk.
 #' @param memory_purpose Consultation purpose recorded on Graft decisions and
 #'   memory recall tools. Defaults to `"research"`.
 #' @param memory_actor Default reviewer label shown in the Graft review panel.
@@ -120,17 +125,14 @@ tempest_researcher_app <- function(
   memory_actor <- tempest_graft_memory_check_actor(memory_actor)
   memory_eligible_fn <- tempest_graft_memory_eligible(memory_eligible)
   memory_store <- NULL
-  memory_store_path <- NULL
+  memory_handoff <- NULL
   memory_streams <- character()
   if (!is.null(graft_store)) {
     memory_store <- tempest_graft_store_open(graft_store, create = TRUE)
-    memory_store_path <- tempest_graft_store_path(memory_store)
-    if (is.null(memory_store_path)) {
-      tempest_graft_memory_abort(
-        "The researcher app worker requires a local `graft_store()` directory path.",
-        class = "tempest_input_error"
-      )
-    }
+    memory_handoff <- tempest_graft_store_handoff(
+      graft_store,
+      opened_store = memory_store
+    )
     memory_streams <- tempest_graft_memory_accepted_streams(
       memory_store,
       purpose = memory_purpose,
@@ -143,6 +145,8 @@ tempest_researcher_app <- function(
   if (!is.function(runner)) {
     tempest_abort("The configured Shiny app runner must be a function.")
   }
+  owns_factory_connection <- tempest_graft_store_is_factory(graft_store) &&
+    tempest_graft_store_is_postgres(memory_store)
   app <- shiny::shinyApp(
     ui = tempest_researcher_ui(
       catalog,
@@ -160,11 +164,18 @@ tempest_researcher_app <- function(
       output_dir,
       report_library = report_library,
       graft_store = memory_store,
-      graft_store_path = memory_store_path,
+      graft_store_handoff = memory_handoff,
       memory_purpose = memory_purpose,
       memory_actor = memory_actor,
       memory_eligible = memory_eligible_fn
-    )
+    ),
+    onStart = if (owns_factory_connection) {
+      function() {
+        shiny::onStop(function() tempest_graft_store_close(memory_store))
+      }
+    } else {
+      NULL
+    }
   )
   old <- options(ellmer_timeout_s = tempest_shiny_provider_timeout())
   on.exit(options(old), add = TRUE)
@@ -183,6 +194,7 @@ tempest_researcher_app_server <- function(
   report_library = FALSE,
   graft_store = NULL,
   graft_store_path = NULL,
+  graft_store_handoff = NULL,
   memory_purpose = "research",
   memory_actor = "local-reviewer",
   memory_eligible = NULL
@@ -194,6 +206,7 @@ tempest_researcher_app_server <- function(
   force(report_library)
   force(graft_store)
   force(graft_store_path)
+  force(graft_store_handoff)
   force(memory_purpose)
   force(memory_actor)
   force(memory_eligible)
@@ -204,8 +217,14 @@ tempest_researcher_app_server <- function(
       mcp_config = mcp_config,
       output_dir = output_dir
     )
-    if (!is.null(graft_store_path)) {
-      controller_args$graft_store_path <- graft_store_path
+    resolved_handoff <- graft_store_handoff %||%
+      if (!is.null(graft_store_path)) {
+        list(kind = "local", path = graft_store_path)
+      } else {
+        NULL
+      }
+    if (!is.null(resolved_handoff)) {
+      controller_args$graft_store_handoff <- resolved_handoff
       controller_args$memory_purpose <- memory_purpose
       controller_args$memory_eligible <- memory_eligible
     }

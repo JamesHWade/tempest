@@ -421,3 +421,99 @@ test_that("researcher memory review module and library integrate accept and with
   expect_identical(observed$ui, TRUE)
   expect_identical(observed$server, TRUE)
 })
+
+test_that("researcher app and worker support store factory and Postgres handoff cleanly", {
+  skip_if_not_installed("graft")
+  skip_if_not_installed("ellmer")
+  skip_if_not("graft_store" %in% getNamespaceExports("graft"))
+
+  store_path <- file.path(withr::local_tempdir(), "pg-sim-memory")
+  backing_store <- graft::graft_store(store_path, create = TRUE)
+  fresh <- test_promotion_storm_fixture(
+    run_id = "worker-pg-handoff-1",
+    evidence_text = "Postgres-handed-off report evidence."
+  )
+  output_dir <- file.path(withr::local_tempdir(), "report-pg")
+  closed_stores <- 0L
+
+  local_mocked_bindings(
+    tempest_researcher_tools_config = function(config, tools) config,
+    tempest_researcher_app_run_research = function(...) {
+      list(
+        research = fresh$research,
+        report = TempestEnrichedReport(
+          path = output_dir,
+          status = "complete",
+          manifest = list(status = "complete")
+        )
+      )
+    },
+    tempest_graft_store_connect_postgres = function(handoff) {
+      expect_identical(handoff$scope, "team-research")
+      backing_store
+    },
+    tempest_graft_store_close = function(store) {
+      closed_stores <<- closed_stores + 1L
+      invisible(TRUE)
+    }
+  )
+
+  request <- list(
+    topic = "Postgres worker handoff test",
+    model = "openai/gpt-6.1-sol",
+    n_experts = 2L,
+    max_rounds = 1L,
+    max_questions = 1L,
+    allow_code = FALSE,
+    allow_images = FALSE,
+    max_analyses = 0L,
+    max_illustrations = 0L,
+    selected_tools = character(),
+    mcp_servers = character(),
+    selected_mcp = character(),
+    use_memory_tools = FALSE,
+    memory_basis_stream = NULL
+  )
+
+  pg_handoff <- list(
+    kind = "postgres",
+    scope = "team-research",
+    max_bytes = 64L * 1024L * 1024L,
+    max_revision_bytes = 1024L * 1024L,
+    connection_info = list(dbname = "tempest", host = "localhost")
+  )
+  res <- tempest:::tempest_researcher_worker(
+    kind = "research",
+    request = request,
+    config = tempest_config(chat_fn = function(...) NULL),
+    tools = list(),
+    mcp_config = NULL,
+    output_dir = output_dir,
+    progress_path = tempfile(fileext = ".jsonl"),
+    graft_store_handoff = pg_handoff,
+    memory_purpose = "research"
+  )
+
+  expect_identical(res$status, "complete")
+  expect_true(rlang::is_string(res$graft$selection_id))
+  # Owned Postgres worker connection is closed in on.exit().
+  expect_identical(closed_stores, 1L)
+
+  # Launcher accepts a zero-argument store factory function cleanly.
+  reports_dir <- withr::local_tempdir()
+  withr::local_options(tempest.app_runner = function(app, ...) app)
+  seen_handoff <- NULL
+  local_mocked_bindings(
+    tempest_researcher_ui = function(..., memory_enabled) shiny::div(),
+    tempest_researcher_app_server = function(..., graft_store_handoff) {
+      seen_handoff <<- graft_store_handoff
+      function(input, output, session) {}
+    }
+  )
+  tempest_researcher_app(
+    output_dir = reports_dir,
+    graft_store = function() graft::graft_store(store_path, create = FALSE)
+  )
+  expect_identical(seen_handoff$kind, "factory")
+  expect_true(is.function(seen_handoff$factory))
+})

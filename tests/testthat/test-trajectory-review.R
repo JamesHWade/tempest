@@ -21,7 +21,7 @@ test_that("trajectory review returns the exact bounded STORM projection", {
     S7::prop_names(review),
     tempest:::tempest_trajectory_review_fields()
   )
-  expect_identical(review@schema_version, 3L)
+  expect_identical(review@schema_version, 4L)
   expect_identical(review@review_id, repeated@review_id)
   expect_match(review@review_id, "^sha256:[a-f0-9]{64}$")
   expect_named(

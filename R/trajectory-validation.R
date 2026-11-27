@@ -676,6 +676,15 @@ tempest_trajectory_validate_knowledge <- function(knowledge, research_run_id) {
   )
 
   tempest_trajectory_validate_input_selection(knowledge$input_selection)
+  tempest_trajectory_validate_collection(
+    knowledge$consultations,
+    tempest_trajectory_consultation_fields(),
+    "Trajectory memory consultations"
+  )
+  invisible(lapply(
+    knowledge$consultations$items,
+    tempest_trajectory_validate_consultation
+  ))
   tempest_trajectory_scalar_string(
     knowledge$promotion_state,
     "Trajectory promotion state"

@@ -713,5 +713,5 @@ shiny_active_report_product <- function(
 }
 
 shiny_product_graft_consultations <- function(product) {
-  tempest:::tempest_graft_session_consultations(product)
+  tempest:::tempest_product_graft_consultations(product)
 }

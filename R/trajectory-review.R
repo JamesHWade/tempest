@@ -1,6 +1,6 @@
 # Bounded, read-only trajectory review for completed Tempest products.
 
-tempest_trajectory_schema_version <- 3L
+tempest_trajectory_schema_version <- 4L
 tempest_trajectory_max_records <- 250L
 
 tempest_trajectory_review_abort <- function(
@@ -125,9 +125,24 @@ tempest_trajectory_program_fields <- function() {
 tempest_trajectory_knowledge_fields <- function() {
   c(
     "input_selection",
+    "consultations",
     "promotion_state",
     "proposal",
     "acceptance"
+  )
+}
+
+tempest_trajectory_consultation_fields <- function() {
+  c(
+    "status",
+    "stream",
+    "purpose",
+    "decision_id",
+    "selection_id",
+    "artifact_count",
+    "text_bytes",
+    "truncated",
+    "omitted_count"
   )
 }
 
@@ -630,10 +645,128 @@ tempest_trajectory_claim_selection_digest <- function(claim_ids) {
   )
 }
 
+tempest_trajectory_consultation_item <- function(row) {
+  normalize_opt <- function(value) {
+    if (
+      is.null(value) || length(value) != 1L || is.na(value) || !nzchar(value)
+    ) {
+      NULL
+    } else {
+      as.character(value)
+    }
+  }
+  item <- list(
+    status = as.character(row$status),
+    stream = as.character(row$stream),
+    purpose = normalize_opt(row$purpose),
+    decision_id = normalize_opt(row$decision_id),
+    selection_id = normalize_opt(row$selection_id),
+    artifact_count = as.integer(row$artifact_count),
+    text_bytes = as.integer(row$text_bytes),
+    truncated = isTRUE(row$truncated),
+    omitted_count = as.integer(row$omitted_count)
+  )
+  tryCatch(
+    {
+      tempest_trajectory_validate_consultation(item)
+      item
+    },
+    error = function(error) NULL
+  )
+}
+
+tempest_trajectory_consultations <- function(research) {
+  frame <- tryCatch(
+    tempest_product_graft_consultations(research),
+    error = function(error) NULL
+  )
+  if (!is.data.frame(frame) || nrow(frame) == 0L) {
+    return(list())
+  }
+  items <- lapply(seq_len(nrow(frame)), function(i) {
+    tempest_trajectory_consultation_item(frame[i, , drop = FALSE])
+  })
+  unname(Filter(Negate(is.null), items))
+}
+
+tempest_trajectory_validate_consultation <- function(item) {
+  tempest_trajectory_exact_record(
+    item,
+    tempest_trajectory_consultation_fields(),
+    "Trajectory memory consultation"
+  )
+  tempest_trajectory_scalar_string(
+    item$status,
+    "Trajectory consultation status"
+  )
+  if (!item$status %in% c("accepted", "withdrawn", "missing")) {
+    tempest_trajectory_review_abort(
+      "Trajectory consultation status must be accepted, withdrawn, or missing."
+    )
+  }
+  tempest_trajectory_artifact_label(
+    item$stream,
+    "Trajectory consultation stream"
+  )
+  if (!is.null(item$purpose)) {
+    tempest_trajectory_artifact_label(
+      item$purpose,
+      "Trajectory consultation purpose"
+    )
+  }
+  if (identical(item$status, "accepted")) {
+    tempest_trajectory_artifact_digest(
+      item$decision_id,
+      "Trajectory consultation decision_id"
+    )
+    tempest_trajectory_artifact_digest(
+      item$selection_id,
+      "Trajectory consultation selection_id"
+    )
+  } else if (identical(item$status, "withdrawn")) {
+    if (!is.null(item$decision_id)) {
+      tempest_trajectory_artifact_digest(
+        item$decision_id,
+        "Trajectory consultation decision_id"
+      )
+    }
+    if (!is.null(item$selection_id)) {
+      tempest_trajectory_review_abort(
+        "A withdrawn consultation cannot retain a selection identity."
+      )
+    }
+  } else {
+    if (!is.null(item$decision_id) || !is.null(item$selection_id)) {
+      tempest_trajectory_review_abort(
+        "A missing consultation cannot retain decision or selection identities."
+      )
+    }
+  }
+  tempest_trajectory_whole_number(
+    item$artifact_count,
+    "Trajectory consultation artifact_count"
+  )
+  tempest_trajectory_whole_number(
+    item$text_bytes,
+    "Trajectory consultation text_bytes"
+  )
+  if (!rlang::is_bool(item$truncated)) {
+    tempest_trajectory_review_abort(
+      "Trajectory consultation truncated must be TRUE or FALSE."
+    )
+  }
+  tempest_trajectory_whole_number(
+    item$omitted_count,
+    "Trajectory consultation omitted_count"
+  )
+  invisible(item)
+}
+
 tempest_trajectory_knowledge <- function(
   manifest,
   promotion_bundle,
-  publication
+  publication,
+  consultations = list()
 ) {
   proposal <- if (is.null(promotion_bundle)) {
     NULL
@@ -663,6 +796,10 @@ tempest_trajectory_knowledge <- function(
   list(
     input_selection = tempest_trajectory_input_selection(
       manifest@artifact_selection
+    ),
+    consultations = tempest_trajectory_collection(
+      consultations,
+      preserve_order = TRUE
     ),
     promotion_state = state,
     proposal = proposal,
@@ -1123,8 +1260,10 @@ tempest_trajectory_findings <- function(stage_records, agents, linked_agents) {
 #' from output publication. Input `reported_decision` is unverified host
 #' provenance, never authenticated acceptance; malformed metadata is omitted.
 #' Decision actor, reason, key and other arbitrary input provenance are
-#' excluded. Schema 3 retains artifact inputs and directly replaces native
-#' snapshot and receipt-based reviews.
+#' excluded. Schema 4 adds `knowledge$consultations`, a bounded, read-only lane
+#' of plain-data `@extra$graft` recall consultation metadata emitted by Graft
+#' memory tools; consultations remain unverified provenance distinct from
+#' pinned input admission, output acceptance, and claim-support evidence.
 #'
 #' @param research One exact completed result returned by [tempest_run()] or a
 #'   succeeded, quiescent `TempestSession` returned by [tempest_session()].
@@ -1225,7 +1364,13 @@ tempest_trajectory_review <- function(
       agent_items <- unname(lapply(traces, tempest_trajectory_agent_item))
       programs <- tempest_trajectory_programs(manifest)
       evidence_items <- tempest_trajectory_evidence_items(context$workspace)
-      knowledge <- tempest_trajectory_knowledge(manifest, bundle, publication)
+      consultation_items <- tempest_trajectory_consultations(research)
+      knowledge <- tempest_trajectory_knowledge(
+        manifest,
+        bundle,
+        publication,
+        consultations = consultation_items
+      )
       joined <- tempest_trajectory_joins(
         context,
         agent_items,
