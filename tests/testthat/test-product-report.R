@@ -41,7 +41,6 @@ test_that("product report references reject content substitution", {
 })
 
 test_that("Co-STORM report preflight rejects invalid live state", {
-  skip_if_not_installed("ellmer")
   chat <- fake_chat()
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) chat
@@ -63,7 +62,6 @@ test_that("Co-STORM report preflight rejects invalid live state", {
 })
 
 test_that("Co-STORM report accessor reads only the exact committed artifact", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(chat_fn = function(...) fake_chat())
   session <- tempest_session(
     "Committed report",
@@ -164,7 +162,6 @@ test_that("Co-STORM report accessor reads only the exact committed artifact", {
 })
 
 test_that("Co-STORM report access requires quiescent execution state", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(chat_fn = function(...) fake_chat())
   session <- tempest_session(
     "Quiescent report",

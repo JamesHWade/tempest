@@ -15,25 +15,25 @@ tempest_session_resume(
 \arguments{
 \item{path}{Directory containing a session bundle.}
 
-\item{config}{Runtime \link{TempestConfig} used to recreate chats, retrievers, and
+\item{config}{Runtime \code{\link[=tempest_config]{tempest_config()}} used to recreate chats, retrievers, and
 tools.}
 
 \item{progress}{Optional callback for future \code{tempest_progress_event}
 objects.}
 
-\item{program_set}{A \link{TempestProgramSet} carrying the same program
+\item{program_set}{A \code{TempestProgramSet} carrying the same program
 identities recorded in the bundle. If \code{NULL}, the builtin set is used.}
 
 \item{knowledge}{Freshly admitted artifact knowledge matching the saved
 selection. Required when the session contains artifact evidence.}
 }
 \value{
-A restored \link{TempestSession}.
+A restored \code{\link[=tempest_session]{tempest_session()}}.
 }
 \description{
 \code{tempest_session_resume()} reads a directory bundle written by
-\code{\link[=tempest_session_save]{tempest_session_save()}} and rebuilds a \link{TempestSession} with a fresh runtime
-\link{TempestConfig}. Only the exact current schema-14 bundle is accepted; no
+\code{\link[=tempest_session_save]{tempest_session_save()}} and rebuilds a \code{\link[=tempest_session]{tempest_session()}} with a fresh runtime
+\code{\link[=tempest_config]{tempest_config()}}. Only the exact current schema-14 bundle is accepted; no
 compatibility or migration reader is provided. Historical progress events are
 loaded for display and reduction, but they are not replayed into \code{progress}.
 Stage-record history is restored for audit, but running attempts are rejected

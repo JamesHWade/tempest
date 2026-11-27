@@ -341,7 +341,6 @@ tempest_session_turn_result_data <- function(result) {
   data
 }
 
-#' @keywords internal
 tempest_suggested_questions_validate <- function(value) {
   if (
     !is.character(value) ||

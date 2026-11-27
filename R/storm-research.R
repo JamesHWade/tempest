@@ -158,7 +158,6 @@ tempest_generate_next_question <- function(
   stage_result$output
 }
 
-#' @keywords internal
 tempest_normalize_next_question <- function(output) {
   if (!is.list(output) || is.data.frame(output)) {
     tempest_abort(
@@ -177,15 +176,6 @@ tempest_normalize_next_question <- function(output) {
   list(question = question, done = done)
 }
 
-#' Decompose a research question into targeted search queries
-#'
-#' @param chat An ellmer chat object.
-#' @param question The research question to decompose.
-#' @param topic The overall research topic.
-#' @param module Optional dsprrr module for query decomposition.
-#' @param max_queries Maximum number of queries to return.
-#' @return A list with a `queries` character vector.
-#' @keywords internal
 tempest_decompose_query <- function(
   chat,
   question,
@@ -204,7 +194,6 @@ tempest_decompose_query <- function(
   stage_result$output
 }
 
-#' @keywords internal
 tempest_answer_source_context <- function(
   answer_text,
   store,
@@ -302,7 +291,6 @@ tempest_answer_source_context <- function(
   )
 }
 
-#' @keywords internal
 tempest_claim_extraction_citation_mode <- function(
   answer_text,
   source_ids = NULL,
@@ -327,7 +315,6 @@ tempest_claim_extraction_citation_mode <- function(
   "tempest_inline"
 }
 
-#' @keywords internal
 tempest_claim_extraction_inputs <- function(answer_text, store, source_ids) {
   source_context <- tempest_answer_source_context(
     answer_text,
@@ -346,7 +333,6 @@ tempest_claim_extraction_inputs <- function(answer_text, store, source_ids) {
   )
 }
 
-#' @keywords internal
 tempest_extracted_evidence_spans <- function(claims) {
   spans <- attr(claims, "tempest_evidence_spans", exact = TRUE) %||% list()
   if (
@@ -366,7 +352,6 @@ tempest_extracted_evidence_spans <- function(claims) {
   spans
 }
 
-#' @keywords internal
 tempest_extract_claims_execution_bind <- function(
   module,
   session_id,
@@ -582,7 +567,6 @@ tempest_prepare_fact_extraction_stage <- function(
   )
 }
 
-#' @keywords internal
 tempest_extract_facts_from_answer <- function(
   chat,
   answer_text,
@@ -629,7 +613,6 @@ tempest_extract_facts_from_answer <- function(
   invisible(stage_result)
 }
 
-#' @keywords internal
 tempest_extract_facts_from_answer_async <- function(
   chat,
   answer_text,

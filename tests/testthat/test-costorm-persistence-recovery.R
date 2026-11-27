@@ -1,14 +1,10 @@
 test_that("session resume fails closed for corrupt optional data", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  fixture <- test_persistence_costorm_session(
+    topic = "Strict recovery",
+    expert_id = "expert.strict-recovery"
   )
-  session <- tempest_session(
-    "Strict recovery",
-    config = cfg,
-    experts = list(test_expert(expert_id = "expert.strict-recovery"))
-  )
+  cfg <- fixture$config
+  session <- fixture$session
   tempest:::tempest_session_set_suggestions(session, "What remains?")
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   tempest_session_save(session, bundle_dir)
@@ -47,15 +43,12 @@ test_that("optional presentation readers propagate malformed data", {
 })
 
 test_that("session resume rejects every damaged bundle file", {
-  skip_if_not_installed("ellmer")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  fixture <- test_persistence_costorm_session(
+    topic = "Strict durable recovery",
+    expert_id = "expert.durable-recovery"
   )
-  session <- tempest_session(
-    "Strict durable recovery",
-    config = cfg,
-    experts = list(test_expert(expert_id = "expert.durable-recovery"))
-  )
+  cfg <- fixture$config
+  session <- fixture$session
   critical_files <- c(
     "experts.json",
     "retired_expert_ids.json",
@@ -91,15 +84,12 @@ test_that("session resume rejects every damaged bundle file", {
 })
 
 test_that("session bundles require the exact retirement sidecar", {
-  skip_if_not_installed("ellmer")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  fixture <- test_persistence_costorm_session(
+    topic = "Exact retirement sidecar",
+    expert_id = "expert.retirement-sidecar"
   )
-  session <- tempest_session(
-    "Exact retirement sidecar",
-    config = cfg,
-    experts = list(test_expert(expert_id = "expert.retirement-sidecar"))
-  )
+  cfg <- fixture$config
+  session <- fixture$session
   root <- withr::local_tempdir()
 
   missing <- file.path(root, "missing")
@@ -131,15 +121,12 @@ test_that("session bundles require the exact retirement sidecar", {
 })
 
 test_that("session resume rejects files that its manifest does not declare", {
-  skip_if_not_installed("ellmer")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  fixture <- test_persistence_costorm_session(
+    topic = "Declared inventory",
+    expert_id = "expert.inventory"
   )
-  session <- tempest_session(
-    "Declared inventory",
-    config = cfg,
-    experts = list(test_expert(expert_id = "expert.inventory"))
-  )
+  cfg <- fixture$config
+  session <- fixture$session
   bundle_dir <- file.path(withr::local_tempdir(), "bundle")
   tempest_session_save(session, bundle_dir)
   tempest:::tempest_product_write_json(

@@ -1,12 +1,9 @@
 test_that("tempest_type_query_decomposition returns valid type", {
-  skip_if_not_installed("ellmer")
-
   type <- tempest:::tempest_type_query_decomposition()
   expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })
 
 test_that("tempest_decompose_query returns structured output", {
-  skip_if_not_installed("ellmer")
   chat <- fake_chat(
     structured = list(list(
       queries = c(

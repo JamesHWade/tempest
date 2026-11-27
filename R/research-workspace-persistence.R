@@ -1,4 +1,3 @@
-#' @keywords internal
 tempest_research_workspace_snapshot_abort <- function(message, parent = NULL) {
   tempest_abort(
     c("Cannot snapshot ResearchWorkspace.", x = message),
@@ -9,7 +8,6 @@ tempest_research_workspace_snapshot_abort <- function(message, parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_max_sources_data <- function(max_sources) {
   if (is.infinite(max_sources)) {
     return("unbounded")
@@ -17,7 +15,6 @@ tempest_research_workspace_max_sources_data <- function(max_sources) {
   as.integer(max_sources)
 }
 
-#' @keywords internal
 tempest_research_workspace_array_record <- function(record, fields) {
   for (field in fields) {
     value <- record[[field]] %||% character()
@@ -26,7 +23,6 @@ tempest_research_workspace_array_record <- function(record, fields) {
   record
 }
 
-#' @keywords internal
 tempest_research_workspace_claim_record <- function(claim) {
   tempest_research_workspace_array_record(
     tempest_claim_to_list(claim),
@@ -39,7 +35,6 @@ tempest_research_workspace_claim_record <- function(claim) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_dispute_record <- function(dispute) {
   tempest_research_workspace_array_record(
     tempest_dispute_to_list(dispute),
@@ -53,7 +48,6 @@ tempest_research_workspace_claim_review_record <- function(review) {
   record
 }
 
-#' @keywords internal
 tempest_research_workspace_validate_noncontent <- function(
   workspace,
   action = c("snapshot", "restore")
@@ -137,7 +131,6 @@ tempest_research_workspace_validate_noncontent <- function(
   invisible(workspace)
 }
 
-#' @keywords internal
 tempest_research_workspace_snapshot_fields <- function() {
   c(
     "schema_version",
@@ -154,7 +147,6 @@ tempest_research_workspace_snapshot_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_snapshot <- function(workspace) {
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_research_workspace_snapshot_abort(
@@ -227,7 +219,6 @@ tempest_research_workspace_snapshot <- function(workspace) {
   snapshot
 }
 
-#' @keywords internal
 tempest_research_workspace_restore_abort <- function(message, parent = NULL) {
   tempest_abort(
     c("Cannot restore ResearchWorkspace snapshot.", x = message),
@@ -239,7 +230,6 @@ tempest_research_workspace_restore_abort <- function(message, parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_restore_schema <- function(snapshot) {
   tempest_research_workspace_require_current_schema(
     snapshot,
@@ -251,7 +241,6 @@ tempest_research_workspace_restore_schema <- function(snapshot) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_require_current_schema <- function(
   snapshot,
   what,
@@ -279,7 +268,6 @@ tempest_research_workspace_require_current_schema <- function(
   invisible(schema_version)
 }
 
-#' @keywords internal
 tempest_research_workspace_restore_max_sources <- function(value) {
   if (identical(value, "unbounded")) {
     return(Inf)
@@ -294,7 +282,6 @@ tempest_research_workspace_restore_max_sources <- function(value) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_restore_records <- function(
   snapshot,
   field
@@ -313,7 +300,6 @@ tempest_research_workspace_restore_records <- function(
   records
 }
 
-#' @keywords internal
 tempest_research_workspace_record_fields <- function(field) {
   switch(
     field,
@@ -329,7 +315,6 @@ tempest_research_workspace_record_fields <- function(field) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_exact_records <- function(records, field) {
   fields <- tempest_research_workspace_record_fields(field)
   if (identical(field, "claim_reviews")) {
@@ -389,7 +374,6 @@ tempest_research_workspace_exact_records <- function(records, field) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_record_string <- function(
   value,
   field,
@@ -417,7 +401,6 @@ tempest_research_workspace_record_string <- function(
   value
 }
 
-#' @keywords internal
 tempest_research_workspace_record_string_array <- function(
   value,
   field,
@@ -466,7 +449,6 @@ tempest_research_workspace_record_string_array <- function(
   unname(values)
 }
 
-#' @keywords internal
 tempest_research_workspace_record_number <- function(
   value,
   field,
@@ -502,7 +484,6 @@ tempest_research_workspace_record_number <- function(
   if (isTRUE(integer)) value else as.double(value)
 }
 
-#' @keywords internal
 tempest_research_workspace_record_timestamp <- function(
   value,
   field,
@@ -528,7 +509,6 @@ tempest_research_workspace_record_timestamp <- function(
   value
 }
 
-#' @keywords internal
 tempest_research_workspace_validate_claim_record <- function(record) {
   for (field in c(
     "claim_id",
@@ -599,7 +579,6 @@ tempest_research_workspace_validate_claim_record <- function(record) {
   record
 }
 
-#' @keywords internal
 tempest_research_workspace_validate_span_record <- function(record) {
   for (field in c("evidence_span_id", "source_id", "extracted_by")) {
     record[[field]] <- tempest_research_workspace_record_string(
@@ -637,7 +616,6 @@ tempest_research_workspace_validate_span_record <- function(record) {
   record
 }
 
-#' @keywords internal
 tempest_research_workspace_validate_dispute_record <- function(record) {
   for (field in c("dispute_id", "topic", "evidence_balance")) {
     record[[field]] <- tempest_research_workspace_record_string(
@@ -669,7 +647,6 @@ tempest_research_workspace_validate_dispute_record <- function(record) {
   record
 }
 
-#' @keywords internal
 tempest_research_workspace_unique_record_ids <- function(
   records,
   id_field,
@@ -702,7 +679,6 @@ tempest_research_workspace_unique_record_ids <- function(
   invisible(ids)
 }
 
-#' @keywords internal
 tempest_research_workspace_restore_metadata <- function(snapshot) {
   max_sources <- tempest_research_workspace_restore_max_sources(
     snapshot$max_sources
@@ -726,7 +702,6 @@ tempest_research_workspace_restore_metadata <- function(snapshot) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_restore <- function(
   snapshot,
   workspace = NULL

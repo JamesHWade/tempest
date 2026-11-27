@@ -1,6 +1,5 @@
 # STORM writing stage
 
-#' @keywords internal
 tempest_write_section <- function(
   writer,
   section_title,
@@ -40,7 +39,6 @@ tempest_write_section <- function(
   tempest_stage_string(stage_result$output, "section_text")
 }
 
-#' @keywords internal
 tempest_should_skip_section <- function(section_title) {
   grepl(
     paste0(
@@ -51,7 +49,6 @@ tempest_should_skip_section <- function(section_title) {
   )
 }
 
-#' @keywords internal
 tempest_sections_to_write <- function(outline) {
   sections <- outline$sections %||% list()
   purrr::keep(sections, function(section) {
@@ -59,7 +56,6 @@ tempest_sections_to_write <- function(outline) {
   })
 }
 
-#' @keywords internal
 tempest_section_facts_text <- function(
   retriever,
   store,
@@ -113,7 +109,6 @@ tempest_section_evidence_text <- function(evidence, accepted = character()) {
   )
 }
 
-#' @keywords internal
 tempest_section_retrieval_query <- function(section) {
   section_title <- section$title %||% "Section"
   section_summary <- section$summary %||% ""
@@ -212,7 +207,6 @@ tempest_section_partition_evidence <- function(jobs) {
   })
 }
 
-#' @keywords internal
 tempest_section_jobs <- function(
   outline,
   retriever,
@@ -293,7 +287,6 @@ tempest_storm_section_job <- function(
   )
 }
 
-#' @keywords internal
 tempest_write_sections_sequential <- function(
   jobs,
   writer,
@@ -381,7 +374,6 @@ tempest_storm_parallel_records_import <- function(records, record_stage) {
   invisible(records)
 }
 
-#' @keywords internal
 tempest_write_sections_parallel <- function(
   jobs,
   config,
@@ -454,7 +446,6 @@ tempest_write_sections_parallel <- function(
   lapply(collected, tempest_storm_collect_parallel)
 }
 
-#' @keywords internal
 tempest_write_section_jobs <- function(
   jobs,
   writer,
@@ -510,7 +501,6 @@ tempest_write_section_jobs <- function(
   )
 }
 
-#' @keywords internal
 tempest_write_lead_section <- function(
   writer,
   topic,
@@ -609,7 +599,6 @@ tempest_summarize_facts_for_prompt <- function(
   tempest_section_evidence_text(facts, accepted = accepted)
 }
 
-#' @keywords internal
 tempest_keyword_filter_facts <- function(
   store,
   query,
@@ -711,7 +700,6 @@ tempest_storm_semantic_filter_facts <- function(
 
 # STORM polish stage
 
-#' @keywords internal
 tempest_storm_polish_report <- function(
   title,
   draft_md,

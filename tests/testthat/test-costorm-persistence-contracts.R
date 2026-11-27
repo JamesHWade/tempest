@@ -1,5 +1,4 @@
 test_that("Co-STORM restore and resume require the recorded custom ProgramSet", {
-  skip_if_not_installed("ellmer")
   forward <- function(text, ...) list(answer = text)
   program_set <- test_program_set_from_program(
     dsprrr::module_fn("text -> answer", forward),
@@ -37,7 +36,6 @@ test_that("Co-STORM restore and resume require the recorded custom ProgramSet", 
 })
 
 test_that("TempestSession restores progress history without replaying it", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -104,7 +102,6 @@ test_that("TempestSession restores progress history without replaying it", {
 })
 
 test_that("Co-STORM snapshots require terminal stage attempts", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -234,7 +231,6 @@ test_that("Co-STORM snapshots require terminal stage attempts", {
 })
 
 test_that("current Co-STORM snapshots require the expert field", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

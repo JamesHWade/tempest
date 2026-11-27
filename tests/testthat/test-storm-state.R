@@ -468,7 +468,6 @@ test_that("STORM full completion is distinct from requested-step completion", {
 })
 
 test_that("STORM product state survives a JSON record round trip", {
-  skip_if_not_installed("jsonlite")
   state <- tempest:::tempest_storm_state(
     topic = "Grid storage",
     perspectives = list(list(
@@ -515,7 +514,6 @@ test_that("STORM product state survives a JSON record round trip", {
 })
 
 test_that("STORM product-state records canonicalize missing source fields", {
-  skip_if_not_installed("jsonlite")
   state <- tempest:::tempest_storm_state(
     topic = "Source metadata",
     references = list(list(
@@ -690,8 +688,6 @@ test_that("STORM product state excludes evidence and arbitrary artifacts", {
 })
 
 test_that("returned STORM manifest equals the output-dir manifest", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("graft")
   fixture <- storm_progress_fixture()
   output_root <- withr::local_tempdir()
@@ -746,8 +742,6 @@ test_that("returned STORM manifest equals the output-dir manifest", {
 })
 
 test_that("no-output STORM returns succeeded publication authority", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("graft")
   fixture <- storm_progress_fixture()
   seal_calls <- 0L

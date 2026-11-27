@@ -35,7 +35,6 @@ tempest_source_id <- function(url) {
   paste0("S", substr(digest::digest(url, algo = "xxhash64"), 1, 12))
 }
 
-#' @keywords internal
 tempest_source_scalar <- function(...) {
   values <- list(...)
   for (value in values) {
@@ -59,7 +58,6 @@ tempest_source_scalar <- function(...) {
   NA_character_
 }
 
-#' @keywords internal
 tempest_source_context_text <- function(source) {
   meta <- source$meta %||% list()
   tempest_source_scalar(
@@ -72,7 +70,6 @@ tempest_source_context_text <- function(source) {
   )
 }
 
-#' @keywords internal
 tempest_source_snippet_text <- function(source, max_chars = 300L) {
   meta <- source$meta %||% list()
   text <- tempest_source_scalar(
@@ -94,7 +91,6 @@ tempest_source_snippet_text <- function(source, max_chars = 300L) {
   paste0(substr(text, 1L, max_chars - 3L), "...")
 }
 
-#' @keywords internal
 tempest_research_workspace_abort <- function(message, ..., parent = NULL) {
   tempest_abort(
     message,
@@ -133,7 +129,6 @@ tempest_research_sensitive_name_variants <- function(value) {
   unique(tolower(gsub("[^A-Za-z0-9]+", "_", variants)))
 }
 
-#' @keywords internal
 tempest_research_sensitive_name <- function(value) {
   value <- tempest_research_sensitive_name_variants(value)
   if (length(value) == 0L) {
@@ -208,7 +203,6 @@ tempest_research_sensitive_name <- function(value) {
   )
 }
 
-#' @keywords internal
 tempest_research_reference_list_names <- function(value, path, abort) {
   value_names <- names(value)
   if (is.null(value_names) || length(value_names) == 0L) {
@@ -235,7 +229,6 @@ tempest_research_reference_list_names <- function(value, path, abort) {
   value_names
 }
 
-#' @keywords internal
 tempest_research_reference_value <- function(
   value,
   path,
@@ -371,18 +364,14 @@ tempest_research_reference_value <- function(
   as.double(value)
 }
 
-#' @keywords internal
 tempest_research_workspace_reference_id_valid <- function(value) {
   tempest_opaque_identifier_valid(value)
 }
 
-
-#' @keywords internal
 tempest_research_workspace_copy <- function(value) {
   rlang::duplicate(value, shallow = FALSE)
 }
 
-#' @keywords internal
 tempest_research_workspace_values <- function(values) {
   ids <- sort(ls(values, all.names = TRUE))
   stats::setNames(
@@ -394,7 +383,6 @@ tempest_research_workspace_values <- function(values) {
   )
 }
 
-#' @keywords internal
 tempest_research_workspace_environment_copy <- function(values) {
   copied <- new.env(parent = emptyenv())
   ids <- ls(values, all.names = TRUE)

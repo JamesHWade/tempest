@@ -60,6 +60,7 @@ Suggests:
     promises,
     ragnar,
     rmarkdown,
+    RPostgres,
     rvest,
     shiny (>= 1.8.1),
     shinychat (>= 0.4.0.9000),
@@ -181,4 +182,4 @@ Collate:
     'utils.R'
     'verify.R'
     'resources.R'
-Config/usethis/last-upkeep: 2026-06-27
+Config/usethis/last-upkeep: 2026-11-27

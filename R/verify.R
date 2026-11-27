@@ -1,7 +1,6 @@
 # R/verify.R
 # Explicit claim-by-evidence-span verification against captured source evidence
 
-#' @keywords internal
 tempest_type_verification <- function() {
   ellmer::type_object(
     status = ellmer::type_enum(
@@ -24,7 +23,6 @@ tempest_type_verification <- function() {
   )
 }
 
-#' @keywords internal
 tempest_verification_span_input <- function(claim, span, workspace) {
   if (
     !S7::S7_inherits(claim, tempest_claim) ||
@@ -67,7 +65,6 @@ tempest_verification_span_input <- function(claim, span, workspace) {
   )
 }
 
-#' @keywords internal
 tempest_verification_work_items <- function(workspace) {
   workspace$validate_integrity()
   claims <- workspace$list_proposed_claims()
@@ -102,7 +99,6 @@ tempest_verification_work_items <- function(workspace) {
   items
 }
 
-#' @keywords internal
 tempest_verify_one_claim_span <- function(
   claim,
   span,
@@ -148,37 +144,10 @@ tempest_verify_one_claim_span <- function(
   stage_result$output
 }
 
-#' @keywords internal
 tempest_empty_claim_supports <- function() {
   tempest_claim_supports_tibble(list())
 }
 
-#' Verify claim citations against their sources
-#'
-#' @param workspace A [ResearchWorkspace] holding proposed claims and retrieved
-#'   sources, or a `TempestSession` whose authoritative workspace and bound
-#'   verification program should be used.
-#' @param verifier A chat object (e.g. from `tempest_make_chat(config, "judge")`).
-#' @param policy Citation policy for standalone workspaces; verification runs
-#'   only for "claim_verified" or "strict". A `TempestSession` always runs
-#'   product-required claim verification and rejects non-verifying policies.
-#' @param verifier_model Optional model id bound into every verification-stage
-#'   proof and projected onto each verified claim.
-#' @param program_set A [TempestProgramSet] containing the exact
-#'   `verify_claim_support` program. If `NULL`, [tempest_program_set()] creates
-#'   the builtin set. When `workspace` is a `TempestSession`, its immutable
-#'   ProgramSet, citation policy, and support threshold are authoritative;
-#'   supplied values must match.
-#' @param min_support_score Minimum support score in `[0, 1]` for a claim to be
-#'   considered supported.
-#' @return A claim-support audit tibble with one row per verified
-#'   claim-by-evidence-span pair.
-#'
-#' Passing a standalone [ResearchWorkspace] returns an audit but does not own a
-#' durable product stage ledger. Pass the `TempestSession` for Co-STORM bundles
-#' so pair assessments, claim summaries, and verification records commit
-#' together.
-#' @keywords internal
 tempest_verify_claims <- function(
   workspace,
   verifier,

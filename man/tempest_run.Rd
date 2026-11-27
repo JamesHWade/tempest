@@ -29,7 +29,7 @@ tempest_run(
 \item{config}{A \code{TempestConfig}.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever with a
-\link{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
+\code{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
 \code{fetch(url)} methods. \code{search()} returns a data frame with non-empty
 \code{title} and HTTP/HTTPS \code{url} columns; \code{snippet} is optional. Tempest
 derives or verifies \code{source_id}. Create the workspace with

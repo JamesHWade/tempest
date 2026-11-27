@@ -30,7 +30,6 @@ test_that("Co-STORM memory config wraps chat_fn with read-only graft tools and p
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("graft")
-  skip_if_not_installed("ellmer")
   skip_if_not("graft_tools" %in% getNamespaceExports("graft"))
 
   store <- graft::graft_store(
@@ -230,7 +229,6 @@ test_that("shiny_active_report_product() tracks published STORM and restored Co-
 
 test_that("shiny_product_graft_consultations() reads moderator and expert manager chats", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   env <- tempest:::tempest_shiny_module_env()
   costorm_ses <- test_promotion_costorm_fixture()$research
 

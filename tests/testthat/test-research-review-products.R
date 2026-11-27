@@ -197,7 +197,6 @@ test_that("STORM publishes canonical claim review and bounded repair evidence", 
 test_that("Co-STORM retains exact scientific review findings after resume", {
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
-  skip_if_not_installed("jsonlite")
 
   fixture <- research_review_costorm_fixture(
     reviewer_response = list(

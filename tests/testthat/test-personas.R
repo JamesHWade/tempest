@@ -1,6 +1,4 @@
 test_that("tempest_type_personas returns the provider expert schema", {
-  skip_if_not_installed("ellmer")
-
   type <- tempest:::tempest_type_personas()
   expect_s7_class(type, getFromNamespace("TypeObject", "ellmer"))
 })
@@ -63,7 +61,6 @@ test_that("tempest_render_expert_prompt rejects a missing profile", {
 })
 
 test_that("TempestSession stores selected expert profiles", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

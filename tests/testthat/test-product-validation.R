@@ -1,23 +1,8 @@
-test_that("product validation returns canonical scientific records", {
-  result <- tempest_validation_result(
-    "validator.product",
-    status = "warning",
-    message = "Review the evidence.",
-    details = list(source_ids = list("S0123456789ab")),
-    created_at = "2026-08-17 UTC"
-  )
-
-  expect_identical(S7::S7_inherits(result, TempestValidationResult), TRUE)
-  expect_identical(result@validator_id, "validator.product")
-  expect_identical(result@status, "warning")
-  expect_identical(result@details$source_ids, list("S0123456789ab"))
-})
-
 test_that("product validation reports product-owned conditions", {
   expect_error(
-    tempest_validation_result(
-      "validator.product",
-      details = list(callback = function() NULL)
+    tempest:::tempest_product_canonical_list(
+      list(callback = function() NULL),
+      "details"
     ),
     class = "tempest_product_validation_error"
   )

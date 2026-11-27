@@ -1,6 +1,4 @@
 test_that("session save refuses to overwrite a non-bundle directory", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -53,8 +51,6 @@ test_that("session save refuses to overwrite a non-bundle directory", {
 
 test_that("session saves reject symbolic-link bundle roots", {
   skip_on_os("windows")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -89,8 +85,6 @@ test_that("session saves reject symbolic-link bundle roots", {
 })
 
 test_that("Tempest session bundle resume reports classed file errors", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

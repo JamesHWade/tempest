@@ -1,6 +1,5 @@
 # STORM pipeline (scripted)
 
-#' @keywords internal
 tempest_storm_report_with_execution_review <- function(
   report_md,
   stage_records,
@@ -20,7 +19,6 @@ tempest_storm_report_with_execution_review <- function(
   )
 }
 
-#' @keywords internal
 tempest_run_verification <- function(
   store,
   config,
@@ -42,7 +40,6 @@ tempest_run_verification <- function(
   )
 }
 
-#' @keywords internal
 tempest_storm_retriever_workspace <- function(retriever) {
   workspace <- retriever$workspace %||% NULL
   if (!inherits(workspace, "ResearchWorkspace")) {
@@ -52,7 +49,6 @@ tempest_storm_retriever_workspace <- function(retriever) {
   }
   workspace
 }
-
 
 #' Run the STORM pipeline
 #'
@@ -65,7 +61,7 @@ tempest_storm_retriever_workspace <- function(retriever) {
 #' @param topic Research topic or question.
 #' @param config A `TempestConfig`.
 #' @param retriever Optional `TempestRetriever` or compatible retriever with a
-#'   [ResearchWorkspace] at `$workspace` and `search(query, k)` and
+#'   `ResearchWorkspace` at `$workspace` and `search(query, k)` and
 #'   `fetch(url)` methods. `search()` returns a data frame with non-empty
 #'   `title` and HTTP/HTTPS `url` columns; `snippet` is optional. Tempest
 #'   derives or verifies `source_id`. Create the workspace with
@@ -326,19 +322,6 @@ tempest_run_internal <- function(
   )
 }
 
-#' Run STORM asynchronously (Shiny-friendly)
-#'
-#' This runs [tempest_run()] in a Mirai worker and returns a promise
-#' immediately.
-#' Use [tempest_run_cancel()] to stop a run that is no longer needed.
-#'
-#' @param ... Arguments passed to [tempest_run()]. See [tempest_run()] for
-#'   details on available parameters including `topic`, `config`, `retriever`,
-#'   `n_experts`, `research_strategy`, `max_rounds`, `steps`, and `verbose`.
-#' @return A `tempest_async_run` promise that resolves with the
-#'   [tempest_run()] result.
-#' @seealso [tempest_run()] for the synchronous version.
-#' @keywords internal
 tempest_run_async <- function(...) {
   args <- list(...)
   knowledge <- args$knowledge %||% NULL
@@ -418,15 +401,6 @@ tempest_run_async <- function(...) {
   promise
 }
 
-#' Cancel an asynchronous STORM run
-#'
-#' Stops the Mirai worker owned by a promise returned from
-#' [tempest_run_async()]. Cancellation is idempotent after a run has settled.
-#'
-#' @param run A `tempest_async_run` returned by [tempest_run_async()].
-#' @return Invisibly returns `TRUE` when cancellation was requested and
-#'   `FALSE` when the run had already settled.
-#' @keywords internal
 tempest_run_cancel <- function(run) {
   if (!inherits(run, "tempest_async_run")) {
     tempest_abort(

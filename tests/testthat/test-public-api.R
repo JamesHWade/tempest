@@ -114,3 +114,20 @@ test_that("the current public API contract is exact", {
     character()
   )
 })
+
+test_that("print.tempest_knowledge() summarizes the selection and returns invisibly", {
+  input <- test_artifact_knowledge_input()
+  knowledge <- do.call(tempest_artifact_knowledge, input)
+
+  printed <- NULL
+  lines <- testthat::capture_messages(
+    printed <- withVisible(print(knowledge))
+  )
+  output <- paste(lines, collapse = "\n")
+
+  expect_identical(printed$visible, FALSE)
+  expect_identical(printed$value, knowledge)
+  expect_match(output, "tempest_knowledge", fixed = TRUE)
+  expect_match(output, "selection:v1", fixed = TRUE)
+  expect_match(output, "accepted records: 2", fixed = TRUE)
+})

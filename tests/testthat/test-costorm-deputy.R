@@ -51,8 +51,6 @@ test_that("Deputy expert session IDs bind owner and preserve instances", {
 })
 
 test_that("moderator delegates through persistent Deputy expert execution", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   expert <- test_expert(name = "Deputy Expert")
 
   moderator_chat <- local({
@@ -353,9 +351,6 @@ test_that("moderator delegates through persistent Deputy expert execution", {
 })
 
 test_that("unseen-source questions expose their moderator Deputy execution", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-
   moderator_chat <- fake_chat(
     text = list(
       "What does the unseen source establish?\nWhat remains uncertain?",
@@ -443,9 +438,6 @@ test_that("unseen-source questions expose their moderator Deputy execution", {
 })
 
 test_that("synchronous warmup binds one correlation across Deputy and stage", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-
   source_id <- NULL
   expert_chat <- fake_chat(
     text = list(function(prompt) {
@@ -551,9 +543,6 @@ test_that("synchronous warmup binds one correlation across Deputy and stage", {
 })
 
 test_that("Deputy expert restores require the exact current binding wire shape", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-
   expert <- test_expert(
     name = "Exact Restore Expert"
   )

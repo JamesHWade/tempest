@@ -104,7 +104,6 @@ test_that("Co-STORM evidence panels explain their empty states", {
 
 test_that("Co-STORM evidence panels foreground populated content", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
 
   app <- tempest:::tempest_shiny_module_env()
 

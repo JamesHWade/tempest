@@ -7,7 +7,7 @@
 tempest_session_save(session, path, overwrite = FALSE)
 }
 \arguments{
-\item{session}{A \link{TempestSession} object.}
+\item{session}{A \code{\link[=tempest_session]{tempest_session()}} object.}
 
 \item{path}{Directory where the session bundle should be written.}
 
@@ -21,7 +21,7 @@ Invisibly returns the normalized bundle directory.
 }
 \details{
 \code{tempest_session_save()} writes a schema-versioned directory bundle for a
-\link{TempestSession}. The exact current format is schema 14, with no legacy or
+\code{\link[=tempest_session]{tempest_session()}}. The exact current format is schema 14, with no legacy or
 compatibility writer. The bundle stores the research manifest, authoritative
 workspace, explicit stage-record history, retained artifact selection,
 and narrow report product. Every declared file is checksummed, and the
@@ -32,5 +32,5 @@ serialized. A stage attempt that is still running is written as cancelled
 without changing the live session.
 
 Use \code{\link[=tempest_session_resume]{tempest_session_resume()}} to load the bundle with a fresh runtime
-\link{TempestConfig}.
+\code{\link[=tempest_config]{tempest_config()}}.
 }

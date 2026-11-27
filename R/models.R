@@ -1,35 +1,6 @@
-#' ResearchWorkspace (provisional scientific evidence ledger)
-#'
-#' A mutable, run-scoped workspace for retrieved resources, proposed claims,
-#' evidence spans, disputes, and references to accepted graft knowledge. The
-#' workspace never grants acceptance to proposed claims; acceptance remains an
-#' explicit graft review and commit.
-#'
-#' @field retrieved_resources Read-only named-list snapshot of typed resources
-#'   keyed by resource id.
-#' @field proposed_claims Read-only named-list snapshot of provisional claim
-#'   records keyed by claim id.
-#' @field evidence_spans Read-only named-list snapshot of provisional
-#'   evidence-span records.
-#' @field claim_supports Read-only named-list snapshot of explicit
-#'   claim-by-evidence-span support assessments.
-#' @field disputes Read-only named-list snapshot of provisional dispute
-#'   records.
-#' @field artifact_selection Read-only exact artifact input and provenance.
-#' @field citation_audit Read-only pair-level projection of the authoritative
-#'   claim-support assessments, when available.
-#' @field max_sources Maximum number of unique retrieved resources admitted.
-#'   Accepted Graft knowledge records inserted by [tempest_artifact_knowledge()] are
-#'   bounded separately and do not count.
-#'
-#' @keywords internal
 ResearchWorkspace <- R6::R6Class(
   "ResearchWorkspace",
   public = list(
-    #' @description Create a new provisional research workspace.
-    #' @param artifact_selection Exact artifact input retained by the workspace.
-    #' @param max_sources Maximum number of unique sources. New sources are
-    #'   refused once the limit is reached.
     initialize = function(
       max_sources = Inf,
 
@@ -53,8 +24,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description Set the maximum number of unique sources.
-    #' @param max_sources A positive whole number or `Inf`.
     set_max_sources = function(max_sources) {
       private$assert_mutation_open()
       if (
@@ -87,8 +56,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description Insert or update a retrieved typed evidence resource.
-    #' @param resource A resource created by [tempest_resource()].
     upsert_retrieved_resource = function(resource) {
       private$assert_mutation_open()
       if (!tempest_is_exact_resource(resource)) {
@@ -169,8 +136,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(resource_id)
     },
 
-    #' @description Get a retrieved typed evidence resource by id.
-    #' @param resource_id Resource id.
     get_retrieved_resource = function(resource_id) {
       resource <- private$resources_value[[resource_id]] %||% NULL
       if (is.null(resource)) {
@@ -179,8 +144,6 @@ ResearchWorkspace <- R6::R6Class(
       tempest_research_workspace_copy(resource)
     },
 
-    #' @description Get one retrieved resource as a built-in source view.
-    #' @param resource_id Resource id.
     get_retrieved_source = function(resource_id) {
       resource <- self$get_retrieved_resource(resource_id)
       if (is.null(resource)) {
@@ -189,28 +152,21 @@ ResearchWorkspace <- R6::R6Class(
       tempest_research_workspace_copy(tempest_resource_as_source(resource))
     },
 
-    #' @description List all retrieved evidence as typed resources.
     list_retrieved_resources = function() {
       ids <- sort(ls(private$resources_value, all.names = TRUE))
       purrr::map(ids, self$get_retrieved_resource)
     },
 
-    #' @description List retrieved resources as built-in source views.
     list_retrieved_sources = function() {
       ids <- sort(ls(private$resources_value, all.names = TRUE))
       purrr::map(ids, self$get_retrieved_source)
     },
 
-    #' @description Add a proposed claim record to the workspace.
-    #' @param claim A `tempest_claim` S7 record.
     add_proposed_claim = function(claim) {
       id <- self$add_proposed_claims(list(claim))[[1]]
       invisible(id)
     },
 
-    #' @description Atomically add proposed claim records to the workspace.
-    #' @param claims A list of `tempest_claim` S7 records.
-    #' @param commit Optional zero-argument callback committed with the batch.
     add_proposed_claims = function(claims, commit = NULL) {
       private$assert_mutation_open()
       if (!is.list(claims) || is.data.frame(claims)) {
@@ -280,10 +236,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(ids)
     },
 
-    #' @description Atomically add extracted evidence spans and claims.
-    #' @param claims A list of `tempest_claim` S7 records.
-    #' @param evidence_spans A list of `tempest_evidence_span` S7 records.
-    #' @param commit Optional zero-argument callback committed with the batch.
     add_extracted_claim_batch = function(
       claims,
       evidence_spans = list(),
@@ -432,17 +384,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(claim_ids)
     },
 
-    #' @description Atomically replace exact claim-by-span support assessments.
-    #' @param claim_supports An unnamed complete list of
-    #'   `tempest_claim_support` records.
-    #' @param min_support_score Bound support threshold used to derive claim
-    #'   summaries.
-    #' @param verifier Bounded verifier-model identifier or `NA`.
-    #' @param verified_at Exact canonical verification-batch timestamp bound
-    #'   into every corresponding verification-stage record.
-    #' @param .verification_owner_token Internal process-local session
-    #'   capability. Standalone workspaces require `NULL`.
-    #' @param commit Optional zero-argument callback committed with the batch.
     verify_proposed_claims_batch = function(
       claim_supports,
       verified_at,
@@ -533,41 +474,31 @@ ResearchWorkspace <- R6::R6Class(
       invisible(self$citation_audit)
     },
 
-    #' @description Get a claim-support assessment by id.
-    #' @param claim_support_id Exact derived support identifier.
     get_claim_support = function(claim_support_id) {
       support <- private$claim_supports_value[[claim_support_id]] %||% NULL
       tempest_research_workspace_copy(support)
     },
 
-    #' @description List claim-support assessments in deterministic id order.
     list_claim_supports = function() {
       ids <- sort(ls(private$claim_supports_value, all.names = TRUE))
       purrr::map(ids, self$get_claim_support)
     },
 
-    #' @description Get a proposed claim by id.
-    #' @param claim_id The claim id.
     get_proposed_claim = function(claim_id) {
       claim <- private$claims_value[[claim_id]] %||% NULL
       tempest_research_workspace_copy(claim)
     },
 
-    #' @description List all proposed claims.
     list_proposed_claims = function() {
       ids <- sort(ls(private$claims_value, all.names = TRUE))
       purrr::map(ids, self$get_proposed_claim)
     },
 
-    #' @description Proposed claims that cite a retrieved resource.
-    #' @param resource_id Resource id.
     proposed_claims_for_resource = function(resource_id) {
       ids <- sort(private$claims_by_source[[resource_id]] %||% character())
       purrr::map(ids, self$get_proposed_claim)
     },
 
-    #' @description Add an evidence span.
-    #' @param span A `tempest_evidence_span` S7 record.
     add_evidence_span = function(span) {
       private$assert_mutation_open()
       span <- private$validate_evidence_span(span)
@@ -604,22 +535,16 @@ ResearchWorkspace <- R6::R6Class(
       invisible(id)
     },
 
-    #' @description Get an evidence span by id.
-    #' @param span_id Evidence span id.
     get_evidence_span = function(span_id) {
       span <- private$evidence_spans_value[[span_id]] %||% NULL
       tempest_research_workspace_copy(span)
     },
 
-    #' @description List all evidence spans in deterministic id order.
     list_evidence_spans = function() {
       ids <- sort(ls(private$evidence_spans_value, all.names = TRUE))
       purrr::map(ids, self$get_evidence_span)
     },
 
-    #' @description Link an evidence span to a claim.
-    #' @param claim_id Claim id.
-    #' @param span_id Evidence span id.
     link_evidence_to_proposed_claim = function(claim_id, span_id) {
       private$assert_mutation_open()
       claim <- self$get_proposed_claim(claim_id)
@@ -667,8 +592,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(claim_id)
     },
 
-    #' @description Evidence spans linked to a claim.
-    #' @param claim_id Claim id.
     get_evidence_for_proposed_claim = function(claim_id) {
       claim <- self$get_proposed_claim(claim_id)
       if (is.null(claim)) {
@@ -677,8 +600,6 @@ ResearchWorkspace <- R6::R6Class(
       purrr::map(claim@evidence_span_ids, self$get_evidence_span)
     },
 
-    #' @description Add a dispute.
-    #' @param dispute A `tempest_dispute` S7 record.
     add_dispute = function(dispute) {
       private$assert_mutation_open()
       if (!S7::S7_inherits(dispute, tempest_dispute)) {
@@ -715,7 +636,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(id)
     },
 
-    #' @description List all disputes.
     list_disputes = function() {
       ids <- sort(ls(private$disputes_value, all.names = TRUE))
       purrr::map(
@@ -724,10 +644,6 @@ ResearchWorkspace <- R6::R6Class(
       )
     },
 
-    #' @description Replace the advisory claim-review records.
-    #' @param reviews An unnamed list of exact `TempestClaimReview` values.
-    #' @param .verification_owner_token Internal process-local workspace owner.
-    #' @param .resources Unnamed exact resources staged with the reviews.
     replace_claim_reviews = function(
       reviews,
       .verification_owner_token = NULL,
@@ -911,7 +827,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description List advisory claim-review records in deterministic claim order.
     list_claim_reviews = function() {
       ids <- sort(ls(private$claim_reviews_value, all.names = TRUE))
       if (length(ids) > 1L) {
@@ -933,8 +848,6 @@ ResearchWorkspace <- R6::R6Class(
       })
     },
 
-    #' @description Pin an exact artifact selection after admitting its resources.
-    #' @param selection A validated artifact selection.
     bind_artifact_selection = function(selection) {
       private$assert_mutation_open()
       selection <- tempest_artifact_selection(selection)
@@ -954,7 +867,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description Validate all authoritative workspace cross-record links.
     validate_integrity = function() {
       tempest_artifact_selection_validate(
         private$artifact_selection_value,
@@ -1122,7 +1034,6 @@ ResearchWorkspace <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description Convert sources, claims, and disputes to tibbles.
     to_tibbles = function() {
       s <- self$list_retrieved_sources()
       resources <- if (length(s) == 0) {
@@ -1840,7 +1751,7 @@ ResearchWorkspace <- R6::R6Class(
 #' @param artifact_selection Exact artifact input retained by the workspace.
 #' @param max_sources Maximum number of unique resources admitted.
 #'
-#' @return A [ResearchWorkspace] object. Supply it as a custom retriever's
+#' @return A `ResearchWorkspace` object. Supply it as a custom retriever's
 #'   `$workspace` so Tempest and the host write to the same research ledger.
 #' @examples
 #' workspace <- tempest_research_workspace(max_sources = 10L)

@@ -11,7 +11,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
+```{r}
+#| label: setup
+#| include: false
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
@@ -39,7 +41,9 @@ Install the optional packages and launch the bundled offline demonstration. It
 runs real `deputy`, `dsprrr`, `shinymcp`, and `graft` code with scripted
 replies and synthetic sources—no API keys or network requests required:
 
-```{r demo, eval = FALSE}
+```{r}
+#| label: demo
+#| eval: false
 pak::pak(c(
   "JamesHWade/tempest",
   "JamesHWade/graft",
@@ -76,7 +80,9 @@ review findings and build on prior work without writing glue code.
 
 ### Researcher app
 
-```{r researcher-app, eval = FALSE}
+```{r}
+#| label: researcher-app
+#| eval: false
 tempest_researcher_app(
   output_dir = "research-reports",
   report_library = TRUE,
@@ -103,7 +109,9 @@ With `graft_store` configured:
 
 ### Co-STORM workspace
 
-```{r costorm-app, eval = FALSE}
+```{r}
+#| label: costorm-app
+#| eval: false
 # Local file-backed store (safe across processes via advisory file locks)
 tempest_app(graft_store = "research-memory")
 
@@ -132,7 +140,8 @@ In `tempest_app()`:
 The installed offline example exercises the same public functions you call on a
 live `tempest_run()` or published `tempest_session()`:
 
-```{r offline-example}
+```{r}
+#| label: offline-example
 library(tempest)
 example <- new.env()
 sys.source(
@@ -144,7 +153,9 @@ example$artifact_research_example()
 
 In your own script or host application, the cycle takes four calls:
 
-```{r programmatic, eval = FALSE}
+```{r}
+#| label: programmatic
+#| eval: false
 store <- graft::graft_store("research-memory", create = TRUE)
 
 # 1. Publish completed research as an unaccepted candidate
@@ -195,7 +206,9 @@ research:
    `recall_project_memory`—bounded by `max_text_bytes` and guarded on every
    call by your `eligible(stream)` callback:
 
-```{r multi-stream-tools, eval = FALSE}
+```{r}
+#| label: multi-stream-tools
+#| eval: false
 memory_tools <- graft::graft_tools(
   store,
   purpose = "research",
@@ -223,7 +236,9 @@ Turn any completed `tempest_run()` result or published `tempest_session()` into
 a read-only `shinymcp` card exposing the report, claim-by-span evidence, and
 bounded stage review:
 
-```{r mcp-card, eval = FALSE}
+```{r}
+#| label: mcp-card
+#| eval: false
 card <- tempest_mcp_app(result)
 shinymcp::preview_app(card)
 # Or serve in an MCP client:
@@ -237,7 +252,9 @@ objects with no model-controlled store handles, you can expose your team's
 accepted Tempest research directly to Claude Code, Positron, or Posit
 Assistant:
 
-```{r mcp-memory-server, eval = FALSE}
+```{r}
+#| label: mcp-memory-server
+#| eval: false
 library(graft)
 
 store <- graft_store("/path/to/research-memory")
@@ -258,7 +275,9 @@ under `@extra$graft` (`status`, `stream`, `purpose`, `decision_id`,
 or raw content). Alongside `tempest_trajectory_review()`, this lets `scans`
 inspect both how a run executed and which reviewed streams it consulted:
 
-```{r review-scans, eval = FALSE}
+```{r}
+#| label: review-scans
+#| eval: false
 review <- tempest_trajectory_review(
   result,
   store = store,

@@ -43,7 +43,6 @@ test_tier_unit_files <- c(
   "test-resources.R",
   "test-run-verification.R",
   "test-s7-setup.R",
-  "test-shiny-host-example.R",
   "test-shinychat-adapter.R",
   "test-stage-atomicity.R",
   "test-suggestions.R",

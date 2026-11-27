@@ -1,28 +1,8 @@
 # TempestRetriever class and constructor
 
-#' TempestRetriever
-#'
-#' Provides web and Wikipedia retrieval with caching, plus helper methods to
-#' register retrieval tools with ellmer chats. Optionally integrates with
-#' ragnar for semantic search capabilities.
-#'
-#' @field config Read-only `TempestConfig` fixed at construction.
-#' @field workspace Read-only reference to the authoritative
-#'   [ResearchWorkspace] containing provisional research evidence. Workspace
-#'   mutation methods remain available.
-#' @field ragnar_store Read-only ragnar store reference derived from `config`.
-#' @field cache_dir Read-only cache path derived from `config`.
-#' @field cache_enabled Read-only cache policy derived from `config`.
-#' @field cache_ttl Read-only maximum cache age derived from `config`.
-#'
-#' @keywords internal
 TempestRetriever <- R6::R6Class(
   "TempestRetriever",
   public = list(
-    #' @description
-    #' Create a new TempestRetriever.
-    #' @param config A `TempestConfig` object.
-    #' @param workspace A [ResearchWorkspace].
     initialize = function(
       config = tempest_config(),
       workspace = tempest_research_workspace()
@@ -39,13 +19,6 @@ TempestRetriever <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description
-    #' Search for sources using the configured provider.
-    #' @param query Search query string.
-    #' @param k Maximum number of results.
-    #' @param provider Search provider override.
-    #' @param force If TRUE, bypass any cached result and refresh the cache.
-    #' @return A tibble of search results.
     search = function(query, k = NULL, provider = NULL, force = FALSE) {
       k <- k %||% self$config@max_search_results
       k <- tempest_config_count(k, "k")
@@ -137,12 +110,6 @@ TempestRetriever <- R6::R6Class(
       )
     },
 
-    #' @description
-    #' Fetch and cache content from a URL.
-    #' @param url The URL to fetch.
-    #' @param force If TRUE, bypass cache.
-    #' @param perspective Optional perspective name for ragnar metadata.
-    #' @return A typed evidence resource.
     fetch = function(url, force = FALSE, perspective = NA_character_) {
       url <- tempest_normalize_url(url)
       if (is.na(url)) {
@@ -351,15 +318,6 @@ TempestRetriever <- R6::R6Class(
       )
     },
 
-    #' @description
-    #' Ingest content into the ragnar store.
-    #' @param source_id The tempest source ID.
-    #' @param url The source URL.
-    #' @param title The document title.
-    #' @param text The full text content.
-    #' @param fetched_at Timestamp when fetched.
-    #' @param content_type Content type (html, pdf, etc.).
-    #' @param perspective Optional perspective name.
     ingest_to_ragnar = function(
       source_id,
       url,
@@ -406,8 +364,6 @@ TempestRetriever <- R6::R6Class(
       )
     },
 
-    #' @description
-    #' Build the ragnar store index for faster retrieval.
     build_ragnar_index = function() {
       if (is.null(self$ragnar_store)) {
         return(invisible(NULL))
@@ -422,12 +378,6 @@ TempestRetriever <- R6::R6Class(
       invisible(TRUE)
     },
 
-    #' @description
-    #' Retrieve relevant chunks from the ragnar store.
-    #' @param query The search query.
-    #' @param k Maximum number of chunks to return.
-    #' @param method Retrieval method: "hybrid", "vss", or "bm25".
-    #' @return A data frame of relevant chunks with metadata.
     retrieve = function(query, k = 10, method = c("hybrid", "vss", "bm25")) {
       if (is.null(self$ragnar_store)) {
         tempest_abort(
@@ -451,10 +401,6 @@ TempestRetriever <- R6::R6Class(
       )
     },
 
-    #' @description
-    #' Get the text content for a source by id.
-    #' @param source_id The source id.
-    #' @return The content text or NA.
     get_source_text = function(source_id) {
       src <- self$workspace$get_retrieved_source(source_id)
       if (is.null(src)) {
@@ -463,17 +409,10 @@ TempestRetriever <- R6::R6Class(
       src$content_text %||% NA_character_
     },
 
-    #' @description
-    #' List all sources in the store.
-    #' @return A list of source objects.
     list_retrieved_sources = function() {
       self$workspace$list_retrieved_sources()
     },
 
-    #' @description
-    #' Return cache hit/miss counters for this retriever.
-    #' @param reset Whether to reset counters after reading them.
-    #' @return A tibble with one row each for search and fetch cache counters.
     cache_stats = function(reset = FALSE) {
       out <- private$cache_stats_table()
       if (isTRUE(reset)) {
@@ -572,12 +511,6 @@ TempestRetriever <- R6::R6Class(
   )
 )
 
-#' Create a TempestRetriever
-#'
-#' @param config A `TempestConfig`.
-#' @param workspace A [ResearchWorkspace].
-#' @return A `TempestRetriever`.
-#' @keywords internal
 tempest_retriever <- function(
   config = tempest_config(),
   workspace = tempest_research_workspace()

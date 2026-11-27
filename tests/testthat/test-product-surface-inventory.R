@@ -203,7 +203,7 @@ test_that("T9 retired source seams remain absent", {
       test_source_inventory_namespace_functions("^tempest_run_"),
       method = "radix"
     )
-    store <- tempest_shiny_store()
+    store <- tempest:::tempest_shiny_module_env()$new_session_store()
     store_members <- c(
       "peek_costorm_session",
       "costorm_session",
@@ -250,7 +250,8 @@ test_that("T9 retired source seams remain absent", {
   retired_prompt_names <- c(
     "polisher_system.md",
     "reporter_system.md",
-    "qa_solver_system.md"
+    "qa_solver_system.md",
+    "lead_section_system.md"
   )
   if (identical(context$mode, "source")) {
     retired_prompts <- file.path(
@@ -270,8 +271,7 @@ test_that("T9 retired source seams remain absent", {
         file.path(context$root, "inst", "shiny", "R"),
         pattern = "[.]R$",
         full.names = TRUE
-      ),
-      file.path(context$root, "inst", "examples", "shiny-host", "app.R")
+      )
     )
   } else {
     retired_prompts <- vapply(
@@ -286,11 +286,10 @@ test_that("T9 retired source seams remain absent", {
         file.path(shiny_root, "R"),
         pattern = "[.]R$",
         full.names = TRUE
-      ),
-      system.file("examples", "shiny-host", "app.R", package = "tempest")
+      )
     )
   }
-  expect_identical(unname(file.exists(retired_prompts)), rep(FALSE, 3L))
+  expect_identical(unname(file.exists(retired_prompts)), rep(FALSE, 4L))
   expect_identical(file.exists(ui_files), rep(TRUE, length(ui_files)))
   ui_source <- paste(
     unlist(lapply(ui_files, readLines, warn = FALSE)),

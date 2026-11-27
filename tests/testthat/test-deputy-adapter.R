@@ -27,8 +27,6 @@ test_that("Deputy adapter guard retains a safe setup failure", {
 })
 
 test_that("Deputy adapter freezes the current Chat tool permissions", {
-  skip_if_not_installed("deputy")
-
   chat <- fake_chat(text = list("ready"))
   chat$register_tools(list(
     ellmer::tool(
@@ -84,8 +82,6 @@ test_that("Deputy adapter freezes the current Chat tool permissions", {
 })
 
 test_that("Deputy adapter is a real Agent for R6 ellmer clients", {
-  skip_if_not_installed("deputy")
-
   chat <- suppressWarnings(ellmer::chat_openai(
     model = "gpt-4o-mini",
     api_key = "test-only-not-a-credential"
@@ -169,8 +165,6 @@ test_that("Deputy terminal reasons retain current safety semantics", {
 })
 
 test_that("allowlisted tools pass with ambient execution disabled", {
-  skip_if_not_installed("deputy")
-
   tool <- ellmer::tool(
     function(query) paste("workspace", query),
     "Search the current Tempest workspace.",
@@ -212,8 +206,6 @@ test_that("allowlisted tools pass with ambient execution disabled", {
 })
 
 test_that("sync runs reuse one Deputy session and record exact traces", {
-  skip_if_not_installed("deputy")
-
   chat <- fake_chat(text = list("First answer.", "Second answer."))
   manifest <- tempest_research_manifest(
     "deputy-adapter-sync",
@@ -334,8 +326,6 @@ test_that("sync runs reuse one Deputy session and record exact traces", {
 })
 
 test_that("async chat and streams execute through Deputy Chat", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
 
@@ -421,8 +411,6 @@ test_that("async chat and streams execute through Deputy Chat", {
 })
 
 test_that("typed cutoffs never issue chat completions", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
 
@@ -566,8 +554,6 @@ test_that("failed typed endings keep their reason and safe parent", {
 })
 
 test_that("async chat returns the canonical multi-block provider response", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
 
@@ -607,8 +593,6 @@ test_that("async chat returns the canonical multi-block provider response", {
 })
 
 test_that("provider and recording errors fail with a fixed safe condition", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
 
@@ -679,9 +663,6 @@ test_that("provider and recording errors fail with a fixed safe condition", {
 })
 
 test_that("terminal stream errors settle without issuing completions", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -775,8 +756,6 @@ test_that("terminal stream errors settle without issuing completions", {
 })
 
 test_that("cancellation interrupts the active Deputy run", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
 
@@ -833,8 +812,6 @@ test_that("cancellation interrupts the active Deputy run", {
 })
 
 test_that("adapter identity and execution references never expose Agent", {
-  skip_if_not_installed("deputy")
-
   chat <- fake_chat(text = list("Serializable response"))
   manifest <- tempest_research_manifest(
     "deputy-adapter-identity",
@@ -886,9 +863,6 @@ test_that("adapter identity and execution references never expose Agent", {
 })
 
 test_that("sync, async, and stream transports carry exact completion IDs", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -1038,9 +1012,6 @@ test_that("sync, async, and stream transports carry exact completion IDs", {
 })
 
 test_that("all transports discard stale provider turns", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("coro")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 

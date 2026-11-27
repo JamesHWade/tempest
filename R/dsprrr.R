@@ -101,7 +101,6 @@ tempest_bind_program_set <- function(program_set, manifest) {
   )
 }
 
-#' @keywords internal
 tempest_run_dsprrr_module <- function(module, chat, inputs, step) {
   result <- tempest_run_dsprrr_module_structured(module, chat, inputs, step)
   result$output
@@ -194,7 +193,6 @@ tempest_dsprrr_structured_output <- function(value) {
   value
 }
 
-#' @keywords internal
 tempest_run_dsprrr_module_structured <- function(module, chat, inputs, step) {
   execution <- tempest_dsprrr_execution_verify(module, step)
   program <- execution$program
@@ -275,13 +273,6 @@ tempest_rethrow_dsprrr_contract <- function(condition) {
   invisible(condition)
 }
 
-#' Create dsprrr modules for structured steps
-#'
-#' Creates dsprrr modules for STORM structured extraction/generation steps.
-#'
-#' @param config A `TempestConfig` object.
-#' @return A named list containing every fixed-stage dsprrr module.
-#' @keywords internal
 tempest_make_dsprrr_modules <- function(config) {
   query_type <- tempest_type_query_decomposition()
   personas_type <- tempest_type_personas()

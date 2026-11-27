@@ -312,7 +312,6 @@ test_that("pair verification context carries evidence without live authority", {
 })
 
 test_that("session verification commits pair records and support state atomically", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     citation_policy = "claim_verified",
     min_support_score = 0.9,
@@ -501,7 +500,6 @@ test_that("session verification commits pair records and support state atomicall
 })
 
 test_that("default session verification is product-required", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -555,7 +553,6 @@ test_that("default session verification is product-required", {
 })
 
 test_that("session verification rejects policy and ProgramSet drift pre-provider", {
-  skip_if_not_installed("ellmer")
   calls <- 0L
   config <- tempest_config(
     citation_policy = "strict",
@@ -605,7 +602,6 @@ test_that("session verification rejects policy and ProgramSet drift pre-provider
 })
 
 test_that("TempestSession adopts only fresh unowned workspaces", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     citation_policy = "claim_verified",
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -674,7 +670,6 @@ test_that("TempestSession adopts only fresh unowned workspaces", {
 })
 
 test_that("failed session verification permits evidence mutation and retry", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     citation_policy = "claim_verified",
     chat_fn = function(role, model, system_prompt, echo) fake_chat()

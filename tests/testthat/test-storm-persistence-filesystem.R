@@ -1,5 +1,4 @@
 test_that("tempest_storm_prepare_run_dir creates a topic slug directory", {
-  skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
   run_dir <- tempest:::tempest_storm_prepare_run_dir(
@@ -13,7 +12,6 @@ test_that("tempest_storm_prepare_run_dir creates a topic slug directory", {
 
 test_that("STORM saves reject symbolic-link bundle roots", {
   skip_on_os("windows")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config()
   root <- withr::local_tempdir()
   program_set <- tempest_program_set()
@@ -195,7 +193,6 @@ test_that("tempest_atomic_write_lines writes content and leaves no temp files", 
 })
 
 test_that("the STORM manifest follows the artifacts it certifies", {
-  skip_if_not_installed("jsonlite")
   dir <- withr::local_tempdir()
   paths <- tempest:::tempest_storm_artifact_paths(dir)
   cfg <- tempest_config()
@@ -279,7 +276,6 @@ test_that("the STORM manifest follows the artifacts it certifies", {
 })
 
 test_that("references.json holds only the cited sources and reloads", {
-  skip_if_not_installed("jsonlite")
   dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()

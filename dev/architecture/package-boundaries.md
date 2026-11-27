@@ -7,12 +7,20 @@ Decision owner: Tempest maintainers
 The sections below record the 0.2 boundary and the initial 0.3 reset. They
 are historical where later product decisions differ. The current public
 contract is the exact fixture in
-`tests/testthat/fixtures/public-api-current.txt`: 23 exports, one S3 method,
-six session operations, and six read-only session bindings. Artifact
-selections replaced native Graft knowledge inputs, and
-`tempest_research_workspace()`, `tempest_resource()`, and
-`tempest_source_id()` are supported host-retriever constructors. The current
-NEWS and generated reference documentation describe these later changes.
+`tests/testthat/fixtures/public-api-current.txt`: 31 exports, one S3 method
+(`print.tempest_knowledge`), six `TempestSession` operations, and six
+read-only session bindings. Artifact selections (`tempest_artifact_knowledge()`,
+`tempest_publish_artifact_research()`, `tempest_read_artifact_research()`, and
+`tempest_reuse_artifact_research()`) replaced native Graft knowledge inputs;
+`tempest_research_workspace()`, `tempest_resource()`, and `tempest_source_id()`
+are supported host-retriever constructors; and later deliveries added the
+read-only MCP card (`tempest_mcp_app()`), advisory scientific claim review
+(`tempest_claim_reviews()`), trajectory-review data projection
+(`tempest_trajectory_review_data()`), and opt-in enriched reports / Researcher
+app (`tempest_researcher()`, `tempest_researcher_app()`,
+`tempest_enrich_report()`, `tempest_read_enriched_report()`,
+`tempest_r_executor()`, `tempest_image_generator()`). The current NEWS,
+vignettes, and generated reference documentation describe these later changes.
 
 ## Decision
 

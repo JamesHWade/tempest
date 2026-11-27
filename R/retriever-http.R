@@ -1,14 +1,6 @@
 # Retrieval and web access
 # Security-hardened URL handling with tidyverse style
 
-#' Validate and normalize a URL
-#'
-#' Normalizes URLs to HTTPS and validates against security risks including
-#' SSRF attacks (Server-Side Request Forgery).
-#'
-#' @param url URL string to normalize.
-#' @return Normalized URL or `NA_character_` if invalid.
-#' @keywords internal
 tempest_normalize_url <- function(url) {
   if (!is.character(url) || length(url) != 1L) {
     tempest_abort(
@@ -178,11 +170,6 @@ tempest_validate_fetch_url <- function(url, resolver = tempest_resolve_host) {
   url
 }
 
-#' Check if URL is safe (non-throwing version)
-#'
-#' @param url URL to check.
-#' @return Logical indicating if URL passes security checks.
-#' @keywords internal
 tempest_url_is_safe <- function(url) {
   tryCatch(
     {
@@ -232,16 +219,6 @@ tempest_response_content_type_supported <- function(content_type, url) {
       grepl("[.]pdf($|[?])", url, ignore.case = TRUE))
 }
 
-#' Perform a bounded HTTP fetch
-#' @keywords internal
-#' @param url URL to fetch.
-#' @param user_agent Optional HTTP user agent.
-#' @param timeout_s Connect and total request timeout in seconds.
-#' @param max_bytes Maximum response size in bytes.
-#' @param max_redirects Maximum redirects to follow.
-#' @param perform Request executor used by deterministic tests.
-#' @param validate URL validator used before every request.
-#' @return An `httr2_response`.
 tempest_http_get <- function(
   url,
   user_agent = NULL,
@@ -298,7 +275,6 @@ tempest_http_get <- function(
   tempest_url_abort("The URL exceeded the redirect limit.", current)
 }
 
-#' @keywords internal
 tempest_html_to_text <- function(html) {
   # Prefer rvest when available (xml2 is in Imports).
   if (tempest_has("rvest")) {
@@ -354,14 +330,6 @@ tempest_retriever_is_pdf <- function(url, content_type = "") {
     grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)
 }
 
-#' Fetch URL as markdown using ragnar
-#'
-#' Uses ragnar's read_as_markdown() for high-quality content extraction.
-#' Handles HTML, PDFs, and many other document types.
-#'
-#' @param url The URL to fetch.
-#' @return A list with `kind`, `text`, `title`, and `error`.
-#' @keywords internal
 tempest_fetch_url_markdown <- function(url, user_agent = NULL) {
   url <- tempest_retriever_require_url(url)
 
@@ -451,7 +419,6 @@ tempest_ragnar_store_build_index <- function(store) {
   ragnar::ragnar_store_build_index(store)
 }
 
-#' @keywords internal
 tempest_fetch_url_text <- function(url, user_agent = NULL) {
   url <- tempest_retriever_require_url(url)
 

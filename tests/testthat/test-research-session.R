@@ -1,5 +1,4 @@
 test_that("Co-STORM sessions own a manifest and research workspace", {
-  skip_if_not_installed("ellmer")
   source <- fake_source("https://example.org/session-workspace")
   extracted <- list(
     facts = list(list(
@@ -221,7 +220,6 @@ test_that("Co-STORM sessions own a manifest and research workspace", {
 })
 
 test_that("Co-STORM keeps its stage ledger private and mutation isolated", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -258,7 +256,6 @@ test_that("Co-STORM keeps its stage ledger private and mutation isolated", {
 })
 
 test_that("Co-STORM stage ledger batches commit atomically", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -304,7 +301,6 @@ test_that("Co-STORM stage ledger batches commit atomically", {
 })
 
 test_that("Co-STORM mind maps ignore raw chat output", {
-  skip_if_not_installed("ellmer")
   invalid_map <- list(
     nodes = list(
       list(id = "root", label = "Mind-map integrity", source_ids = character()),
@@ -344,7 +340,6 @@ test_that("Co-STORM mind maps ignore raw chat output", {
 })
 
 test_that("automatic Co-STORM personas record the exact product attempt", {
-  skip_if_not_installed("ellmer")
   generated <- list(
     personas = list(list(
       name = "Dr. Recorded",
@@ -386,7 +381,6 @@ test_that("automatic Co-STORM personas record the exact product attempt", {
 })
 
 test_that("Co-STORM snapshots reject mutated live ProgramSets", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -422,7 +416,6 @@ test_that("Co-STORM snapshots reject mutated live ProgramSets", {
 
 
 test_that("Co-STORM rejects a mismatched TempestRetriever before execution", {
-  skip_if_not_installed("ellmer")
   chat_calls <- 0L
   session_config <- tempest_config(
     max_search_results = 2L,
@@ -454,7 +447,6 @@ test_that("Co-STORM rejects a mismatched TempestRetriever before execution", {
 })
 
 test_that("Co-STORM sessions reject retriever lookalikes", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -477,7 +469,6 @@ test_that("Co-STORM sessions reject retriever lookalikes", {
 })
 
 test_that("Co-STORM restoration preserves manifest identity", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
       if (identical(role, "writer")) {
@@ -533,7 +524,6 @@ test_that("Co-STORM restoration preserves manifest identity", {
 })
 
 test_that("Co-STORM restoration rejects mismatched manifests", {
-  skip_if_not_installed("ellmer")
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

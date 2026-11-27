@@ -1,6 +1,5 @@
 # Search provider adapters, cache keys, and ToC extraction
 
-#' @keywords internal
 tempest_wikipedia_api <- function(params) {
   base <- "https://en.wikipedia.org/w/api.php"
   req <- httr2::request(base) |>
@@ -10,7 +9,6 @@ tempest_wikipedia_api <- function(params) {
   httr2::resp_body_json(resp, simplifyVector = TRUE)
 }
 
-#' @keywords internal
 tempest_wiki_search <- function(query, limit = 8) {
   res <- tempest_wikipedia_api(list(
     action = "query",
@@ -35,7 +33,6 @@ tempest_wiki_search <- function(query, limit = 8) {
   )
 }
 
-#' @keywords internal
 tempest_empty_search_results <- function() {
   tibble::tibble(
     title = character(),
@@ -44,7 +41,6 @@ tempest_empty_search_results <- function() {
   )
 }
 
-#' @keywords internal
 tempest_search_results <- function(title = NULL, url = NULL, snippet = NULL) {
   title <- as.character(title %||% character())
   url <- as.character(url %||% character())
@@ -69,7 +65,6 @@ tempest_search_results <- function(title = NULL, url = NULL, snippet = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_required_env <- function(var, provider) {
   value <- Sys.getenv(var, unset = "")
   if (identical(value, "")) {
@@ -91,7 +86,6 @@ tempest_required_env <- function(var, provider) {
   value
 }
 
-#' @keywords internal
 tempest_first_field <- function(x, fields, default = NA_character_) {
   for (field in fields) {
     value <- x[[field]]
@@ -102,7 +96,6 @@ tempest_first_field <- function(x, fields, default = NA_character_) {
   default
 }
 
-#' @keywords internal
 tempest_duckduckgo_result_url <- function(url) {
   url <- as.character(url %||% NA_character_)
   if (is.na(url) || identical(url, "")) {
@@ -118,7 +111,6 @@ tempest_duckduckgo_result_url <- function(url) {
   parsed
 }
 
-#' @keywords internal
 tempest_search_cache_key <- function(provider, query, k) {
   tempest_cache_key(
     "search-v2",
@@ -129,7 +121,6 @@ tempest_search_cache_key <- function(provider, query, k) {
   )
 }
 
-#' @keywords internal
 tempest_search_cache_options <- function(provider) {
   switch(
     provider,
@@ -155,7 +146,6 @@ tempest_search_cache_options <- function(provider) {
   )
 }
 
-#' @keywords internal
 tempest_fetch_cache_key <- function(url, user_agent = NULL) {
   tempest_cache_key("fetch-v2", url, user_agent %||% "")
 }
@@ -256,12 +246,6 @@ tempest_retriever_search <- function(retriever, query, k) {
 # API keys are retrieved from environment variables inside functions,
 # never as parameters (security: prevents exposure in stack traces)
 
-#' Perform a search-provider request with a timeout and transient-error retry
-#'
-#' Search providers are the hottest network path in the pipeline. Without a
-#' timeout a hung connection stalls the whole run, and without retries a
-#' transient 429/5xx aborts it. This wraps [httr2::req_perform()] with both.
-#' @keywords internal
 tempest_search_request_policy <- function(req, timeout_s = 30L) {
   req <- httr2::req_timeout(req, timeout_s)
   httr2::req_retry(
@@ -273,13 +257,11 @@ tempest_search_request_policy <- function(req, timeout_s = 30L) {
   )
 }
 
-#' @keywords internal
 tempest_search_perform <- function(req, timeout_s = 30L) {
   req <- tempest_search_request_policy(req, timeout_s = timeout_s)
   httr2::req_perform(req)
 }
 
-#' @keywords internal
 tempest_search_items <- function(items, provider) {
   if (is.null(items) || length(items) == 0L) {
     return(NULL)
@@ -297,12 +279,6 @@ tempest_search_items <- function(items, provider) {
   items
 }
 
-#' Search using You.com API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_you <- function(query, k = 8L) {
   api_key <- tempest_required_env("YDC_API_KEY", "You.com")
 
@@ -335,12 +311,6 @@ tempest_search_you <- function(query, k = 8L) {
   )
 }
 
-#' Search using Bing Web Search API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_bing <- function(query, k = 8L) {
   api_key <- tempest_required_env("BING_SEARCH_API_KEY", "Bing Search")
 
@@ -368,12 +338,6 @@ tempest_search_bing <- function(query, k = 8L) {
   )
 }
 
-#' Search using Serper API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_serper <- function(query, k = 8L) {
   api_key <- tempest_required_env("SERPER_API_KEY", "Serper")
 
@@ -399,12 +363,6 @@ tempest_search_serper <- function(query, k = 8L) {
   )
 }
 
-#' Search using Brave Search API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_brave <- function(query, k = 8L) {
   api_key <- tempest_required_env("BRAVE_API_KEY", "Brave Search")
 
@@ -430,12 +388,6 @@ tempest_search_brave <- function(query, k = 8L) {
   )
 }
 
-#' Search using DuckDuckGo HTML results
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_duckduckgo <- function(query, k = 8L) {
   tempest_require("rvest", "DuckDuckGo search requires HTML parsing.")
 
@@ -468,12 +420,6 @@ tempest_search_duckduckgo <- function(query, k = 8L) {
   )
 }
 
-#' Search using Tavily API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_tavily <- function(query, k = 8L) {
   api_key <- tempest_required_env("TAVILY_API_KEY", "Tavily")
 
@@ -500,12 +446,6 @@ tempest_search_tavily <- function(query, k = 8L) {
   )
 }
 
-#' Search using SearXNG API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_searxng <- function(query, k = 8L) {
   api_url <- Sys.getenv("SEARXNG_API_URL", unset = "")
   if (identical(api_url, "")) {
@@ -540,12 +480,6 @@ tempest_search_searxng <- function(query, k = 8L) {
   )
 }
 
-#' Search using Google Custom Search API
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_google <- function(query, k = 8L) {
   api_key <- tempest_required_env("GOOGLE_SEARCH_API_KEY", "Google Search")
   cse_id <- tempest_required_env("GOOGLE_CSE_ID", "Google Search")
@@ -573,12 +507,6 @@ tempest_search_google <- function(query, k = 8L) {
   )
 }
 
-#' Search using Azure AI Search
-#'
-#' @param query Search query string.
-#' @param k Maximum number of results.
-#' @return Tibble with title, url, snippet columns.
-#' @keywords internal
 tempest_search_azure_ai_search <- function(query, k = 8L) {
   api_key <- tempest_required_env(
     "AZURE_AI_SEARCH_API_KEY",
@@ -635,13 +563,6 @@ tempest_search_azure_ai_search <- function(query, k = 8L) {
   )
 }
 
-#' Extract table of contents from a URL
-#'
-#' Fetches a page and extracts h1-h4 headings as a structured ToC.
-#'
-#' @param url URL to extract ToC from.
-#' @return Character vector of indented headings, or `character()` on error.
-#' @keywords internal
 tempest_extract_toc_from_url <- function(url) {
   tryCatch(
     {
@@ -675,13 +596,6 @@ tempest_extract_toc_from_url <- function(url) {
   )
 }
 
-#' Get Wikipedia page sections via Parse API
-#'
-#' Uses the Wikipedia Parse API to get structured section headings.
-#'
-#' @param title Wikipedia page title.
-#' @return Character vector of indented section headings, or `character()` on error.
-#' @keywords internal
 tempest_wiki_page_sections <- function(title) {
   tryCatch(
     {

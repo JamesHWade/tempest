@@ -58,38 +58,3 @@ test_that("promotion plan POSIX timestamps preserve instants and fail closed", {
     rep(TRUE, 3L)
   )
 })
-
-test_that("source origin keys follow the locator and content hash", {
-  keys <- tempest:::tempest_source_origin_keys(
-    c(
-      "https://example.com/a",
-      " https://example.com/a ",
-      "https://example.com/a"
-    ),
-    c("sha256:1", "sha256:1", "sha256:2")
-  )
-
-  expect_identical(keys[[2L]], keys[[1L]])
-  expect_match(keys[[1L]], "^tempest-source-locator-v1:[a-f0-9]{64}$")
-  expect_identical(anyDuplicated(keys[c(1L, 3L)]), 0L)
-  expect_identical(
-    tempest:::tempest_source_origin_keys(character(), character()),
-    character()
-  )
-})
-
-test_that("claim origin keys normalize text", {
-  keys <- tempest:::tempest_claim_origin_keys(c(
-    "Output held steady.",
-    "  output HELD   steady",
-    "Output rose."
-  ))
-
-  expect_identical(keys[[2L]], keys[[1L]])
-  expect_match(keys[[1L]], "^tempest-claim-text-v1:[a-f0-9]{64}$")
-  expect_identical(anyDuplicated(keys[c(1L, 3L)]), 0L)
-  expect_identical(
-    tempest:::tempest_claim_origin_keys(character()),
-    character()
-  )
-})

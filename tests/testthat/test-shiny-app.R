@@ -240,33 +240,6 @@ test_that("Co-STORM session failures expose only safe error metadata", {
   expect_no_match(jsonlite::toJSON(event@payload, auto_unbox = TRUE), secret)
 })
 
-test_that("tempest_shiny_ui builds namespaced host panels", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("bslib")
-  skip_if_not_installed("shinychat")
-  html <- paste(
-    as.character(tempest_shiny_ui(
-      "host",
-      panels = c("chat", "sources", "report"),
-      show_config = TRUE
-    )),
-    collapse = ""
-  )
-
-  expect_match(html, "host-chat-topic")
-  expect_match(html, "host-chat-save_session")
-  expect_match(html, "host-sources-body")
-  expect_match(html, "host-report-body")
-  expect_match(html, "host-config-coordinator")
-
-  review_html <- paste(
-    as.character(tempest_shiny_ui("host", panels = "review")),
-    collapse = ""
-  )
-  expect_match(review_html, "host-review-product_source", fixed = TRUE)
-  expect_match(review_html, "Run review", fixed = TRUE)
-})
-
 test_that("chat UI uses the Tempest assistant icon", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -532,19 +505,6 @@ test_that("chat module delegates native chat and session lifecycle work", {
   server_code <- paste(deparse(body(app$mod_chat_server)), collapse = "\n")
 
   expect_named(
-    formals(tempest_shiny_server),
-    c(
-      "id",
-      "config",
-      "store",
-      "panels",
-      "experts",
-      "session_id",
-      "program_set",
-      "knowledge"
-    )
-  )
-  expect_named(
     formals(app$mod_chat_server),
     c(
       "id",
@@ -771,7 +731,6 @@ test_that("citation_markdown replaces Tempest footnotes with a reference panel",
 
 
 test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
-  skip_if_not_installed("commonmark")
   skip_if_not_installed("DT")
   app <- source_shiny_modules()
   workspace <- fake_store_with_sources(1)
@@ -821,7 +780,6 @@ test_that("Shiny rendering escapes untrusted HTML and unsafe links", {
 
 test_that("session store mutations work outside reactive consumers", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
   config <- tempest_config(
@@ -840,7 +798,6 @@ test_that("session store mutations work outside reactive consumers", {
 
 test_that("the transcript module shows recent turns from the store", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
   cfg <- tempest_config(
@@ -877,7 +834,6 @@ test_that("the transcript module shows recent turns from the store", {
 
 test_that("the transcript module renders citations in completed answers", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
   workspace <- fake_store_with_sources(1)
@@ -912,7 +868,6 @@ test_that("the transcript module renders citations in completed answers", {
 
 test_that("the mind map module counts nodes, sources, facts, and turns", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   store <- app$new_session_store()
   cfg <- tempest_config(
@@ -1005,7 +960,6 @@ test_that("mind map accessible view exposes relationships, notes, and sources", 
 
 test_that("shared fake Co-STORM session populates evidence tabs", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   shared <- app$new_session_store()
   cfg <- tempest_config(
@@ -1089,7 +1043,6 @@ test_that("shared fake Co-STORM session populates evidence tabs", {
 test_that("chat command messages summarize active session state", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   workspace <- tempest_research_workspace()
   cfg <- tempest_config(
@@ -1163,7 +1116,6 @@ test_that("chat command messages summarize active session state", {
 
 test_that("facts review exposes safe durable execution downgrades", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -1488,7 +1440,6 @@ test_that("repeated settings toggles preserve bound workspace values", {
 
 test_that("session archives round-trip product state through upload", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("zip")
   app <- source_shiny_modules()
   cfg <- tempest_config(
@@ -1564,7 +1515,6 @@ test_that("session archive validation rejects unsafe entries and large files", {
 
 test_that("session archive extraction rejects undeclared and tampered files", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("zip")
   app <- source_shiny_modules()
   cfg <- tempest_config(
@@ -1662,7 +1612,6 @@ test_that("Shiny session storage is isolated, private, and quota-bound", {
 
 test_that("session store saves and restores bundles for shared app tabs", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -1775,91 +1724,6 @@ test_that("session store saves and restores bundles for shared app tabs", {
   })
 })
 
-test_that("tempest_shiny_server renders host-managed shared state", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  workspace <- fake_store_with_sources(1)
-  source_id <- workspace$list_retrieved_sources()[[1]]$id
-  workspace$add_proposed_claim(tempest_claim(
-    claim_text = "Host adapter evidence renders.",
-    source_ids = source_id
-  ))
-  store <- tempest_shiny_store()
-  ses <- tempest_session(
-    "Embedded host topic",
-    config = cfg,
-    experts = list(test_expert(
-      name = "Host Expert"
-    )),
-    retriever = tempest_retriever(config = cfg, workspace = workspace),
-    session_id = "host-session-1"
-  )
-  tempest:::tempest_session_commit_mindmap(
-    ses,
-    list(
-      nodes = list(list(
-        id = "root",
-        label = "Embedded host topic",
-        parent = NULL,
-        notes = "",
-        source_ids = source_id
-      )),
-      edges = list()
-    )
-  )
-  ses$.__enclos_env__$private$add_turn("User", "user", "Show embedded state.")
-
-  shiny::testServer(
-    tempest_shiny_server,
-    args = list(
-      config = cfg,
-      store = store,
-      panels = c("sources", "facts", "mindmap", "transcript", "report")
-    ),
-    {
-      expect_identical(shared_store, store)
-      shared_store$set_costorm_session(ses)
-      session$flushReact()
-
-      expect_equal(
-        shiny::isolate(shared_store$costorm_session())$session_id,
-        "host-session-1"
-      )
-      expect_no_match(
-        as.character(output[["sources-body"]]$html),
-        "No sources collected yet"
-      )
-      expect_no_match(
-        as.character(output[["facts-body"]]$html),
-        "No facts extracted yet"
-      )
-      expect_equal(output[["mindmap-n_nodes"]], "1")
-      expect_match(
-        as.character(output[["transcript-body"]]$html),
-        "embedded state"
-      )
-      expect_match(
-        as.character(output[["report-body"]]$html),
-        "Generate a report"
-      )
-    }
-  )
-})
-
-test_that("the example host app parses", {
-  path <- system.file(
-    "examples",
-    "shiny-host",
-    "app.R",
-    package = "tempest"
-  )
-  skip_if(identical(path, ""), "example host app not installed")
-  expect_no_error(parse(path))
-})
-
 test_that("workflow_progress_ui renders reducer state", {
   skip_if_not_installed("shiny")
   app <- source_shiny_modules()
@@ -1935,7 +1799,6 @@ test_that("Co-STORM startup progress renders before warmup starts", {
 
 test_that("Co-STORM startup progress closes when the session is ready", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -2598,7 +2461,6 @@ test_that("workflow_progress_ui hides recorded failures once succeeded", {
 
 test_that("workflow_progress_ui renders idle Co-STORM sessions as ready", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   app <- source_shiny_modules()
   run_id <- "session-1"
   cfg <- tempest_config(

@@ -12,7 +12,7 @@ tempest_research_workspace(max_sources = Inf, artifact_selection = list())
 \item{artifact_selection}{Exact artifact input retained by the workspace.}
 }
 \value{
-A \link{ResearchWorkspace} object. Supply it as a custom retriever's
+A \code{ResearchWorkspace} object. Supply it as a custom retriever's
 \verb{$workspace} so Tempest and the host write to the same research ledger.
 }
 \description{

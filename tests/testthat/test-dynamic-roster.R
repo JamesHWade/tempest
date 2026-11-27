@@ -1,5 +1,4 @@
 test_that("TempestSession retires experts by exact stable id", {
-  skip_if_not_installed("ellmer")
   alice <- test_expert(
     expert_id = "expert.alice",
     name = "Dr. Alice Smith",
@@ -29,7 +28,6 @@ test_that("TempestSession retires experts by exact stable id", {
 })
 
 test_that("TempestSession get_active_experts filters retired profiles", {
-  skip_if_not_installed("ellmer")
   alice <- test_expert(expert_id = "expert.alice", name = "Dr. Alice Smith")
   bob <- test_expert(expert_id = "expert.bob", name = "Prof. Bob Jones")
   carol <- test_expert(expert_id = "expert.carol", name = "Dr. Carol Lee")
@@ -51,7 +49,6 @@ test_that("TempestSession get_active_experts filters retired profiles", {
 })
 
 test_that("tempest_generate_single_expert returns an expert profile", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
       fake_chat(
@@ -96,7 +93,6 @@ test_that("tempest_generate_single_expert returns an expert profile", {
 })
 
 test_that("transcript_markdown returns the most recent turns", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -124,7 +120,6 @@ test_that("transcript_markdown returns the most recent turns", {
 })
 
 test_that("add_expert returns NULL at the active-expert cap", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     max_active_experts = 1,
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -143,7 +138,6 @@ test_that("add_expert returns NULL at the active-expert cap", {
 })
 
 test_that("dynamic personas append one exact stage attempt", {
-  skip_if_not_installed("ellmer")
   generated <- list(
     personas = list(list(
       name = "Dr. Dynamic",

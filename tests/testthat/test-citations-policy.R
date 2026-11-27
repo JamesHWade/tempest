@@ -993,7 +993,6 @@ test_that("default policy is unchanged source-attributed output", {
 })
 
 test_that("session report Markdown comes from narrow product state", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -1032,7 +1031,6 @@ test_that("session report Markdown comes from narrow product state", {
 })
 
 test_that("session report Markdown requires a canonical report artifact", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

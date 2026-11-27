@@ -341,8 +341,6 @@ test_that("Deputy context binds program identity to the manifest", {
 
 
 test_that("Tempest context survives Deputy delegation and hooks", {
-  skip_if_not_installed("deputy")
-
   parent_deputy_session_id <- "tempest-session-parent"
   child_deputy_session_id <- "tempest-session-child"
   program_reference <- test_program_reference("review")
@@ -746,8 +744,7 @@ test_that("the 0.2 surface has no T1 compatibility vocabulary", {
   )
   product_entry_points <- list(
     tempest_session_restore,
-    tempest_session_resume,
-    tempest_shiny_server
+    tempest_session_resume
   )
   expect_equal(
     vapply(

@@ -41,7 +41,6 @@ prop_chr <- function(default = NA_character_) {
   )
 }
 
-#' @keywords internal
 prop_score_default <- function(default) {
   S7::new_property(
     S7::class_numeric,
@@ -159,8 +158,6 @@ tempest_verification_statuses <- function() {
 
 # --- claim --------------------------------------------------------------------
 
-#' Evidence ledger claim record (S7)
-#' @keywords internal
 tempest_claim <- S7::new_class(
   "tempest_claim",
   properties = list(
@@ -310,8 +307,6 @@ tempest_claim <- S7::new_class(
 
 # --- evidence span ------------------------------------------------------------
 
-#' Evidence span record (S7)
-#' @keywords internal
 tempest_evidence_span <- S7::new_class(
   "tempest_evidence_span",
   properties = list(
@@ -426,8 +421,6 @@ tempest_evidence_span <- S7::new_class(
 
 # --- dispute ------------------------------------------------------------------
 
-#' Dispute record (S7)
-#' @keywords internal
 tempest_dispute <- S7::new_class(
   "tempest_dispute",
   properties = list(
@@ -568,7 +561,6 @@ tempest_ledger_record_exact <- function(x, fields, what) {
   x
 }
 
-#' @keywords internal
 tempest_claim_to_list <- function(claim) {
   stopifnot(S7::S7_inherits(claim, tempest_claim))
   S7::validate(claim)
@@ -576,7 +568,6 @@ tempest_claim_to_list <- function(claim) {
   stats::setNames(lapply(props, function(p) S7::prop(claim, p)), props)
 }
 
-#' @keywords internal
 tempest_claim_from_list <- function(x) {
   x <- tempest_ledger_record_exact(
     x,
@@ -642,7 +633,6 @@ tempest_claim_from_list <- function(x) {
   )
 }
 
-#' @keywords internal
 tempest_evidence_span_to_list <- function(span) {
   stopifnot(S7::S7_inherits(span, tempest_evidence_span))
   S7::validate(span)
@@ -650,7 +640,6 @@ tempest_evidence_span_to_list <- function(span) {
   stats::setNames(lapply(props, function(p) S7::prop(span, p)), props)
 }
 
-#' @keywords internal
 tempest_evidence_span_from_list <- function(x) {
   x <- tempest_ledger_record_exact(
     x,
@@ -699,7 +688,6 @@ tempest_evidence_span_from_list <- function(x) {
   )
 }
 
-#' @keywords internal
 tempest_dispute_to_list <- function(dispute) {
   stopifnot(S7::S7_inherits(dispute, tempest_dispute))
   S7::validate(dispute)
@@ -707,7 +695,6 @@ tempest_dispute_to_list <- function(dispute) {
   stats::setNames(lapply(props, function(p) S7::prop(dispute, p)), props)
 }
 
-#' @keywords internal
 tempest_dispute_from_list <- function(x) {
   x <- tempest_ledger_record_exact(
     x,
@@ -748,7 +735,6 @@ tempest_dispute_from_list <- function(x) {
   )
 }
 
-#' @keywords internal
 tempest_claims_tibble <- function(claims) {
   if (length(claims) == 0) {
     return(tibble::tibble(
