@@ -1396,3 +1396,40 @@ tempest_product_report_validate_policy <- function(
     stage_records = records
   )
 }
+
+tempest_session_evidence_review_summary <- function(session, n = 5L) {
+  claims <- if (is.null(session)) {
+    list()
+  } else {
+    tryCatch(
+      tempest_session_workspace(session)$list_proposed_claims(),
+      error = function(error) list()
+    )
+  }
+  execution_review <- if (is.null(session)) {
+    character()
+  } else {
+    tempest_costorm_execution_review_lines(session)
+  }
+  min_support_score <- tryCatch(
+    tempest_session_config(session)@min_support_score,
+    error = function(error) 0.7
+  )
+  verified <- vapply(
+    claims,
+    function(claim) {
+      identical(claim@verification_status, "supported") &&
+        !is.na(claim@support_score) &&
+        claim@support_score >= min_support_score
+    },
+    logical(1)
+  )
+  list(
+    claims = claims,
+    total_claims = length(claims),
+    verified_claims = sum(verified),
+    shown_claims = utils::head(claims, n),
+    remaining_claims = max(0L, length(claims) - min(length(claims), n)),
+    execution_review = execution_review
+  )
+}

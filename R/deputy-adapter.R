@@ -1314,6 +1314,41 @@ tempest_deputy_chat_permissions <- function(x) {
   x$.tempest_deputy_permissions()
 }
 
+tempest_deputy_trace_validate_base <- function(
+  trace,
+  required,
+  abort_fn,
+  invalid_msg,
+  missing_msg = NULL,
+  identity_msg = NULL,
+  plain_msg = NULL,
+  pass_parent = FALSE
+) {
+  if (!is.null(plain_msg) && (!is.list(trace) || is.data.frame(trace))) {
+    abort_fn(plain_msg)
+  }
+  canonical <- tryCatch(
+    tempest_research_manifest_traces(list(trace))[[1L]],
+    error = function(error) {
+      if (isTRUE(pass_parent)) {
+        abort_fn(invalid_msg, parent = error)
+      } else {
+        abort_fn(invalid_msg)
+      }
+    }
+  )
+  if (!all(required %in% names(canonical))) {
+    abort_fn(missing_msg %||% identity_msg)
+  }
+  if (
+    !identical(canonical$trace_type, "deputy_run") ||
+      !identical(canonical$trace_id, canonical$deputy_run_id)
+  ) {
+    abort_fn(identity_msg %||% missing_msg)
+  }
+  canonical
+}
+
 tempest_deputy_chat_last_execution <- function(x) {
   tempest_deputy_adapter_error()
 }

@@ -135,55 +135,101 @@ tempest_claim_review_normalize_record <- function(record, include_id = TRUE) {
   record
 }
 
-tempest_claim_review_validate_evidence <- function(evidence, dossier_ids) {
+tempest_dossier_validate_evidence <- function(
+  evidence,
+  source_ids,
+  source_texts,
+  validate_entry,
+  on_list_error,
+  on_unknown_source,
+  on_missing_quote,
+  check_duplicates = FALSE,
+  on_duplicate = NULL,
+  max_entries = 24L
+) {
   if (
     !is.list(evidence) ||
       is.data.frame(evidence) ||
       !is.null(names(evidence)) ||
-      length(evidence) > 24L
+      length(evidence) > max_entries
   ) {
-    return("evidence must be an unnamed list of at most 24 source quotes")
+    return(list(ok = FALSE, issue = on_list_error()))
   }
   seen <- character()
+  normalized <- vector("list", length(evidence))
   for (index in seq_along(evidence)) {
-    item <- evidence[[index]]
-    issue <- tempest_claim_review_record_list(
-      item,
-      c("source_id", "quote"),
-      "evidence entries"
-    )
-    if (!is.null(issue)) {
-      return(issue)
+    entry <- validate_entry(evidence[[index]])
+    if (!isTRUE(entry$ok)) {
+      return(list(ok = FALSE, issue = entry$issue))
     }
-    source_id <- item$source_id
-    if (!tempest_opaque_identifier_valid(source_id)) {
-      return("evidence source_id must be a bounded identifier")
+    source_id <- entry$source_id
+    if (!source_id %in% source_ids) {
+      return(list(ok = FALSE, issue = on_unknown_source(source_id)))
     }
-    if (!source_id %in% dossier_ids) {
-      return("evidence references a source absent from the dossier")
+    quote <- entry$quote
+    if (isTRUE(check_duplicates)) {
+      pair <- tempest_product_canonical_json(list(source_id, quote))
+      if (pair %in% seen) {
+        return(list(ok = FALSE, issue = on_duplicate()))
+      }
+      seen <- c(seen, pair)
     }
-    quote <- item$quote
-    if (!tempest_claim_review_plain_scalar(quote, 4000L)) {
-      return(
-        "evidence quote must be one non-empty string of at most 4000 characters"
-      )
-    }
-    pair <- tempest_product_canonical_json(list(source_id, quote))
-    if (pair %in% seen) {
-      return("evidence cannot repeat an identical source and quote pair")
-    }
-    seen <- c(seen, pair)
-    source_text <- attr(dossier_ids, "source_texts", exact = TRUE)[[source_id]]
+    source_text <- source_texts[[source_id]]
     if (is.null(source_text) || !grepl(quote, source_text, fixed = TRUE)) {
-      return(
-        "evidence quote must be an exact substring of its dossier source text"
-      )
+      return(list(ok = FALSE, issue = on_missing_quote(source_id)))
     }
+    normalized[[index]] <- list(source_id = source_id, quote = quote)
   }
-  NULL
+  list(ok = TRUE, evidence = unname(normalized), issue = NULL)
 }
 
-tempest_claim_review_validate_record <- function(record) {
+tempest_claim_review_validate_evidence <- function(evidence, dossier_ids) {
+  source_texts <- attr(dossier_ids, "source_texts", exact = TRUE) %||% list()
+  result <- tempest_dossier_validate_evidence(
+    evidence = evidence,
+    source_ids = dossier_ids,
+    source_texts = source_texts,
+    validate_entry = function(item) {
+      issue <- tempest_claim_review_record_list(
+        item,
+        c("source_id", "quote"),
+        "evidence entries"
+      )
+      if (!is.null(issue)) {
+        return(list(ok = FALSE, issue = issue))
+      }
+      if (!tempest_opaque_identifier_valid(item$source_id)) {
+        return(list(
+          ok = FALSE,
+          issue = "evidence source_id must be a bounded identifier"
+        ))
+      }
+      if (!tempest_claim_review_plain_scalar(item$quote, 4000L)) {
+        return(list(
+          ok = FALSE,
+          issue = "evidence quote must be one non-empty string of at most 4000 characters"
+        ))
+      }
+      list(ok = TRUE, source_id = item$source_id, quote = item$quote)
+    },
+    on_list_error = function() {
+      "evidence must be an unnamed list of at most 24 source quotes"
+    },
+    on_unknown_source = function(source_id) {
+      "evidence references a source absent from the dossier"
+    },
+    on_missing_quote = function(source_id) {
+      "evidence quote must be an exact substring of its dossier source text"
+    },
+    check_duplicates = TRUE,
+    on_duplicate = function() {
+      "evidence cannot repeat an identical source and quote pair"
+    }
+  )
+  result$issue
+}
+
+tempest_claim_review_validate_header <- function(record) {
   issue <- tempest_claim_review_record_list(
     record,
     tempest_claim_review_record_fields(),
@@ -207,15 +253,19 @@ tempest_claim_review_validate_record <- function(record) {
   if (!tempest_claim_review_plain_scalar(record$claim_text, 20000L)) {
     return("claim_text must be one bounded non-empty string")
   }
+  NULL
+}
 
-  dossier <- record$dossier
+tempest_claim_review_validate_dossier <- function(dossier) {
   if (
     !is.list(dossier) ||
       is.data.frame(dossier) ||
       !is.null(names(dossier)) ||
       length(dossier) > 12L
   ) {
-    return("dossier must be an unnamed list of at most 12 source records")
+    return(list(
+      issue = "dossier must be an unnamed list of at most 12 source records"
+    ))
   }
   dossier_ids <- character()
   source_texts <- list()
@@ -227,32 +277,42 @@ tempest_claim_review_validate_record <- function(record) {
       "dossier sources"
     )
     if (!is.null(issue)) {
-      return(issue)
+      return(list(issue = issue))
     }
     if (!tempest_opaque_identifier_valid(source$source_id)) {
-      return("dossier source_id must be a bounded credential-free identifier")
+      return(list(
+        issue = "dossier source_id must be a bounded credential-free identifier"
+      ))
     }
     if (!tempest_claim_review_plain_scalar(source$locator, 4096L)) {
-      return("dossier locator must be one bounded non-empty string")
+      return(list(
+        issue = "dossier locator must be one bounded non-empty string"
+      ))
     }
     if (
       !tempest_claim_review_plain_scalar(source$content_hash, 64L) ||
         !grepl("^[a-f0-9]{64}$", source$content_hash)
     ) {
-      return("dossier content_hash must be a full lowercase SHA-256 hash")
+      return(list(
+        issue = "dossier content_hash must be a full lowercase SHA-256 hash"
+      ))
     }
     if (!tempest_claim_review_plain_scalar(source$text, 20000L, TRUE)) {
-      return("dossier text must be one string of at most 20000 characters")
+      return(list(
+        issue = "dossier text must be one string of at most 20000 characters"
+      ))
     }
     dossier_ids <- c(dossier_ids, source$source_id)
     source_texts[[source$source_id]] <- source$text
   }
   if (anyDuplicated(dossier_ids)) {
-    return("dossier cannot contain duplicate source_id values")
+    return(list(issue = "dossier cannot contain duplicate source_id values"))
   }
   attr(dossier_ids, "source_texts") <- source_texts
+  list(issue = NULL, dossier_ids = dossier_ids)
+}
 
-  reviewer <- record$reviewer
+tempest_claim_review_validate_reviewer <- function(reviewer, dossier_ids) {
   issue <- tempest_claim_review_record_list(
     reviewer,
     c("status", "finding", "rationale", "evidence", "query"),
@@ -264,11 +324,7 @@ tempest_claim_review_validate_record <- function(record) {
   if (
     !tempest_claim_review_plain_scalar(reviewer$status, 32L) ||
       !reviewer$status %in%
-        c(
-          "no_issue",
-          "potential_issue",
-          "insufficient_evidence"
-        )
+        c("no_issue", "potential_issue", "insufficient_evidence")
   ) {
     return(
       "reviewer status must be no_issue, potential_issue, or insufficient_evidence"
@@ -298,8 +354,14 @@ tempest_claim_review_validate_record <- function(record) {
   if (!is.null(issue)) {
     return(paste("reviewer", issue))
   }
+  NULL
+}
 
-  adjudication <- record$adjudication
+tempest_claim_review_validate_adjudication <- function(
+  adjudication,
+  reviewer,
+  dossier_ids
+) {
   issue <- tempest_claim_review_record_list(
     adjudication,
     c("verdict", "rationale", "evidence"),
@@ -311,12 +373,7 @@ tempest_claim_review_validate_record <- function(record) {
   if (
     !tempest_claim_review_plain_scalar(adjudication$verdict, 32L) ||
       !adjudication$verdict %in%
-        c(
-          "no_issue",
-          "confirmed",
-          "dismissed",
-          "unresolved"
-        )
+        c("no_issue", "confirmed", "dismissed", "unresolved")
   ) {
     return(
       "adjudication verdict must be no_issue, confirmed, dismissed, or unresolved"
@@ -355,8 +412,14 @@ tempest_claim_review_validate_record <- function(record) {
   ) {
     return("a no_issue verdict requires a no_issue reviewer")
   }
+  NULL
+}
 
-  repair <- record$repair
+tempest_claim_review_validate_repair <- function(
+  repair,
+  reviewer,
+  dossier_ids
+) {
   issue <- tempest_claim_review_record_list(
     repair,
     c("status", "query", "source_ids"),
@@ -433,7 +496,10 @@ tempest_claim_review_validate_record <- function(record) {
   ) {
     return("requested repair query must exactly match reviewer query")
   }
+  NULL
+}
 
+tempest_claim_review_validate_provenance <- function(record) {
   for (field in c("programs", "models")) {
     value <- record[[field]]
     issue <- tempest_claim_review_record_list(
@@ -463,13 +529,45 @@ tempest_claim_review_validate_record <- function(record) {
       ))
     }
   }
-
   payload <- record[setdiff(names(record), "review_id")]
   expected_id <- paste0("sha256:", tempest_product_record_hash(payload))
   if (!identical(record$review_id, expected_id)) {
     return("review_id does not match the canonical review content")
   }
   NULL
+}
+
+tempest_claim_review_validate_record <- function(record) {
+  issue <- tempest_claim_review_validate_header(record)
+  if (!is.null(issue)) {
+    return(issue)
+  }
+  dossier_check <- tempest_claim_review_validate_dossier(record$dossier)
+  if (!is.null(dossier_check$issue)) {
+    return(dossier_check$issue)
+  }
+  dossier_ids <- dossier_check$dossier_ids
+  issue <- tempest_claim_review_validate_reviewer(record$reviewer, dossier_ids)
+  if (!is.null(issue)) {
+    return(issue)
+  }
+  issue <- tempest_claim_review_validate_adjudication(
+    record$adjudication,
+    record$reviewer,
+    dossier_ids
+  )
+  if (!is.null(issue)) {
+    return(issue)
+  }
+  issue <- tempest_claim_review_validate_repair(
+    record$repair,
+    record$reviewer,
+    dossier_ids
+  )
+  if (!is.null(issue)) {
+    return(issue)
+  }
+  tempest_claim_review_validate_provenance(record)
 }
 
 TempestClaimReview <- S7::new_class(

@@ -1368,8 +1368,6 @@ tempest_storm_load_artifacts <- function(
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   declared_files <- tempest_storm_bundle_validate_manifest(run_dir, metadata)
-
-  tempest_storm_require_current_schema(metadata)
   path_is_declared <- function(path) {
     rel_path <- gsub(
       "\\\\",
@@ -1450,64 +1448,25 @@ tempest_storm_load_artifacts <- function(
   )
 }
 
-#' @keywords internal
-tempest_storm_save_artifacts <- function(
-  run_dir,
+tempest_storm_prepare_save_state <- function(
   workspace,
   state,
   research_manifest,
-  program_set = NULL,
+  program_set,
   config,
   steps
 ) {
-  if (is.null(run_dir)) {
-    return(invisible(NULL))
-  }
-  if (!rlang::is_string(run_dir) || !nzchar(tempest_trim(run_dir))) {
-    tempest_abort(
-      "{.arg run_dir} must be one non-empty directory path.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-  }
-  expanded_run_dir <- path.expand(run_dir)
-  if (tempest_persistence_leaf_path_is_symlink(expanded_run_dir)) {
-    tempest_abort(
-      "{.arg run_dir} cannot be a symbolic link.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-  }
-  run_dir <- normalizePath(
-    expanded_run_dir,
-    winslash = "/",
-    mustWork = FALSE
-  )
-  if (file.exists(run_dir) && !dir.exists(run_dir)) {
-    tempest_abort(
-      "{.arg run_dir} must point to a directory.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-  }
-  dir.create(run_dir, recursive = TRUE, showWarnings = FALSE)
+  err_class <- tempest_persistence_error_class("tempest_run_persistence_error")
   if (!inherits(workspace, "ResearchWorkspace")) {
     tempest_abort(
       "{.arg workspace} must be a ResearchWorkspace.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   if (!S7::S7_inherits(config, TempestConfig)) {
     tempest_abort(
       "{.arg config} must be created by {.fn tempest_config}.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   requested_steps <- tempest_storm_requested_steps(steps)
@@ -1521,9 +1480,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "Could not project terminal STORM stage-record history.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1541,9 +1498,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "Could not canonicalize the durable STORM execution review.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1560,17 +1515,13 @@ tempest_storm_save_artifacts <- function(
   if (!S7::S7_inherits(research_manifest, TempestResearchManifest)) {
     tempest_abort(
       "{.arg research_manifest} must be a TempestResearchManifest.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   if (!identical(research_manifest@mode, "storm")) {
     tempest_abort(
       "{.arg research_manifest} must describe a STORM run.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   live_trace_types <- vapply(
@@ -1581,9 +1532,7 @@ tempest_storm_save_artifacts <- function(
   if (anyNA(live_trace_types)) {
     tempest_abort(
       "{.arg research_manifest} contains an untyped execution trace.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   deputy_traces <- research_manifest@traces[
@@ -1604,9 +1553,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "Could not bind durable STORM stage traces into the manifest.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1626,9 +1573,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "{.arg state} stage records do not match the research manifest.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1664,9 +1609,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "{.arg state} stage records do not match the research workspace.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1682,9 +1625,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "The STORM report does not match its authoritative evidence policy.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1697,9 +1638,7 @@ tempest_storm_save_artifacts <- function(
     error = function(error) {
       tempest_abort(
         "Could not bind the STORM report to its research manifest.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1713,9 +1652,7 @@ tempest_storm_save_artifacts <- function(
         "A succeeded {.arg research_manifest} requires the full requested ",
         "dependency chain, exact stage history, and a non-empty report."
       ),
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   if (
@@ -1726,9 +1663,7 @@ tempest_storm_save_artifacts <- function(
   ) {
     tempest_abort(
       "{.arg research_manifest} does not match the current configuration.",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
   tryCatch(
@@ -1741,22 +1676,31 @@ tempest_storm_save_artifacts <- function(
       config = config,
       experts = state$experts,
       product_state = state,
-      require_publishable = identical(
-        research_manifest@status,
-        "succeeded"
-      )
+      require_publishable = identical(research_manifest@status, "succeeded")
     ),
     error = function(error) {
       tempest_abort(
         "The STORM product does not have exact durable execution authority.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
   )
+  tempest_storm_validate_persisted_state(state, workspace, action = "save")
+  list(
+    requested_steps = requested_steps,
+    state = state,
+    durable_records = durable_records,
+    research_manifest = research_manifest
+  )
+}
 
+tempest_storm_check_existing_bundle <- function(
+  run_dir,
+  requested_steps,
+  research_run_id
+) {
+  err_class <- tempest_persistence_error_class("tempest_run_persistence_error")
   existing_files <- list.files(
     run_dir,
     recursive = TRUE,
@@ -1774,86 +1718,64 @@ tempest_storm_save_artifacts <- function(
         paste(unowned_files, collapse = ", "),
         "."
       ),
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
+      class = err_class
     )
   }
-  tempest_storm_validate_persisted_state(
-    state,
-    workspace,
-    action = "save"
+  if (length(existing_files) == 0L) {
+    return(invisible(NULL))
+  }
+  tempest_persistence_require_regular_bundle_files(
+    run_dir,
+    "run_config.json",
+    "Existing STORM root manifest",
+    err_class
   )
-  if (length(existing_files) > 0L) {
-    tempest_persistence_require_regular_bundle_files(
-      run_dir,
-      "run_config.json",
-      "Existing STORM root manifest",
-      tempest_persistence_error_class("tempest_run_persistence_error")
-    )
-    existing_manifest <- tempest_product_read_json(
-      file.path(run_dir, "run_config.json"),
-      what = "existing STORM run manifest",
-      class = tempest_persistence_error_class(
-        "tempest_run_persistence_error"
-      )
-    )
-    tryCatch(
-      tempest_storm_bundle_validate_manifest(run_dir, existing_manifest),
-      error = function(error) {
-        tempest_abort(
-          "Refusing to replace an invalid existing STORM bundle.",
-          class = tempest_persistence_error_class(
-            "tempest_run_persistence_error"
-          ),
-          parent = error
-        )
-      }
-    )
-    existing_requested <- tempest_storm_requested_steps(
-      existing_manifest$requested_steps,
-      from_record = TRUE
-    )
-    existing_run_id <- existing_manifest$research_manifest$research_run_id %||%
-      NULL
-    if (
-      !identical(existing_requested, requested_steps) ||
-        !identical(existing_run_id, research_manifest@research_run_id)
-    ) {
+  existing_manifest <- tempest_product_read_json(
+    file.path(run_dir, "run_config.json"),
+    what = "existing STORM run manifest",
+    class = err_class
+  )
+  tryCatch(
+    tempest_storm_bundle_validate_manifest(run_dir, existing_manifest),
+    error = function(error) {
       tempest_abort(
-        paste0(
-          "An existing STORM bundle cannot change its immutable requested ",
-          "steps or research run identity."
-        ),
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        )
+        "Refusing to replace an invalid existing STORM bundle.",
+        class = err_class,
+        parent = error
       )
     }
-  }
-
-  workspace_record <- tempest_research_workspace_snapshot(workspace)
-  tempest_persistence_credential_audit(
-    list(
-      research_manifest = tempest_research_manifest_record(
-        research_manifest
+  )
+  existing_requested <- tempest_storm_requested_steps(
+    existing_manifest$requested_steps,
+    from_record = TRUE
+  )
+  existing_run_id <- existing_manifest$research_manifest$research_run_id %||%
+    NULL
+  if (
+    !identical(existing_requested, requested_steps) ||
+      !identical(existing_run_id, research_run_id)
+  ) {
+    tempest_abort(
+      paste0(
+        "An existing STORM bundle cannot change its immutable requested ",
+        "steps or research run identity."
       ),
-      state = tempest_storm_state_record(state),
-      workspace = workspace_record
-    ),
-    "STORM run snapshot",
-    tempest_persistence_error_class("tempest_run_persistence_error")
-  )
+      class = err_class
+    )
+  }
+  invisible(NULL)
+}
 
-  staging_dir <- tempfile(
-    pattern = paste0(".", basename(run_dir), "-staging-"),
-    tmpdir = dirname(run_dir)
-  )
-  dir.create(staging_dir, recursive = TRUE, showWarnings = FALSE)
-  on.exit(unlink(staging_dir, recursive = TRUE, force = TRUE), add = TRUE)
-  files <- character()
+tempest_storm_stage_bundle_files <- function(
+  staging_dir,
+  workspace,
+  workspace_record,
+  state,
+  durable_records,
+  research_manifest,
+  requested_steps
+) {
   files <- c(
-    files,
     tempest_storm_bundle_write_json(
       staging_dir,
       "workspace.json",
@@ -1934,33 +1856,105 @@ tempest_storm_save_artifacts <- function(
     files = as.list(unname(files)),
     checksums = checksums
   )
-  tempest_storm_bundle_write_json(
-    staging_dir,
-    "run_config.json",
-    metadata
+  tempest_storm_bundle_write_json(staging_dir, "run_config.json", metadata)
+  invisible(metadata)
+}
+
+#' @keywords internal
+tempest_storm_save_artifacts <- function(
+  run_dir,
+  workspace,
+  state,
+  research_manifest,
+  program_set = NULL,
+  config,
+  steps
+) {
+  if (is.null(run_dir)) {
+    return(invisible(NULL))
+  }
+  err_class <- tempest_persistence_error_class("tempest_run_persistence_error")
+  if (!rlang::is_string(run_dir) || !nzchar(tempest_trim(run_dir))) {
+    tempest_abort(
+      "{.arg run_dir} must be one non-empty directory path.",
+      class = err_class
+    )
+  }
+  expanded_run_dir <- path.expand(run_dir)
+  if (tempest_persistence_leaf_path_is_symlink(expanded_run_dir)) {
+    tempest_abort(
+      "{.arg run_dir} cannot be a symbolic link.",
+      class = err_class
+    )
+  }
+  run_dir <- normalizePath(
+    expanded_run_dir,
+    winslash = "/",
+    mustWork = FALSE
   )
+  if (file.exists(run_dir) && !dir.exists(run_dir)) {
+    tempest_abort(
+      "{.arg run_dir} must point to a directory.",
+      class = err_class
+    )
+  }
+  dir.create(run_dir, recursive = TRUE, showWarnings = FALSE)
+
+  prepared <- tempest_storm_prepare_save_state(
+    workspace = workspace,
+    state = state,
+    research_manifest = research_manifest,
+    program_set = program_set,
+    config = config,
+    steps = steps
+  )
+  tempest_storm_check_existing_bundle(
+    run_dir = run_dir,
+    requested_steps = prepared$requested_steps,
+    research_run_id = prepared$research_manifest@research_run_id
+  )
+
+  workspace_record <- tempest_research_workspace_snapshot(workspace)
+  tempest_persistence_credential_audit(
+    list(
+      research_manifest = tempest_research_manifest_record(
+        prepared$research_manifest
+      ),
+      state = tempest_storm_state_record(prepared$state),
+      workspace = workspace_record
+    ),
+    "STORM run snapshot",
+    err_class
+  )
+
+  staging_dir <- tempfile(
+    pattern = paste0(".", basename(run_dir), "-staging-"),
+    tmpdir = dirname(run_dir)
+  )
+  dir.create(staging_dir, recursive = TRUE, showWarnings = FALSE)
+  on.exit(unlink(staging_dir, recursive = TRUE, force = TRUE), add = TRUE)
+
+  tempest_storm_stage_bundle_files(
+    staging_dir = staging_dir,
+    workspace = workspace,
+    workspace_record = workspace_record,
+    state = prepared$state,
+    durable_records = prepared$durable_records,
+    research_manifest = prepared$research_manifest,
+    requested_steps = prepared$requested_steps
+  )
+
   tryCatch(
-    {
-      tempest_persistence_require_regular_bundle_files(
-        staging_dir,
-        "run_config.json",
-        "Staged STORM root manifest",
-        tempest_persistence_error_class("tempest_run_persistence_error")
-      )
-      tempest_storm_bundle_validate_manifest(staging_dir, metadata)
-      tempest_storm_load_artifacts(
-        staging_dir,
-        config = config,
-        program_set = program_set,
-        run_id = research_manifest@research_run_id
-      )
-    },
+    tempest_storm_load_artifacts(
+      staging_dir,
+      config = config,
+      program_set = program_set,
+      run_id = prepared$research_manifest@research_run_id
+    ),
     error = function(error) {
       tempest_abort(
         "The completed staged STORM bundle failed validation.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
+        class = err_class,
         parent = error
       )
     }
@@ -1968,12 +1962,10 @@ tempest_storm_save_artifacts <- function(
   tempest_product_atomic_commit_bundle(
     staging_dir,
     run_dir,
-    class = tempest_persistence_error_class(
-      "tempest_run_persistence_error"
-    ),
+    class = err_class,
     what = "STORM bundle"
   )
-  invisible(research_manifest)
+  invisible(prepared$research_manifest)
 }
 
 tempest_storm_validate_resume_request <- function(

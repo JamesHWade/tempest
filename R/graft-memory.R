@@ -1035,3 +1035,134 @@ tempest_product_graft_consultations <- function(product) {
   rownames(out) <- NULL
   out
 }
+
+tempest_graft_find_selection <- function(
+  store,
+  product,
+  purpose = "research",
+  eligible = NULL
+) {
+  if (is.null(store) || is.null(product)) {
+    return(NULL)
+  }
+  bundle <- tryCatch(
+    tempest_promotion_bundle(product),
+    error = function(error) NULL
+  )
+  if (is.null(bundle)) {
+    return(NULL)
+  }
+  expected_name <- paste0("tempest:research:", bundle@research_run_id)
+  expected_bundle_id <- bundle@bundle_id
+  streams <- tryCatch(
+    tempest_graft_memory_streams(
+      store,
+      purpose = purpose,
+      eligible = eligible,
+      max_streams = .Machine$integer.max
+    ),
+    error = function(error) NULL
+  )
+  if (is.null(streams) || nrow(streams) == 0L) {
+    return(NULL)
+  }
+  candidate_ids <- character()
+  for (stream in streams$stream) {
+    history <- tryCatch(
+      graft::graft_history(store, stream),
+      error = function(error) list()
+    )
+    for (event in rev(history)) {
+      sel_id <- event@selection
+      if (rlang::is_string(sel_id) && nzchar(sel_id)) {
+        candidate_ids <- c(candidate_ids, sel_id)
+      }
+    }
+  }
+  candidate_ids <- unique(candidate_ids)
+  for (sel_id in candidate_ids) {
+    matched <- tryCatch(
+      {
+        selected <- graft::graft_read_selection(store, sel_id)
+        if (
+          length(selected@roots) != 1L ||
+            !tempest_artifact_ref_matches(
+              selected@roots[[1L]],
+              expected_name
+            )
+        ) {
+          FALSE
+        } else {
+          parsed <- tempest_read_artifact_research(store, sel_id)
+          identical(parsed$bundle@bundle_id, expected_bundle_id)
+        }
+      },
+      error = function(error) FALSE
+    )
+    if (isTRUE(matched)) {
+      return(sel_id)
+    }
+  }
+  NULL
+}
+
+tempest_graft_wrap_config_tools <- function(
+  cfg,
+  store,
+  purpose = "research",
+  eligible = NULL,
+  roles = c("coordinator", "expert")
+) {
+  if (is.null(store)) {
+    return(cfg)
+  }
+  memory_tools <- tryCatch(
+    tempest_graft_memory_tools(
+      store = store,
+      purpose = purpose,
+      eligible = eligible
+    ),
+    error = function(error) list()
+  )
+  if (!length(memory_tools)) {
+    return(cfg)
+  }
+  memory_tool_names <- vapply(memory_tools, \(t) t@name, character(1))
+  original_config <- cfg
+  original_chat_fn <- cfg@chat_fn
+  wrapped_chat_fn <- function(role, model, system_prompt, echo) {
+    chat <- if (!is.null(original_chat_fn)) {
+      original_chat_fn(
+        role = role,
+        model = model,
+        system_prompt = system_prompt,
+        echo = echo
+      )
+    } else {
+      tempest_make_chat(
+        original_config,
+        role = role,
+        system_prompt = system_prompt,
+        echo = echo
+      )
+    }
+    if (
+      !role %in% roles ||
+        is.null(chat) ||
+        !is.function(chat$register_tools)
+    ) {
+      return(chat)
+    }
+    existing <- tryCatch(
+      vapply(chat$get_tools(), \(t) t@name, character(1)),
+      error = function(error) character()
+    )
+    to_add <- memory_tools[!memory_tool_names %in% existing]
+    if (length(to_add) > 0L) {
+      chat$register_tools(to_add)
+    }
+    chat
+  }
+  cfg@chat_fn <- wrapped_chat_fn
+  cfg
+}

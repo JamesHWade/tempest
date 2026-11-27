@@ -496,3 +496,69 @@ tempest_normalize_perspectives <- function(x, topic, n_experts = NULL) {
     perspectives = perspectives
   )
 }
+
+#' Generate a single expert profile for a specific area
+#'
+#' @param topic The research topic.
+#' @param area The area of expertise needed.
+#' @param existing_experts Existing expert profiles to avoid duplicating.
+#' @param config A `TempestConfig` object.
+#' @param module ProgramSet-bound persona execution.
+#' @param record_stage Product-owned stage-record callback.
+#' @return A validated `tempest_expert` profile.
+#' @keywords internal
+tempest_generate_single_expert <- function(
+  topic,
+  area,
+  existing_experts,
+  config,
+  module,
+  record_stage = function(record, output = NULL) invisible(record)
+) {
+  topic <- tempest_product_scalar(topic, "topic")
+  area <- tempest_product_scalar(area, "area")
+  existing_experts <- tempest_validate_experts(
+    existing_experts,
+    "existing_experts"
+  )
+
+  existing_desc <- if (length(existing_experts) > 0) {
+    paste(
+      purrr::map_chr(existing_experts, function(expert) {
+        paste0(
+          "- ",
+          expert@name,
+          " [",
+          expert@expert_id,
+          "]",
+          " (",
+          expert@title,
+          "): ",
+          expert@description
+        )
+      }),
+      collapse = "\n"
+    )
+  } else {
+    "(none)"
+  }
+  requirements <- paste0(
+    "Needed expertise: ",
+    area,
+    "\n\nExisting experts (do not duplicate):\n",
+    existing_desc,
+    paste0(
+      "\n\nGenerate exactly one complementary expert persona for this ",
+      "knowledge gap."
+    )
+  )
+  tempest_generate_experts_with_program(
+    topic = topic,
+    n = 1L,
+    config = config,
+    verbose = FALSE,
+    module = module,
+    requirements = requirements,
+    record_stage = record_stage
+  )[[1]]
+}

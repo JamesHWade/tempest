@@ -21,14 +21,6 @@ tempest_storm_deputy_session_id <- function(research_run_id, expert_id) {
 }
 
 tempest_storm_deputy_trace <- function(trace, expert_id = NULL) {
-  canonical <- tryCatch(
-    tempest_research_manifest_traces(list(trace))[[1L]],
-    error = function(error) {
-      tempest_stage_governance_abort(
-        "A STORM Deputy trace does not match the manifest contract."
-      )
-    }
-  )
   required <- c(
     "agent_id",
     "correlation_id",
@@ -41,11 +33,15 @@ tempest_storm_deputy_trace <- function(trace, expert_id = NULL) {
     "trace_id",
     "trace_type"
   )
+  canonical <- tempest_deputy_trace_validate_base(
+    trace = trace,
+    required = required,
+    abort_fn = tempest_stage_governance_abort,
+    invalid_msg = "A STORM Deputy trace does not match the manifest contract.",
+    identity_msg = "A STORM expert answer must identify one exact Deputy research run."
+  )
   if (
-    !all(required %in% names(canonical)) ||
-      !identical(canonical$trace_type, "deputy_run") ||
-      !identical(canonical$trace_id, canonical$deputy_run_id) ||
-      !identical(canonical$stage, "research") ||
+    !identical(canonical$stage, "research") ||
       !identical(canonical$role, "expert") ||
       (!is.null(expert_id) && !identical(canonical$expert_id, expert_id))
   ) {
@@ -684,4 +680,52 @@ tempest_extract_facts_from_answer_async <- function(
   promises::then(request, function(stage_result) invisible(stage_result))
 }
 
-#' @keywords internal
+tempest_storm_capture_sources <- function(retriever, workspace, source_ids) {
+  for (source_id in unique(source_ids)) {
+    resource <- workspace$get_retrieved_resource(source_id)
+    if (is.null(resource)) {
+      tempest_stage_governance_abort(
+        "Cannot capture an unknown research source."
+      )
+    }
+    if (
+      !identical(resource@resource_kind, "web") || !is.null(resource@content)
+    ) {
+      next
+    }
+    captured <- tryCatch(
+      {
+        retriever$fetch(resource@locator)
+        TRUE
+      },
+      error = function(error) {
+        if (
+          inherits(
+            error,
+            c(
+              "tempest_stage_governance_error",
+              "tempest_research_workspace_error"
+            )
+          )
+        ) {
+          stop(error)
+        }
+        cli::cli_warn(
+          "Source {.val {source_id}} could not be captured for verification.",
+          class = "tempest_source_capture_warning",
+          parent = error
+        )
+        FALSE
+      }
+    )
+    if (
+      captured && is.null(workspace$get_retrieved_resource(source_id)@content)
+    ) {
+      cli::cli_warn(
+        "Source {.val {source_id}} returned no captured text for verification.",
+        class = "tempest_source_capture_warning"
+      )
+    }
+  }
+  invisible(NULL)
+}

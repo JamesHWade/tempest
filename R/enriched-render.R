@@ -29,25 +29,7 @@ tempest_enriched_render_items <- function(value) {
 }
 
 tempest_enriched_render_safe_url <- function(value) {
-  value <- tempest_enriched_render_text(value)
-  if (
-    !nzchar(value) ||
-      grepl("[[:cntrl:][:space:]<>\\\\]", value, perl = TRUE) ||
-      !grepl("^https?://", value, ignore.case = TRUE, perl = TRUE)
-  ) {
-    return(NULL)
-  }
-  parsed <- tryCatch(curl::curl_parse_url(value), error = function(error) NULL)
-  if (
-    is.null(parsed) ||
-      !tolower(parsed$scheme %||% "") %in% c("http", "https") ||
-      !nzchar(parsed$host %||% "") ||
-      nzchar(parsed$user %||% "") ||
-      nzchar(parsed$password %||% "")
-  ) {
-    return(NULL)
-  }
-  value
+  tempest_safe_http_url(value)
 }
 
 tempest_enriched_render_local_file <- function(directory, relative_path) {
@@ -121,100 +103,15 @@ tempest_enriched_render_markdown <- function(markdown) {
   if (!nzchar(markdown)) {
     return(htmltools::tagList())
   }
-  rendered <- commonmark::markdown_html(
+  rendered <- tempest_render_markdown_sanitized_html(
     markdown,
-    footnotes = TRUE,
-    extensions = TRUE
+    mode = "strict",
+    footnote_prefix = "research-"
   )
-  wrapper <- paste0(
-    "<!doctype html><html><body><main id=\"tempest-markdown\">",
-    rendered,
-    "</main></body></html>"
-  )
-  document <- xml2::read_html(
-    wrapper,
-    options = c("RECOVER", "NOERROR", "NOWARNING", "NONET")
-  )
-  root <- xml2::xml_find_first(document, "//main[@id='tempest-markdown']")
-  if (inherits(root, "xml_missing")) {
+  if (!nzchar(rendered)) {
     return(htmltools::tagList())
   }
-
-  allowed <- c(
-    "a",
-    "blockquote",
-    "br",
-    "code",
-    "del",
-    "em",
-    "h1",
-    "h2",
-    "h3",
-    "h4",
-    "h5",
-    "h6",
-    "hr",
-    "li",
-    "ol",
-    "p",
-    "pre",
-    "section",
-    "strong",
-    "sup",
-    "table",
-    "tbody",
-    "td",
-    "th",
-    "thead",
-    "tr",
-    "ul"
-  )
-  nodes <- as.list(xml2::xml_find_all(root, ".//*"))
-  for (node in rev(nodes)) {
-    if (inherits(node, "xml_missing")) {
-      next
-    }
-    name <- tolower(xml2::xml_name(node))
-    if (!name %in% allowed) {
-      xml2::xml_remove(node)
-      next
-    }
-    original_href <- xml2::xml_attr(node, "href")
-    footnote_href <- !is.na(original_href) &&
-      grepl("^#fn(ref)?-[A-Za-z0-9_-]+$", original_href)
-    identifier <- xml2::xml_attr(node, "id")
-    footnote_id <- !is.na(identifier) &&
-      grepl("^fn(ref)?-[A-Za-z0-9_-]+$", identifier)
-    href <- if (identical(name, "a") && footnote_href) {
-      sub("^#", "#research-", original_href)
-    } else if (identical(name, "a")) {
-      tempest_enriched_render_safe_url(original_href)
-    } else {
-      NULL
-    }
-    attributes <- names(xml2::xml_attrs(node))
-    for (attribute in attributes) {
-      xml2::xml_attr(node, attribute) <- NULL
-    }
-    if (footnote_id) {
-      xml2::xml_set_attr(node, "id", paste0("research-", identifier))
-    }
-    if (!is.null(href)) {
-      xml2::xml_set_attr(node, "href", href)
-      if (footnote_href) {
-        xml2::xml_set_attr(node, "aria-label", "Follow research citation")
-      } else {
-        xml2::xml_set_attr(node, "target", "_blank")
-        xml2::xml_set_attr(node, "rel", "noopener noreferrer")
-      }
-    }
-  }
-
-  children <- xml2::xml_children(root)
-  if (length(children) == 0L) {
-    return(htmltools::tagList())
-  }
-  htmltools::HTML(paste(as.character(children), collapse = ""))
+  htmltools::HTML(rendered)
 }
 
 tempest_enriched_render_status_class <- function(status) {
