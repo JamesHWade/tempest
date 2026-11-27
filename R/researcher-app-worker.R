@@ -327,6 +327,7 @@ tempest_researcher_worker <- function(
   output_dir,
   progress_path,
   graft_store_path = NULL,
+  graft_store_handoff = NULL,
   memory_purpose = "research",
   memory_eligible = NULL
 ) {
@@ -352,10 +353,19 @@ tempest_researcher_worker <- function(
     mcp_servers = request$mcp_servers,
     selected_mcp = request$selected_mcp
   )
+  opened_memory <- list(store = NULL, owns_connection = FALSE)
   memory_store <- NULL
   knowledge <- NULL
-  if (!is.null(graft_store_path)) {
-    memory_store <- tempest_graft_store_open(graft_store_path, create = FALSE)
+  memory_descriptor <- graft_store_handoff %||% graft_store_path
+  if (!is.null(memory_descriptor)) {
+    opened_memory <- tempest_graft_store_open_handoff(memory_descriptor)
+    memory_store <- opened_memory$store
+    on.exit(
+      if (isTRUE(opened_memory$owns_connection)) {
+        tempest_graft_store_close(opened_memory$store)
+      },
+      add = TRUE
+    )
     if (isTRUE(request$use_memory_tools)) {
       memory_tools <- tempest_graft_memory_tools(
         memory_store,
@@ -680,8 +690,14 @@ tempest_researcher_app_callr_entry <- function(
       )
       error_message <- if (any(classes %in% safe_classes)) {
         message <- substr(conditionMessage(error), 1L, 320L)
+        message <- gsub(
+          "(?i)(postgres(?:ql)?://[^:@[:space:]]+:)[^@[:space:]]+(@)",
+          "\\1[redacted]\\2",
+          message,
+          perl = TRUE
+        )
         gsub(
-          "(?i)\\b(api[_-]?key|authorization|bearer|password|token)\\b(?:\\s*[:=]\\s*|\\s+)(?:bearer\\s+)?[^[:space:]]+(?:\\s+[^[:space:]]+)?",
+          "(?i)\\b(api[_-]?key|authorization|bearer|password|passwd|pwd|secret|token)\\b(?:\\s*[:=]\\s*|\\s+)(?:bearer\\s+)?[^[:space:]]+(?:\\s+[^[:space:]]+)?",
           "\\1=[redacted]",
           message,
           perl = TRUE
@@ -774,6 +790,7 @@ TempestResearcherAppSession <- R6::R6Class(
       mcp_config = NULL,
       output_dir = tempdir(),
       graft_store_path = NULL,
+      graft_store_handoff = NULL,
       memory_purpose = "research",
       memory_eligible = NULL
     ) {
@@ -827,7 +844,12 @@ TempestResearcherAppSession <- R6::R6Class(
       private$tools <- tools
       private$mcp_config_path <- mcp_config
       private$mcp_config_owned <- FALSE
-      private$graft_store_path <- graft_store_path
+      private$graft_store_handoff <- graft_store_handoff %||%
+        if (!is.null(graft_store_path)) {
+          list(kind = "local", path = graft_store_path)
+        } else {
+          NULL
+        }
       private$memory_purpose <- memory_purpose
       private$memory_eligible <- memory_eligible
       private$output_dir <- normalizePath(output_dir, mustWork = TRUE)
@@ -1101,7 +1123,7 @@ TempestResearcherAppSession <- R6::R6Class(
     tools = NULL,
     mcp_config_path = NULL,
     mcp_config_owned = FALSE,
-    graft_store_path = NULL,
+    graft_store_handoff = NULL,
     memory_purpose = "research",
     memory_eligible = NULL,
     output_dir = NULL,
@@ -1213,8 +1235,8 @@ TempestResearcherAppSession <- R6::R6Class(
         }
         work$config <- handoff$config
         work$ragnar_handoff <- handoff$handoff
-        if (!is.null(private$graft_store_path)) {
-          work$graft_store_path <- private$graft_store_path
+        if (!is.null(private$graft_store_handoff)) {
+          work$graft_store_handoff <- private$graft_store_handoff
           work$memory_purpose <- private$memory_purpose
           work$memory_eligible <- private$memory_eligible
         }

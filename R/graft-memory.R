@@ -68,9 +68,66 @@ tempest_graft_memory_check_actor <- function(actor) {
   trimws(actor)
 }
 
+tempest_graft_memory_redact <- function(text) {
+  if (!rlang::is_string(text) || is.na(text) || !nzchar(text)) {
+    return("")
+  }
+  out <- gsub(
+    "(?i)(postgres(?:ql)?://[^:@[:space:]]+:)[^@[:space:]]+(@)",
+    "\\1[redacted]\\2",
+    text,
+    perl = TRUE
+  )
+  out <- gsub(
+    "(?i)\\b(api[_-]?key|authorization|bearer|password|passwd|pwd|secret|token)\\b(?:\\s*[:=]\\s*|\\s+)(?:bearer\\s+)?[^[:space:];,]+",
+    "\\1=[redacted]",
+    out,
+    perl = TRUE
+  )
+  out
+}
+
 tempest_graft_store_is_handle <- function(x) {
   requireNamespace("graft", quietly = TRUE) &&
     S7::S7_inherits(x, graft::ArtifactStore)
+}
+
+tempest_graft_store_is_postgres <- function(x) {
+  requireNamespace("graft", quietly = TRUE) &&
+    exists("PostgresArtifactStore", envir = asNamespace("graft")) &&
+    S7::S7_inherits(x, graft::PostgresArtifactStore)
+}
+
+tempest_graft_store_is_factory <- function(x) {
+  if (!is.function(x)) {
+    return(FALSE)
+  }
+  params <- formals(x)
+  if (length(params) == 0L) {
+    return(TRUE)
+  }
+  required <- vapply(
+    params,
+    \(default) identical(default, quote(expr = )),
+    logical(1)
+  )
+  !any(required)
+}
+
+tempest_graft_store_close <- function(store) {
+  if (!tempest_graft_store_is_postgres(store)) {
+    return(invisible(FALSE))
+  }
+  con <- tryCatch(store@connection, error = function(error) NULL)
+  if (
+    !is.null(con) &&
+      requireNamespace("DBI", quietly = TRUE) &&
+      isTRUE(tryCatch(DBI::dbIsValid(con), error = function(error) FALSE))
+  ) {
+    try(DBI::dbDisconnect(con), silent = TRUE)
+    return(invisible(TRUE))
+  }
+  invisible(FALSE)
 }
 
 tempest_graft_store_open <- function(graft_store, create = TRUE) {
@@ -78,13 +135,31 @@ tempest_graft_store_open <- function(graft_store, create = TRUE) {
   if (tempest_graft_store_is_handle(graft_store)) {
     return(graft_store)
   }
+  if (tempest_graft_store_is_factory(graft_store)) {
+    opened <- tryCatch(
+      graft_store(),
+      error = function(error) {
+        tempest_graft_memory_abort(
+          "Could not open the Graft store factory: {tempest_graft_memory_redact(conditionMessage(error))}",
+          class = "tempest_input_error"
+        )
+      }
+    )
+    if (!tempest_graft_store_is_handle(opened)) {
+      tempest_graft_memory_abort(
+        "{.arg graft_store} factory must return a `graft::ArtifactStore`.",
+        class = "tempest_input_error"
+      )
+    }
+    return(opened)
+  }
   if (
     !rlang::is_string(graft_store) ||
       is.na(graft_store) ||
       !nzchar(trimws(graft_store))
   ) {
     tempest_graft_memory_abort(
-      "{.arg graft_store} must be a local directory path or a `graft::ArtifactStore`.",
+      "{.arg graft_store} must be a local directory path, a `graft::ArtifactStore`, or a zero-argument store factory function.",
       class = "tempest_input_error"
     )
   }
@@ -120,6 +195,174 @@ tempest_graft_store_path <- function(graft_store) {
     }
   }
   NULL
+}
+
+tempest_graft_store_postgres_info <- function(store) {
+  if (!tempest_graft_store_is_postgres(store)) {
+    tempest_graft_memory_abort(
+      "Expected a `graft::PostgresArtifactStore`.",
+      class = "tempest_input_error"
+    )
+  }
+  if (!requireNamespace("DBI", quietly = TRUE)) {
+    tempest_graft_memory_abort(
+      "PostgreSQL Graft stores require the DBI package.",
+      class = "tempest_input_error"
+    )
+  }
+  con <- store@connection
+  if (!isTRUE(tryCatch(DBI::dbIsValid(con), error = function(error) FALSE))) {
+    tempest_graft_memory_abort(
+      "The PostgreSQL Graft store connection is not open.",
+      class = "tempest_input_error"
+    )
+  }
+  raw_info <- tryCatch(
+    DBI::dbGetInfo(con),
+    error = function(error) {
+      tempest_graft_memory_abort(
+        "Could not inspect the PostgreSQL connection for worker handoff: {tempest_graft_memory_redact(conditionMessage(error))}",
+        class = "tempest_input_error"
+      )
+    }
+  )
+  pick_scalar <- function(field) {
+    value <- raw_info[[field]]
+    if (is.null(value) || length(value) != 1L || is.na(value)) {
+      return(NULL)
+    }
+    text <- trimws(as.character(value))
+    if (!nzchar(text)) NULL else text
+  }
+  # Deliberately retain only non-secret libpq connection metadata; credentials
+  # stay in PGPASSWORD / .pgpass / PGSERVICE or a user-supplied store factory.
+  conn_info <- Filter(
+    Negate(is.null),
+    list(
+      dbname = pick_scalar("dbname"),
+      host = pick_scalar("host"),
+      port = pick_scalar("port"),
+      user = pick_scalar("username") %||% pick_scalar("user")
+    )
+  )
+  list(
+    kind = "postgres",
+    scope = store@scope,
+    max_bytes = store@max_bytes,
+    max_revision_bytes = store@max_revision_bytes,
+    connection_info = conn_info
+  )
+}
+
+tempest_graft_store_handoff <- function(graft_store, opened_store = NULL) {
+  if (is.null(graft_store) && is.null(opened_store)) {
+    return(NULL)
+  }
+  if (tempest_graft_store_is_factory(graft_store)) {
+    return(list(kind = "factory", factory = graft_store))
+  }
+  local_path <- tempest_graft_store_path(opened_store %||% graft_store)
+  if (!is.null(local_path)) {
+    return(list(kind = "local", path = local_path))
+  }
+  candidate <- opened_store %||% graft_store
+  if (tempest_graft_store_is_postgres(candidate)) {
+    return(tempest_graft_store_postgres_info(candidate))
+  }
+  tempest_graft_memory_abort(
+    "Unsupported Graft store for background worker handoff. Supply a local path, `graft_store()`, `graft_store_postgres()`, or a zero-argument store factory function.",
+    class = "tempest_input_error"
+  )
+}
+
+tempest_graft_store_connect_postgres <- function(handoff) {
+  tempest_graft_memory_require("PostgreSQL project memory")
+  for (pkg in c("DBI", "RPostgres")) {
+    tempest_require(pkg, "PostgreSQL Graft stores require DBI and RPostgres.")
+  }
+  connect_args <- c(
+    list(drv = RPostgres::Postgres()),
+    handoff$connection_info %||% list()
+  )
+  con <- tryCatch(
+    do.call(DBI::dbConnect, connect_args),
+    error = function(error) {
+      tempest_graft_memory_abort(
+        paste0(
+          "The research worker could not reconnect to the PostgreSQL Graft store (",
+          tempest_graft_memory_redact(conditionMessage(error)),
+          "). Configure libpq credentials (PGPASSWORD / .pgpass / PGSERVICE) or pass a `graft_store = function() ...` factory."
+        ),
+        class = "tempest_input_error"
+      )
+    }
+  )
+  opened <- FALSE
+  on.exit(
+    if (!opened) {
+      try(DBI::dbDisconnect(con), silent = TRUE)
+    },
+    add = TRUE
+  )
+  store <- tryCatch(
+    graft::graft_store_postgres(
+      connection = con,
+      scope = handoff$scope,
+      create = FALSE,
+      max_bytes = handoff$max_bytes,
+      max_revision_bytes = handoff$max_revision_bytes
+    ),
+    error = function(error) {
+      tempest_graft_memory_abort(
+        "The research worker could not open the PostgreSQL Graft store: {tempest_graft_memory_redact(conditionMessage(error))}",
+        class = "tempest_input_error"
+      )
+    }
+  )
+  opened <- TRUE
+  store
+}
+
+tempest_graft_store_open_handoff <- function(handoff) {
+  if (is.null(handoff)) {
+    return(list(store = NULL, owns_connection = FALSE))
+  }
+  if (rlang::is_string(handoff)) {
+    return(list(
+      store = tempest_graft_store_open(handoff, create = FALSE),
+      owns_connection = FALSE
+    ))
+  }
+  if (!is.list(handoff) || !rlang::is_string(handoff$kind)) {
+    tempest_graft_memory_abort(
+      "Invalid Graft store worker handoff descriptor.",
+      class = "tempest_input_error"
+    )
+  }
+  if (identical(handoff$kind, "local")) {
+    return(list(
+      store = tempest_graft_store_open(handoff$path, create = FALSE),
+      owns_connection = FALSE
+    ))
+  }
+  if (identical(handoff$kind, "factory")) {
+    store <- tempest_graft_store_open(handoff$factory, create = FALSE)
+    return(list(
+      store = store,
+      owns_connection = tempest_graft_store_is_postgres(store)
+    ))
+  }
+  if (identical(handoff$kind, "postgres")) {
+    store <- tempest_graft_store_connect_postgres(handoff)
+    return(list(
+      store = store,
+      owns_connection = TRUE
+    ))
+  }
+  tempest_graft_memory_abort(
+    "Unknown Graft store handoff kind {.val {handoff$kind}}.",
+    class = "tempest_input_error"
+  )
 }
 
 tempest_graft_stream_slug <- function(text, fallback = "research-finding") {
@@ -740,4 +983,65 @@ tempest_graft_consultations <- function(x) {
       as.data.frame(rec, stringsAsFactors = FALSE)
     })
   )
+}
+
+tempest_product_graft_consultations <- function(product) {
+  empty <- tempest_graft_consultations(NULL)
+  if (is.null(product) || !inherits(product, "TempestSession")) {
+    return(empty)
+  }
+  chats <- list()
+  moderator_chat <- tryCatch(
+    tempest_session_chat(product, "moderator"),
+    error = function(error) NULL
+  )
+  if (!is.null(moderator_chat)) {
+    chats[[length(chats) + 1L]] <- moderator_chat
+  }
+  manager <- tryCatch(
+    tempest_session_expert_manager(product),
+    error = function(error) NULL
+  )
+  if (!is.null(manager)) {
+    mgr_priv <- tryCatch(
+      manager$.__enclos_env__$private,
+      error = function(error) NULL
+    )
+    sessions_env <- if (is.list(mgr_priv) || is.environment(mgr_priv)) {
+      mgr_priv$sessions
+    } else {
+      NULL
+    }
+    if (is.environment(sessions_env)) {
+      session_ids <- tryCatch(
+        manager$list_sessions(),
+        error = function(error) character()
+      )
+      for (session_id in session_ids) {
+        if (exists(session_id, envir = sessions_env, inherits = FALSE)) {
+          chats[[length(chats) + 1L]] <- get(
+            session_id,
+            envir = sessions_env,
+            inherits = FALSE
+          )
+        }
+      }
+    }
+  }
+  if (!length(chats)) {
+    return(empty)
+  }
+  frames <- lapply(chats, function(chat) {
+    tryCatch(
+      tempest_graft_consultations(chat),
+      error = function(error) empty
+    )
+  })
+  frames <- Filter(\(df) is.data.frame(df) && nrow(df) > 0L, frames)
+  if (!length(frames)) {
+    return(empty)
+  }
+  out <- do.call(rbind, frames)
+  rownames(out) <- NULL
+  out
 }

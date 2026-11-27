@@ -52,12 +52,17 @@ can open and download the reports in that directory. Use a dedicated
 directory managed by the host and enable this only for an audience that
 can read the entire collection.}
 
-\item{graft_store}{Optional local directory path (or \code{graft::LocalArtifactStore})
-for Graft reviewed project memory. Defaults to \code{NULL} (disabled). When
-supplied, completed runs are published as unaccepted candidates that you
-can review, accept into a named stream, correct, or withdraw; new runs can
-consult accepted streams through read-only \code{graft::graft_tools()} or pin an
-accepted stream as their comparison basis.}
+\item{graft_store}{Optional local directory path, \code{graft::ArtifactStore}
+(including \code{graft::graft_store()} and \code{graft::graft_store_postgres()}), or
+zero-argument store factory \verb{function()} returning a \code{graft::ArtifactStore}
+for reviewed project memory. Defaults to \code{NULL} (disabled). When supplied,
+completed runs are published as unaccepted candidates that you can review,
+accept into a named stream, correct, or withdraw; new runs can consult
+accepted streams through read-only \code{graft::graft_tools()} or pin an
+accepted stream as their comparison basis. For PostgreSQL stores, pass a
+zero-argument factory function or configure standard \code{libpq} credentials
+(\code{PGPASSWORD}, \code{.pgpass}, or \code{PGSERVICE}) so isolated background workers
+can reconnect without serializing credentials to disk.}
 
 \item{memory_purpose}{Consultation purpose recorded on Graft decisions and
 memory recall tools. Defaults to \code{"research"}.}
