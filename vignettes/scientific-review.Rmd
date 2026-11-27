@@ -10,7 +10,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
+```{r}
+#| label: setup
+#| include: false
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -29,7 +31,8 @@ optionally run one targeted follow-up search to repair missing evidence.
 Turn review on through `tempest_config()` (or under **Workspace settings →
 Scientific review** in `tempest_app()`):
 
-```{r enable}
+```{r}
+#| label: enable
 library(tempest)
 
 cfg <- tempest_config(
@@ -51,7 +54,8 @@ reviews <- tempest_claim_reviews(result)
 The same configuration applies to Co-STORM sessions—review runs when you call
 `session$publish()`, once the conversation has gathered its claims:
 
-```{r costorm-review}
+```{r}
+#| label: costorm-review
 session <- tempest_session("Measurement reproducibility", config = cfg)
 session$step("Compare the core assumptions and validation evidence.")
 session$publish()

@@ -10,7 +10,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
+```{r}
+#| label: setup
+#| include: false
 knitr::opts_chunk$set(
   collapse = TRUE,
   comment = "#>"
@@ -44,7 +46,9 @@ Choose the entry point that matches how you want to work:
 
 Install the development package from GitHub:
 
-```{r installation, eval = FALSE}
+```{r}
+#| label: installation
+#| eval: false
 # install.packages("pak")
 pak::pak("JamesHWade/tempest")
 ```
@@ -52,7 +56,8 @@ pak::pak("JamesHWade/tempest")
 Load Tempest and configure your models and search provider with
 `tempest_config()`:
 
-```{r config}
+```{r}
+#| label: config
 library(tempest)
 
 cfg <- tempest_config(
@@ -94,7 +99,9 @@ and publish the final Markdown report.
 Start with two experts, a small question budget, and an `output_dir` so each
 completed stage is saved to disk:
 
-```{r first-run, eval = FALSE}
+```{r}
+#| label: first-run
+#| eval: false
 result <- tempest_run(
   "What are the main technical and policy barriers to recycling grid-scale batteries?",
   config = cfg,
@@ -115,7 +122,9 @@ concurrently.
 
 Read the committed report and inspect the exact evidence behind every claim:
 
-```{r inspect-result, eval = FALSE}
+```{r}
+#| label: inspect-result
+#| eval: false
 cat(tempest_report(result))
 
 sources <- tempest_sources(result)
@@ -137,7 +146,9 @@ By default, Tempest generates topic-specific experts. When you know the exact
 lenses you want, construct profiles with `tempest_expert()` and pass them to
 either `tempest_run()` or `tempest_session()`:
 
-```{r selected-experts, eval = FALSE}
+```{r}
+#| label: selected-experts
+#| eval: false
 experts <- list(
   tempest_expert(
     name = "Recycling Engineer",
@@ -169,7 +180,9 @@ result <- tempest_run(
 When the right questions only emerge through dialogue, use Co-STORM in the
 console or launch the bundled Shiny workspace:
 
-```{r costorm, eval = FALSE}
+```{r}
+#| label: costorm
+#| eval: false
 session <- tempest_session(
   "Grid-scale battery recycling",
   config = cfg,
@@ -197,7 +210,9 @@ restored <- tempest_session_resume("tempest-runs/grid-battery-session", config =
 For a full browser workspace—chat, mind map, sources, extracted facts,
 transcript, run review, and optional Graft memory—launch `tempest_app()`:
 
-```{r app, eval = FALSE}
+```{r}
+#| label: app
+#| eval: false
 tempest_app(graft_store = "research-memory")
 ```
 
@@ -205,7 +220,9 @@ Or launch the dedicated **Researcher app** when you want starter briefs, custom
 R tools, MCP servers, reproducible R analyses, and a browsable saved-report
 library:
 
-```{r researcher-app, eval = FALSE}
+```{r}
+#| label: researcher-app
+#| eval: false
 tempest_researcher_app(
   output_dir = "research-reports",
   report_library = TRUE,

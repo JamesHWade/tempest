@@ -10,7 +10,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
+```{r}
+#| label: setup
+#| include: false
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>", eval = FALSE)
 ```
 
@@ -40,7 +42,8 @@ checkpoint exists. On day one, `knowledge` is `NULL` and every verified claim
 is new. On later runs, reuse the exact previously accepted decision after
 verifying current eligibility:
 
-```{r basis}
+```{r}
+#| label: basis
 library(tempest)
 library(graft)
 source(system.file("examples", "briefing-basis.R", package = "tempest"))
@@ -70,7 +73,8 @@ basis—giving your host a chance to inspect `changes` first.
 Pass `knowledge` into `tempest_run()`. Use a focused expert panel matched to
 the decision at hand:
 
-```{r run}
+```{r}
+#| label: run
 experts <- list(
   tempest_expert(
     name = "Technical reviewer",
@@ -120,7 +124,8 @@ against active `Claim` records in `knowledge`.
 Publish today's run as a candidate selection in Graft and inspect its
 trajectory before deciding whether to advance the accepted briefing stream:
 
-```{r publish-and-accept}
+```{r}
+#| label: publish-and-accept
 selection <- tempest_publish_artifact_research(result, store)
 review <- tempest_trajectory_review(result)
 
@@ -149,7 +154,8 @@ overwrite each other's decisions. If evidence later turns out to be flawed,
 record a withdrawal—future runs stop consulting that stream while historical
 briefings remain readable:
 
-```{r withdraw}
+```{r}
+#| label: withdraw
 graft_withdraw(
   store,
   stream = "battery-briefing",

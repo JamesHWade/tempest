@@ -114,6 +114,19 @@ With the subscription-auth `ellmer` port (`tidyverse/ellmer#1067`), default `ope
 
 By default, `tempest_config(search_provider = "native")` uses provider-native web search when supported (OpenAI, Anthropic, Google) and falls back to Wikipedia. Other built-in providers include `"wikipedia"`, `"duckduckgo"`, `"tavily"`, `"brave"`, `"serper"`, `"you"`, `"bing"`, `"searxng"`, `"google"`, and `"azure_ai_search"`—see `?tempest_config` for environment variables. Pass `embed_fn = ragnar::embed_openai()` or `ragnar_store` for semantic retrieval with `ragnar`.
 
+### Optional OpenTelemetry
+
+Tracing is opt-in and disabled by default. To export Tempest-only spans through a local OpenTelemetry Collector (and optionally forward from there to an optional operator-selected destination downstream of the Collector), set these environment variables before starting R and enable `options(tempest.otel.enabled = TRUE)`:
+
+```sh
+OTEL_TRACES_EXPORTER=http
+OTEL_EXPORTER_OTLP_ENDPOINT=http://127.0.0.1:4318
+OTEL_R_EMIT_SCOPES=io.github.jameshwade.tempest
+OTEL_INSTRUMENTATION_GENAI_CAPTURE_MESSAGE_CONTENT=false
+```
+
+Restricting `OTEL_R_EMIT_SCOPES` to Tempest avoids broad third-party instrumentation across Shiny, Mirai, ellmer, and httr2 (which can otherwise capture raw `url.full` query strings containing secrets such as `GOOGLE_SEARCH_API_KEY`).
+
 ## How Tempest fits in the ellmer ecosystem
 
 | Package | Role | How it pairs with Tempest |

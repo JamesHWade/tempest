@@ -10,7 +10,9 @@ vignette: >
   %\VignetteEncoding{UTF-8}
 ---
 
-```{r setup, include = FALSE}
+```{r}
+#| label: setup
+#| include: false
 knitr::opts_chunk$set(collapse = TRUE, comment = "#>")
 ```
 
@@ -33,7 +35,9 @@ starter briefs, optional R code execution and image generation, selectable host
 tools and MCP servers, a searchable library of saved reports, and optional
 Graft project memory:
 
-```{r researcher-app, eval = FALSE}
+```{r}
+#| label: researcher-app
+#| eval: false
 library(tempest)
 
 tempest_researcher_app(
@@ -67,7 +71,9 @@ Key capabilities in the app:
 Pass named zero-argument tool factories via `tools` so experts can query local
 datasets or internal APIs under Deputy's read-only research permissions:
 
-```{r researcher-app-tools, eval = FALSE}
+```{r}
+#| label: researcher-app-tools
+#| eval: false
 tempest_researcher_app(
   tools = list(plant_data = function() {
     list(ellmer::tool(
@@ -99,7 +105,9 @@ in one step. Code execution (`allow_code = FALSE`) and image generation stay
 opt-in—you can inspect the proposed `plan.json` and scripts first, then re-run
 `tempest_enrich_report()` with a reviewed plan and `allow_code = TRUE`:
 
-```{r live-researcher, eval = FALSE}
+```{r}
+#| label: live-researcher
+#| eval: false
 result <- tempest_researcher(
   "How does overnight chilling relate to CO2 uptake in Echinochloa crus-galli?",
   output_dir = "live-co2-enriched-report",
@@ -121,7 +129,9 @@ result$report   # Separate, integrity-checked enriched report
 Verify any saved report directory later with `tempest_read_enriched_report()`,
 which checks every declared file against its SHA-256 digest in `manifest.json`:
 
-```{r read-report, eval = FALSE}
+```{r}
+#| label: read-report
+#| eval: false
 checked <- tempest_read_enriched_report(result$report@path)
 checked@status
 ```
@@ -173,7 +183,9 @@ descriptive summaries of this dataset rather than population-level inference:
 
 ### Run the offline example yourself
 
-```{r reproduce, eval = FALSE}
+```{r}
+#| label: reproduce
+#| eval: false
 example_dir <- system.file("examples", "enriched-research", package = "tempest")
 list.files(example_dir, recursive = TRUE)
 
