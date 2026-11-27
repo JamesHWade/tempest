@@ -60,7 +60,7 @@
 
 
 <dl><dt id="arg-session">session<a class="anchor" aria-label="anchor" href="#arg-session"></a></dt>
-<dd><p>A <a href="TempestSession.html">TempestSession</a> object.</p></dd>
+<dd><p>A <code><a href="tempest_session.html">tempest_session()</a></code> object.</p></dd>
 
 
 <dt id="arg-path">path<a class="anchor" aria-label="anchor" href="#arg-path"></a></dt>
@@ -78,7 +78,7 @@
     <div class="section level2">
     <h2 id="details">Details<a class="anchor" aria-label="anchor" href="#details"></a></h2>
     <p><code>tempest_session_save()</code> writes a schema-versioned directory bundle for a
-<a href="TempestSession.html">TempestSession</a>. The exact current format is schema 14, with no legacy or
+<code><a href="tempest_session.html">tempest_session()</a></code>. The exact current format is schema 14, with no legacy or
 compatibility writer. The bundle stores the research manifest, authoritative
 workspace, explicit stage-record history, retained artifact selection,
 and narrow report product. Every declared file is checksummed, and the
@@ -88,7 +88,7 @@ reactive state, credentials, and raw provider request bodies are not
 serialized. A stage attempt that is still running is written as cancelled
 without changing the live session.</p>
 <p>Use <code><a href="tempest_session_resume.html">tempest_session_resume()</a></code> to load the bundle with a fresh runtime
-<a href="TempestConfig.html">TempestConfig</a>.</p>
+<code><a href="tempest_config.html">tempest_config()</a></code>.</p>
     </div>
 
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

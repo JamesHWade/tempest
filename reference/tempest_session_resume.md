@@ -3,9 +3,9 @@
 `tempest_session_resume()` reads a directory bundle written by
 [`tempest_session_save()`](https://jameshwade.github.io/tempest/reference/tempest_session_save.md)
 and rebuilds a
-[TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md)
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
 with a fresh runtime
-[TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).
+[`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md).
 Only the exact current schema-14 bundle is accepted; no compatibility or
 migration reader is provided. Historical progress events are loaded for
 display and reduction, but they are not replayed into `progress`.
@@ -33,7 +33,7 @@ tempest_session_resume(
 - config:
 
   Runtime
-  [TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md)
+  [`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md)
   used to recreate chats, retrievers, and tools.
 
 - progress:
@@ -42,10 +42,8 @@ tempest_session_resume(
 
 - program_set:
 
-  A
-  [TempestProgramSet](https://jameshwade.github.io/tempest/reference/TempestProgramSet.md)
-  carrying the same program identities recorded in the bundle. If
-  `NULL`, the builtin set is used.
+  A `TempestProgramSet` carrying the same program identities recorded in
+  the bundle. If `NULL`, the builtin set is used.
 
 - knowledge:
 
@@ -55,4 +53,4 @@ tempest_session_resume(
 ## Value
 
 A restored
-[TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).

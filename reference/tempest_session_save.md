@@ -13,7 +13,7 @@ tempest_session_save(session, path, overwrite = FALSE)
 - session:
 
   A
-  [TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md)
+  [`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md)
   object.
 
 - path:
@@ -32,7 +32,7 @@ Invisibly returns the normalized bundle directory.
 
 `tempest_session_save()` writes a schema-versioned directory bundle for
 a
-[TempestSession](https://jameshwade.github.io/tempest/reference/TempestSession.md).
+[`tempest_session()`](https://jameshwade.github.io/tempest/reference/tempest_session.md).
 The exact current format is schema 14, with no legacy or compatibility
 writer. The bundle stores the research manifest, authoritative
 workspace, explicit stage-record history, retained artifact selection,
@@ -46,4 +46,4 @@ cancelled without changing the live session.
 Use
 [`tempest_session_resume()`](https://jameshwade.github.io/tempest/reference/tempest_session_resume.md)
 to load the bundle with a fresh runtime
-[TempestConfig](https://jameshwade.github.io/tempest/reference/TempestConfig.md).
+[`tempest_config()`](https://jameshwade.github.io/tempest/reference/tempest_config.md).

@@ -110,7 +110,7 @@
 <li>
 <code>tempest_agent_skills()</code> and <code>tempest_install_agent_skills()</code> expose and install exactly the two supported research skills; the three retired generic-workflow skill directories have been removed.</li>
 <li>
-<code><a href="../reference/tempest_claim_support.html">tempest_claim_support()</a></code> and <code><a href="../reference/tempest_claim_supports.html">tempest_claim_supports()</a></code> make each verifier judgment an explicit claim-by-evidence-span record with a deterministic identity, source binding, status, score, and rationale; <code><a href="../reference/tempest_verify_claims.html">tempest_verify_claims()</a></code> replaces the complete pair set atomically, while claim summaries and citation audits are derived projections.</li>
+<code>tempest_claim_support()</code> and <code><a href="../reference/tempest_claim_supports.html">tempest_claim_supports()</a></code> make each verifier judgment an explicit claim-by-evidence-span record with a deterministic identity, source binding, status, score, and rationale; <code>tempest_verify_claims()</code> replaces the complete pair set atomically, while claim summaries and citation audits are derived projections.</li>
 <li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> removes the obsolete <code>artifact_store</code>, <code>enable_discourse_manager</code>, <code>node_expansion_trigger_count</code>, and <code>enable_unseen_surfacing</code> controls; passing any of them is an error.</li>
 <li>
@@ -120,11 +120,11 @@
 <li>
 <code>tempest_graft_schema()</code> loads the immutable compiled scientific schema, while <code>tempest_promotion_bundle(research, claim_ids = NULL)</code>, <code><a href="../reference/tempest_save_promotion_bundle.html">tempest_save_promotion_bundle()</a></code>, <code><a href="../reference/tempest_read_promotion_bundle.html">tempest_read_promotion_bundle()</a></code>, <code>tempest_graft_plan()</code>, and <code>tempest_promotion_receipt()</code> provide a deterministic review-only path from a completed STORM result or succeeded <code>TempestSession</code> to exact accepted Graft revisions. Loose Workspace, Manifest, and StageRecord tuples are rejected; reading requires the original bundle id as an out-of-band trust pin; Tempest never commits a promotion implicitly; and prior promotion formats are rejected.</li>
 <li>
-<code><a href="../reference/tempest_program_set.html">tempest_program_set()</a></code>, <code>tempest_compile_programs()</code>, <code>tempest_save_program_set()</code>, and <code>tempest_load_program_set()</code> make all ten STORM and Co-STORM stage programs explicitly addressable, preserve exact dsprrr artifact and evaluator identities, isolate compilation from the baseline, clear a selected stage’s stale governed reference when its artifact changes, and fail closed on incomplete, corrupt, or mismatched program bundles. <code><a href="../reference/tempest_run.html">tempest_run()</a></code>, <code><a href="../reference/tempest_session.html">tempest_session()</a></code>, session restore/resume, and <code><a href="../reference/tempest_shiny_server.html">tempest_shiny_server()</a></code> accept and verify the ProgramSet before any stage executes.</li>
+<code>tempest_program_set()</code>, <code>tempest_compile_programs()</code>, <code>tempest_save_program_set()</code>, and <code>tempest_load_program_set()</code> make all ten STORM and Co-STORM stage programs explicitly addressable, preserve exact dsprrr artifact and evaluator identities, isolate compilation from the baseline, clear a selected stage’s stale governed reference when its artifact changes, and fail closed on incomplete, corrupt, or mismatched program bundles. <code><a href="../reference/tempest_run.html">tempest_run()</a></code>, <code><a href="../reference/tempest_session.html">tempest_session()</a></code>, session restore/resume, and <code>tempest_shiny_server()</code> accept and verify the ProgramSet before any stage executes.</li>
 <li>
 <code>tempest_report_md()</code> is now explicitly a deterministic, non-authoritative renderer that cannot finalize a Manifest, publish a product, or grant promotion authority, while <code>tempest_session_report_md()</code> reads only the exact report already committed to a succeeded, quiescent Co-STORM session; both preserve canonical titles and citation-policy validation when callers omit the rendered References section.</li>
 <li>
-<code><a href="../reference/tempest_research_manifest.html">tempest_research_manifest()</a></code> records the stable run, configuration, program, knowledge-snapshot, runtime, trace, and deliverable identities for STORM and Co-STORM without serializing runtime objects or credentials (04zh).</li>
+<code>tempest_research_manifest()</code> records the stable run, configuration, program, knowledge-snapshot, runtime, trace, and deliverable identities for STORM and Co-STORM without serializing runtime objects or credentials (04zh).</li>
 <li>
 <code><a href="../reference/tempest_research_workspace.html">tempest_research_workspace()</a></code> and <code>ResearchWorkspace</code> define the canonical provisional run-scoped evidence boundary, including an optional real path-free <code>graft::GraftSnapshot</code>, its complete scalar identity, and accepted Graft references (04zh).</li>
 <li>
@@ -138,9 +138,9 @@
 <li>
 <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now routes its moderator and every expert through persistent, permission-bounded Deputy agents. Co-STORM snapshots and bundles retain only credential-safe opaque run, session, agent, stage, role, expert, and correlation traces; provider execution and trace recording fail closed, and no Deputy Agent is serialized.</li>
 <li>
-<code><a href="../reference/tempest_session_process_turn_async.html">tempest_session_process_turn_async()</a></code> accepts and commits only completion-ID-bound Deputy results; raw chat payloads and legacy execution hints are unsupported.</li>
+<code>tempest_session_process_turn_async()</code> accepts and commits only completion-ID-bound Deputy results; raw chat payloads and legacy execution hints are unsupported.</li>
 <li>
-<code><a href="../reference/tempest_shiny_server.html">tempest_shiny_server()</a></code> returns exactly ten product-specific members and <code><a href="../reference/tempest_shiny_store.html">tempest_shiny_store()</a></code> exposes exactly thirteen product-named members, with distinct Co-STORM session/evidence/events, STORM events, authoritative report state, and a monotonic report-navigation event; the installed host example uses the same asynchronous STORM adapter as the bundled app, with no generic run, capability, connection, workflow, deliverable, or artifact accessors.</li>
+<code>tempest_shiny_server()</code> returns exactly ten product-specific members and <code>tempest_shiny_store()</code> exposes exactly thirteen product-named members, with distinct Co-STORM session/evidence/events, STORM events, authoritative report state, and a monotonic report-navigation event; the installed host example uses the same asynchronous STORM adapter as the bundled app, with no generic run, capability, connection, workflow, deliverable, or artifact accessors.</li>
 <li>
 <code>tempest_suggest_questions()</code> is a deterministic projection and no longer accepts chat or configuration controls.</li>
 <li>
@@ -169,15 +169,15 @@
 <li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> now creates its built-in OpenAI clients with <code>ellmer::chat_openai(auth = "codex")</code>, reusing file-backed ChatGPT subscription authentication managed by Codex CLI; custom chat options and factories remain available for API-key and alternative-provider access (tidyverse/ellmer#1067).</li>
 <li>
-<code><a href="../reference/tempest_create_ragnar_store.html">tempest_create_ragnar_store()</a></code> preserves and validates compatible persistent stores by default; destructive replacement now requires <code>reset = TRUE</code> (yb8s).</li>
+<code>tempest_create_ragnar_store()</code> preserves and validates compatible persistent stores by default; destructive replacement now requires <code>reset = TRUE</code> (yb8s).</li>
 <li>
 <code>tempest_costorm_workflow_run()</code> and <code>tempest_storm_workflow_run()</code> expose the built-in research workflows as executable <code>TempestRun</code> specifications with shared evidence, typed checkpoints, selected expert teams, scoped connections, and an approval-gated Co-STORM dialogue boundary (vtvt).</li>
 <li>
-<code><a href="../reference/tempest_execution_events.html">tempest_execution_events()</a></code> provides one cursor-based event query for <code>TempestRun</code> and <code>TempestSession</code>; Co-STORM sessions now own normalized event history directly, and persistence migrates legacy progress history out of the auxiliary artifact environment.</li>
+<code>tempest_execution_events()</code> provides one cursor-based event query for <code>TempestRun</code> and <code>TempestSession</code>; Co-STORM sessions now own normalized event history directly, and persistence migrates legacy progress history out of the auxiliary artifact environment.</li>
 <li>
 <code>tempest_report_md()</code> now applies strict citation actions to complete matched assertions, removes unsupported assertions under <code>drop</code>, gives <code>revise</code> distinct behavior, and no longer lets unrelated claims sharing a source determine sentence status (e9kn).</li>
 <li>
-<code><a href="../reference/tempest_run_async.html">tempest_run_async()</a></code> now executes in a real Mirai worker, preserves result and error semantics, returns without blocking, and can be stopped with <code><a href="../reference/tempest_run_cancel.html">tempest_run_cancel()</a></code> (4303).</li>
+<code>tempest_run_async()</code> now executes in a real Mirai worker, preserves result and error semantics, returns without blocking, and can be stopped with <code>tempest_run_cancel()</code> (4303).</li>
 <li>
 <code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code> now replaces bundles atomically from a complete sibling staging directory, records SHA-256 checksums for every declared file, and <code><a href="../reference/tempest_session_resume.html">tempest_session_resume()</a></code> verifies manifest completeness and integrity with explicit <code>partial_recovery</code> support (arqh).</li>
 <li>Retriever URL fetching now parses and resolves destinations structurally, rejects non-public and obfuscated IPv4/IPv6 targets, revalidates redirects, and enforces timeout, redirect, content-type, and body-size limits; cache writes are atomic, corrupt entries are quarantined, and transient fetch failures are retried instead of cached indefinitely (vbg7, cax6).</li>
@@ -185,20 +185,20 @@
 <li>
 <code><a href="../reference/tempest_expert.html">tempest_expert()</a></code>, <code>tempest_skill()</code>, <code>tempest_capability_spec()</code>, <code>tempest_connection_ref()</code>, and <code>tempest_runtime()</code> add stable expert profiles, reusable skill contracts, per-context least-privilege capability resolution, opaque host connection bindings, exact expert-session restoration, and durable per-step grant records; global all-chat tool registration and the <code>tempest_config(tools = )</code> argument have been removed, so hosts should attach tool implementations through scoped runtime capabilities (wgr8).</li>
 <li>
-<code>tempest_artifact_store()</code>, <code><a href="../reference/tempest_expert.html">tempest_expert()</a></code>, <code><a href="../reference/tempest_progress_event.html">tempest_progress_event()</a></code>, <code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code>, <code><a href="../reference/tempest_shiny_ui.html">tempest_shiny_ui()</a></code>, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).</li>
+<code>tempest_artifact_store()</code>, <code><a href="../reference/tempest_expert.html">tempest_expert()</a></code>, <code>tempest_progress_event()</code>, <code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code>, <code>tempest_shiny_ui()</code>, and related host-app APIs now carry explicit experimental lifecycle badges, and the pkgdown reference groups separate core workflows, evidence, host extension points, persistence, progress, and dsprrr modules (2nzw).</li>
 <li>
 <code><a href="../reference/tempest_claims.html">tempest_claims()</a></code> now preserves support scores from structured fact extraction, and <code><a href="../reference/tempest_sources.html">tempest_sources()</a></code> now includes derived <code>context_text</code> plus fallback snippets for source rows backed by content or provider-native citation context (w3fm, fmbv).</li>
 <li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> now defaults to <code>openai/gpt-5.6-sol</code> for coordinator and writer roles, and <code>openai/gpt-5.6-luna</code> for expert, mind map, and judge roles. Built-in subscription clients use lower reasoning effort for auxiliary mind-map and judge calls, and <code>run_app()</code> bounds provider requests to 120 seconds by default.</li>
 <li>
-<code><a href="../reference/tempest_config.html">tempest_config()</a></code>, <code><a href="../reference/tempest_retriever.html">tempest_retriever()</a></code>, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects, all sharing a common <code>tempest_error</code> base class (and a <code>tempest_persistence_error</code> base for save/load failures) so callers can catch them with a single handler (9c6a).</li>
+<code><a href="../reference/tempest_config.html">tempest_config()</a></code>, <code>tempest_retriever()</code>, and session persistence now use catchable cli/rlang condition classes for invalid providers, missing search-provider environment variables, unsafe URLs, chat setup failures, invalid artifact stores, and invalid session objects, all sharing a common <code>tempest_error</code> base class (and a <code>tempest_persistence_error</code> base for save/load failures) so callers can catch them with a single handler (9c6a).</li>
 <li>The Chat tab now suggests follow-up questions as clickable cards using shinychat’s recognized suggestion markup. A set appears when the expert panel assembles and refreshes after each answer; clicking a card sends that question to the Moderator. Toggle it off with “Suggest follow-up questions” in the sidebar. New exported helper <code>tempest_suggest_questions()</code>.</li>
 <li>
 <code><a href="../reference/tempest_config.html">tempest_config()</a></code> gains <code>max_search_queries_per_turn</code> and <code>retrieve_top_k</code> controls to mirror the upstream STORM runner’s query and section-retrieval limits.</li>
 <li>
 <code>tempest_config(search_provider = )</code> now accepts upstream-style retrievers for You.com, Bing, DuckDuckGo, SearXNG, Google Custom Search, and Azure AI Search in addition to the existing native, Wikipedia, Serper, Brave, and Tavily providers.</li>
 <li>
-<code><a href="../reference/tempest_config.html">tempest_config()</a></code> gains <code>cache_enabled</code> and <code>cache_ttl</code> controls for retriever search/fetch caching, <code>TempestRetriever$cache_stats()</code> reports local cache counters, and <code><a href="../reference/tempest_cache_clear.html">tempest_cache_clear()</a></code> clears all or stale cache entries (ryfx).</li>
+<code><a href="../reference/tempest_config.html">tempest_config()</a></code> gains <code>cache_enabled</code> and <code>cache_ttl</code> controls for retriever search/fetch caching, <code>TempestRetriever$cache_stats()</code> reports local cache counters, and <code>tempest_cache_clear()</code> clears all or stale cache entries (ryfx).</li>
 <li>
 <code>tempest</code> now imports dsprrr directly for STORM structured extraction and generation modules.</li>
 <li>
@@ -216,13 +216,13 @@
 <li>
 <code>tempest_okf_concepts()</code>, <code>tempest_okf_context()</code>, <code>tempest_okf_resources()</code>, and <code>tempest_read_okf()</code> read bounded Open Knowledge Format bundles as typed evidence resources and explicitly untrusted agent context without executing referenced code or granting capabilities.</li>
 <li>
-<code><a href="../reference/tempest_progress_event.html">tempest_progress_event()</a></code> and <code><a href="../reference/tempest_progress_event_data.html">tempest_progress_event_data()</a></code> define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).</li>
+<code>tempest_progress_event()</code> and <code>tempest_progress_event_data()</code> define a host-neutral STORM/Co-STORM progress event contract for package and host-app integrations (g7wt).</li>
 <li>
-<code><a href="../reference/tempest_progress_labels.html">tempest_progress_labels()</a></code> provides compact host-neutral STORM and Co-STORM progress labels for stage chips and current-step displays (a3rg).</li>
+<code>tempest_progress_labels()</code> provides compact host-neutral STORM and Co-STORM progress labels for stage chips and current-step displays (a3rg).</li>
 <li>
-<code><a href="../reference/tempest_progress_collector.html">tempest_progress_collector()</a></code>, <code><a href="../reference/tempest_progress_filter.html">tempest_progress_filter()</a></code>, and <code><a href="../reference/tempest_progress_replay.html">tempest_progress_replay()</a></code> provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).</li>
+<code>tempest_progress_collector()</code>, <code>tempest_progress_filter()</code>, and <code>tempest_progress_replay()</code> provide host-neutral in-memory progress sinks with filtering and replay helpers (wpt9).</li>
 <li>
-<code><a href="../reference/tempest_progress_state.html">tempest_progress_state()</a></code> reduces recorded STORM and Co-STORM progress events to compact host-neutral workflow state for UI and telemetry adapters (7f9q).</li>
+<code>tempest_progress_state()</code> reduces recorded STORM and Co-STORM progress events to compact host-neutral workflow state for UI and telemetry adapters (7f9q).</li>
 <li>
 <code><a href="../reference/tempest_run.html">tempest_run()</a></code> gains <code>output_dir</code>, <code>resume</code>, and <code>run_id</code> arguments for persistent staged runs with JSON and Markdown artifacts.</li>
 <li>
@@ -238,15 +238,15 @@
 <li>
 <code><a href="../reference/tempest_session.html">tempest_session()</a></code> now accepts <code>session_id</code> so host apps can align Co-STORM progress, persistence, and artifacts with their own project/session identity (z0e0).</li>
 <li>
-<code><a href="../reference/tempest_session_process_turn_async.html">tempest_session_process_turn_async()</a></code> records completed user and moderator turns and performs evidence, mind-map, and suggestion enrichment asynchronously, returning a typed stale-safe result with host-presentable notices.</li>
+<code>tempest_session_process_turn_async()</code> records completed user and moderator turns and performs evidence, mind-map, and suggestion enrichment asynchronously, returning a typed stale-safe result with host-presentable notices.</li>
 <li>
-<code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code>, <code><a href="../reference/tempest_session_resume.html">tempest_session_resume()</a></code>, <code><a href="../reference/tempest_session_snapshot.html">tempest_session_snapshot()</a></code>, and <code><a href="../reference/tempest_session_restore.html">tempest_session_restore()</a></code> provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62). <code>tempest_session_save(overwrite = TRUE)</code> only replaces directories that already look like a Tempest session bundle, so a mistyped path cannot recursively delete unrelated files.</li>
+<code><a href="../reference/tempest_session_save.html">tempest_session_save()</a></code>, <code><a href="../reference/tempest_session_resume.html">tempest_session_resume()</a></code>, <code>tempest_session_snapshot()</code>, and <code>tempest_session_restore()</code> provide schema-versioned Co-STORM session persistence bundles and in-memory snapshot/restore helpers (zj62). <code>tempest_session_save(overwrite = TRUE)</code> only replaces directories that already look like a Tempest session bundle, so a mistyped path cannot recursively delete unrelated files.</li>
 <li>
-<code><a href="../reference/tempest_session_warmup_async.html">tempest_session_warmup_async()</a></code> runs bounded expert orientations in parallel and commits transcript, evidence, and one mind-map update in deterministic order with per-expert timeouts and stale-result suppression.</li>
+<code>tempest_session_warmup_async()</code> runs bounded expert orientations in parallel and commits transcript, evidence, and one mind-map update in deterministic order with per-expert timeouts and stale-result suppression.</li>
 <li>
-<code><a href="../reference/tempest_shiny_ui.html">tempest_shiny_ui()</a></code>, <code><a href="../reference/tempest_shiny_server.html">tempest_shiny_server()</a></code>, and <code><a href="../reference/tempest_shiny_store.html">tempest_shiny_store()</a></code> provide an experimental embeddable Shiny adapter for host apps, with fake-chat example code under <code>inst/examples/shiny-host</code> (z0e0).</li>
+<code>tempest_shiny_ui()</code>, <code>tempest_shiny_server()</code>, and <code>tempest_shiny_store()</code> provide an experimental embeddable Shiny adapter for host apps, with fake-chat example code under <code>inst/examples/shiny-host</code> (z0e0).</li>
 <li>
-<code><a href="../reference/tempest_shiny_server.html">tempest_shiny_server()</a></code> now exposes reactive generic run, event, approval, assignment, capability-grant, artifact, and evidence state; the example host app demonstrates a custom objective, selected expert, scoped connection policy, approval checkpoint, and non-report JSON deliverable (fr54).</li>
+<code>tempest_shiny_server()</code> now exposes reactive generic run, event, approval, assignment, capability-grant, artifact, and evidence state; the example host app demonstrates a custom objective, selected expert, scoped connection policy, approval checkpoint, and non-report JSON deliverable (fr54).</li>
 <li>
 <code>tempest_config(search_provider = )</code> searches now apply a request timeout and retry on transient HTTP errors, and a single missing or non-public result URL no longer discards every other result for the query.</li>
 <li>Co-STORM sessions now route turns, update the mind map, and summarise using the most recent dialogue turns instead of the oldest.</li>

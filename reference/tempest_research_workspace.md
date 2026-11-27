@@ -24,10 +24,8 @@ tempest_research_workspace(max_sources = Inf, artifact_selection = list())
 
 ## Value
 
-A
-[ResearchWorkspace](https://jameshwade.github.io/tempest/reference/ResearchWorkspace.md)
-object. Supply it as a custom retriever's `$workspace` so Tempest and
-the host write to the same research ledger.
+A `ResearchWorkspace` object. Supply it as a custom retriever's
+`$workspace` so Tempest and the host write to the same research ledger.
 
 ## Examples
 
