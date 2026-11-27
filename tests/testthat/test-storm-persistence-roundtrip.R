@@ -1,5 +1,4 @@
 test_that("schema 11 STORM bundles restore workspace, state, and manifest", {
-  skip_if_not_installed("jsonlite")
   test_env <- environment()
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
@@ -316,7 +315,6 @@ test_that("schema 11 STORM bundles restore workspace, state, and manifest", {
 })
 
 test_that("STORM restore rejects tampered expert-profile records", {
-  skip_if_not_installed("jsonlite")
   run_dir <- withr::local_tempdir()
   cfg <- tempest_config()
   program_set <- tempest_program_set()
@@ -413,7 +411,6 @@ test_that("STORM restore rejects tampered expert-profile records", {
 })
 
 test_that("completed stage metadata controls resume state", {
-  skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir(pattern = "tempest-runs-")
 
   run_dir <- tempest:::tempest_storm_prepare_run_dir(root, "Partial Run")

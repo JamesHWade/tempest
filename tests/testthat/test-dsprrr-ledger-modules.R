@@ -1,5 +1,4 @@
 test_that("module factory includes extract_claims and verify_claim_support", {
-  skip_if_not_installed("dsprrr")
   cfg <- tempest_config()
   modules <- tempest_make_dsprrr_modules(cfg)
   expect_contains(names(modules), c("extract_claims", "verify_claim_support"))
@@ -7,7 +6,6 @@ test_that("module factory includes extract_claims and verify_claim_support", {
 })
 
 test_that("extract_claims module accepts source context inputs", {
-  skip_if_not_installed("dsprrr")
   cfg <- tempest_config()
   modules <- tempest_make_dsprrr_modules(cfg)
   inputs <- S7::prop(modules$extract_claims$signature, "inputs")

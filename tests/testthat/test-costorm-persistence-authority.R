@@ -1,8 +1,4 @@
 test_that("schema 14 persists exact Deputy execution authority", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-
   moderator_source <- fake_source(
     "https://example.org/schema-9-moderator",
     content_text = "Moderator evidence is durable."

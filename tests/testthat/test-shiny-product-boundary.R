@@ -613,7 +613,6 @@ test_that("public Shiny store exposes only product-named state", {
 
 test_that("Shiny publishes only authority-validated Co-STORM reports", {
   skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
   config <- tempest_config(chat_fn = function(...) fake_chat())
   session <- tempest_session(
     "Shiny costorm authority",

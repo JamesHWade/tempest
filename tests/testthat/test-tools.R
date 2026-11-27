@@ -1,5 +1,4 @@
 test_that("retrieval tools expose canonical research vocabulary", {
-  skip_if_not_installed("ellmer")
   store <- tempest_research_workspace()
   store$upsert_retrieved_resource(test_typed_web_resource(
     "https://example.org/1"
@@ -181,7 +180,6 @@ test_that("research tool effects obey Deputy's capability and mode policies", {
 })
 
 test_that("web tools produce only their delegated retriever spans", {
-  skip_if_not_installed("ellmer")
   local_otel_opt_in()
   state <- local_fake_otel()
   retriever <- tempest_retriever(
@@ -501,7 +499,6 @@ test_that("review tools keep nonscalar metadata out of source payloads", {
 })
 
 test_that("source-management tools expose claim tools without web tools", {
-  skip_if_not_installed("ellmer")
   store <- producer_test_workspace(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
@@ -542,7 +539,6 @@ test_that("source-management tools expose claim tools without web tools", {
 })
 
 test_that("claim write tools record dynamic provenance", {
-  skip_if_not_installed("ellmer")
   store <- producer_test_workspace(1)
   source_id <- store$list_retrieved_sources()[[1]]$id
   retriever <- tempest_retriever(
@@ -580,7 +576,6 @@ test_that("claim write tools record dynamic provenance", {
 })
 
 test_that("source-management tools can be registered read-only", {
-  skip_if_not_installed("ellmer")
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = producer_test_workspace(1)
@@ -606,7 +601,6 @@ test_that("source-management tools can be registered read-only", {
 })
 
 test_that("default tool registration respects read-only evidence roles", {
-  skip_if_not_installed("ellmer")
   store <- producer_test_workspace(1)
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir()),
@@ -643,7 +637,6 @@ test_that("default tool registration respects read-only evidence roles", {
   )
 })
 test_that("single expert generation returns deterministic scoped profiles", {
-  skip_if_not_installed("ellmer")
   generated <- list(
     personas = list(list(
       name = "Dr. Rivera",

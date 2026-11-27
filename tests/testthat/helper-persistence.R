@@ -568,3 +568,21 @@ test_persistence_complete_storm_product <- function(
     span_id = span_id
   )
 }
+
+test_persistence_costorm_session <- function(
+  topic = "Persistence session",
+  expert_id = "expert.persistence",
+  experts = NULL,
+  config = NULL
+) {
+  cfg <- config %||%
+    tempest_config(
+      chat_fn = function(role, model, system_prompt, echo) fake_chat()
+    )
+  session <- tempest_session(
+    topic,
+    config = cfg,
+    experts = experts %||% list(test_expert(expert_id = expert_id))
+  )
+  list(config = cfg, session = session)
+}

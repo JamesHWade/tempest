@@ -1,5 +1,4 @@
 test_that("TempestSession snapshots restore durable session state", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -174,8 +173,6 @@ test_that("TempestSession snapshots restore durable session state", {
 })
 
 test_that("retired experts persist separately from immutable profiles", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

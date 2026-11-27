@@ -20,7 +20,6 @@ test_that("durable integer validation accepts the exact non-NA range", {
 })
 
 test_that("ResearchWorkspace snapshots restore artifact-free product state", {
-  skip_if_not_installed("jsonlite")
   workspace <- tempest_research_workspace(
     max_sources = 4L
   )
@@ -194,7 +193,6 @@ test_that("ResearchWorkspace rejects pre-hard-cut snapshots", {
 })
 
 test_that("ResearchWorkspace snapshots encode unbounded source limits", {
-  skip_if_not_installed("jsonlite")
   snapshot <- tempest:::tempest_research_workspace_snapshot(
     tempest_research_workspace()
   )

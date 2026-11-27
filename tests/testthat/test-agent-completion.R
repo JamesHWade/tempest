@@ -1,6 +1,4 @@
 test_that("agent completions preserve exact process-local bindings", {
-  skip_if_not_installed("ellmer")
-
   owner <- new.env(parent = emptyenv())
   registry <- tempest:::tempest_agent_completion_registry(owner)
   prompt <- enc2utf8("naïve café — 東京 🧪\r\nquestion")
@@ -134,8 +132,6 @@ test_that("agent completions preserve exact process-local bindings", {
 })
 
 test_that("agent completions preserve boundaries between visible text", {
-  skip_if_not_installed("ellmer")
-
   provider_turn <- ellmer::AssistantTurn(list(
     ellmer::ContentText("First paragraph."),
     ellmer::ContentThinking("private reasoning"),
@@ -149,8 +145,6 @@ test_that("agent completions preserve boundaries between visible text", {
 })
 
 test_that("agent completion lifecycle is one-use and owner-bound", {
-  skip_if_not_installed("ellmer")
-
   owner <- new.env(parent = emptyenv())
   other_owner <- new.env(parent = emptyenv())
   registry <- tempest:::tempest_agent_completion_registry(owner)
@@ -350,8 +344,6 @@ test_that("agent completion lifecycle is one-use and owner-bound", {
 })
 
 test_that("session completion settlement is atomic with pending run clearance", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -397,8 +389,6 @@ test_that("session completion settlement is atomic with pending run clearance", 
 })
 
 test_that("moderator routes each own one bounded completion span", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   local_otel_opt_in()
@@ -519,8 +509,6 @@ test_that("moderator routes each own one bounded completion span", {
 })
 
 test_that("recorder failure rolls back completion and leaves its run pending", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -576,8 +564,6 @@ test_that("recorder failure rolls back completion and leaves its run pending", {
 })
 
 test_that("non-complete moderator terminals settle without completions", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -645,8 +631,6 @@ test_that("non-complete moderator terminals settle without completions", {
 })
 
 test_that("terminal recorder failure remains pending and issues no ID", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 

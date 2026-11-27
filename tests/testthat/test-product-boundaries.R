@@ -1,5 +1,4 @@
 test_that("scripted STORM stays on its product-owned execution path", {
-  skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
 
   result <- tempest_run(

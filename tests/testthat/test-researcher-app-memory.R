@@ -35,7 +35,6 @@ test_that("researcher memory sidecar stays outside enriched report manifest", {
 
 test_that("researcher worker attaches Graft recall tools, pins basis, and publishes candidates", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("ellmer")
   skip_if_not("graft_store" %in% getNamespaceExports("graft"))
 
   store_path <- file.path(withr::local_tempdir(), "memory")
@@ -424,7 +423,6 @@ test_that("researcher memory review module and library integrate accept and with
 
 test_that("researcher app and worker support store factory and Postgres handoff cleanly", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("ellmer")
   skip_if_not("graft_store" %in% getNamespaceExports("graft"))
 
   store_path <- file.path(withr::local_tempdir(), "pg-sim-memory")

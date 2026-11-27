@@ -1,5 +1,4 @@
 test_that("STORM requested steps persist canonically and remain immutable", {
-  skip_if_not_installed("jsonlite")
   root <- withr::local_tempdir()
   run_dir <- file.path(root, "requested-steps")
   cfg <- tempest_config()
@@ -64,7 +63,6 @@ test_that("STORM requested steps persist canonically and remain immutable", {
 })
 
 test_that("succeeded STORM publication requires the full dependency chain", {
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config()
   program_set <- tempest_program_set()
   expect_error(

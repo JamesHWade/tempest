@@ -1,6 +1,4 @@
 test_that("sync and async warmups persist authoritative claim provenance", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -141,8 +139,6 @@ test_that("sync and async warmups persist authoritative claim provenance", {
 })
 
 test_that("public session verification persists pair support and source proof", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   source <- fake_source("https://example.org/persisted-session-verification")
   extracted <- list(
     facts = list(list(

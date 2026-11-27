@@ -1,5 +1,4 @@
 test_that("session snapshots reject credentials outside evidence payloads", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -136,8 +135,6 @@ test_that("session snapshots reject credentials outside evidence payloads", {
 })
 
 test_that("no-reference Co reports remain canonical persistence products", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   source <- fake_source(
     "https://example.org/no-reference-session-report",
     content_text = "Captured session evidence is durable."
@@ -258,8 +255,6 @@ test_that("no-reference Co reports remain canonical persistence products", {
 })
 
 test_that("fenced package headings survive session report persistence", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -313,8 +308,6 @@ test_that("fenced package headings survive session report persistence", {
 })
 
 test_that("public session extraction persists its exact terminal record", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   source <- fake_source("https://example.org/persisted-session-extraction")
   extracted <- list(
     facts = list(list(

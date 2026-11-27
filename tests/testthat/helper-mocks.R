@@ -553,3 +553,45 @@ fake_accepted_claim <- function(
   )
   invisible(ids)
 }
+
+test_research_workspace <- function(...) {
+  tempest_research_workspace(...)
+}
+
+s7_validation_error_class <- function() {
+  if (utils::packageVersion("S7") >= "1.0.0") {
+    "S7_error_validation_failed"
+  } else {
+    "simpleError"
+  }
+}
+
+producer_test_workspace <- function(n = 1L) {
+  workspace <- test_research_workspace()
+  for (index in seq_len(n)) {
+    workspace$upsert_retrieved_resource(test_typed_web_resource(
+      url = paste0("https://example.org/", index),
+      title = paste("Example", index),
+      content = paste("Body text for source", index)
+    ))
+  }
+  workspace
+}
+
+ecosystem_demo_helper <- function() {
+  helper <- new.env(parent = globalenv())
+  sys.source(tempest_pkg_file("examples", "ellmerverse", "fixture.R"), helper)
+  helper
+}
+
+ecosystem_demo_product <- local({
+  product <- NULL
+  function() {
+    if (is.null(product)) {
+      directory <- tempfile("tempest-ecosystem-")
+      on.exit(unlink(directory, recursive = TRUE), add = TRUE)
+      product <<- ecosystem_demo_helper()$tempest_demo_research(directory)
+    }
+    product
+  }
+})

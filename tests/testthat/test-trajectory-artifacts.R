@@ -425,7 +425,6 @@ test_that("decision labels retain the store bounds in reconstructed reviews", {
 })
 
 test_that("trajectory review records and validates @extra$graft consultations", {
-  skip_if_not_installed("ellmer")
   costorm_ses <- test_promotion_costorm_fixture()$research
 
   dec_mod <- strrep("a", 64L)

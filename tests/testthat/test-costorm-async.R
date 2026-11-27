@@ -103,7 +103,6 @@ test_that("async ProgramSet execution rejects tampered handle metadata", {
 })
 
 test_that("async personas and Shiny startup use one bound ProgramSet", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
   generated <- list(
@@ -195,7 +194,6 @@ test_that("async personas and Shiny startup use one bound ProgramSet", {
 })
 
 test_that("stale async extraction persists one cancelled attempt", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   resolve_request <- NULL
@@ -287,7 +285,6 @@ test_that("stale async extraction persists one cancelled attempt", {
 })
 
 test_that("failed async extraction remains durable without raw errors", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   extractor <- fake_chat_r6(list(
@@ -385,8 +382,6 @@ test_that("failed async extraction remains durable without raw errors", {
 })
 
 test_that("agent-derived evidence rejects missing and forged claims", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   session <- tempest_session(
     "Bound evidence claims",
     config = tempest_config(
@@ -441,8 +436,6 @@ test_that("agent-derived evidence rejects missing and forged claims", {
 })
 
 test_that("stale provider turns cannot splice evidence into a completion", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -526,7 +519,6 @@ test_that("stale provider turns cannot splice evidence into a completion", {
 })
 
 test_that("post-turn processing owns sequencing and returns typed results", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   calls <- character()
@@ -668,8 +660,6 @@ test_that("post-turn processing owns sequencing and returns typed results", {
 })
 
 test_that("post-turn rejects a completion owned by another session", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   cfg <- tempest_config(chat_fn = function(role, model, system_prompt, echo) {
@@ -723,7 +713,6 @@ test_that("post-turn rejects a completion owned by another session", {
 })
 
 test_that("post-turn processing exposes evidence gaps without UI callbacks", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   exchange <- NULL
@@ -784,7 +773,6 @@ test_that("post-turn processing exposes evidence gaps without UI callbacks", {
 })
 
 test_that("post-turn enrichment failures are typed and best effort", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   local_otel_opt_in()
@@ -858,7 +846,6 @@ test_that("post-turn enrichment failures are typed and best effort", {
 })
 
 test_that("stale post-turn work cannot run later enrichment stages", {
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   local_otel_opt_in()
@@ -1067,8 +1054,6 @@ test_that("turn result validators reject contradictory records", {
 })
 
 test_that("default Co-STORM reporting verifies and publishes atomically", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   local_otel_opt_in()
@@ -1425,8 +1410,6 @@ test_that("post-turn processing has the exact completion-only signature", {
 })
 
 test_that("turn and report spans include claim and publication-lock failures", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("promises")
   local_otel_opt_in()
   otel <- local_fake_otel()
@@ -1495,8 +1478,6 @@ test_that("turn and report spans include claim and publication-lock failures", {
 })
 
 test_that("queued turns are claimed by completion ID instead of latest run", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -1679,8 +1660,6 @@ test_that("queued turns are claimed by completion ID instead of latest run", {
 })
 
 test_that("turn processing preserves the original consume failure", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -1788,8 +1767,6 @@ test_that("promise waits retain a non-resetting hard deadline", {
 })
 
 test_that("stale work cancels before mutation and later failure stays consumed", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -1896,8 +1873,6 @@ test_that("stale work cancels before mutation and later failure stays consumed",
 })
 
 test_that("progress callback failure keeps the consumed dialogue coherent", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 

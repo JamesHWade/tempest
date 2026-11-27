@@ -22,7 +22,6 @@ test_that("tempest_app validates dependencies and delegates to the app runner", 
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
   skip_if_not_installed("shinychat")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("promises")
   skip_if_not_installed("later")
   skip_if_not_installed("mirai")

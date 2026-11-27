@@ -1,5 +1,4 @@
 test_that("tempest_run_dsprrr_module propagates provider errors", {
-  skip_if_not_installed("dsprrr")
   forward <- function(text, ...) list(answer = text)
   bad_module <- dsprrr::module_fn("text -> answer", forward)
   program_artifact_id <- dsprrr::program_artifact_id(

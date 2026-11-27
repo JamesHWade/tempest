@@ -1,5 +1,4 @@
 test_that("TempestSession emits Co-STORM progress events", {
-  skip_if_not_installed("ellmer")
   source <- fake_source(
     url = "https://example.org/costorm-progress",
     title = "Co-STORM source",
@@ -195,7 +194,6 @@ test_that("TempestSession emits Co-STORM progress events", {
 })
 
 test_that("warmup failure emits a safe failed expert event", {
-  skip_if_not_installed("ellmer")
   collector <- tempest_progress_collector(include_payload = TRUE)
   failing_chat <- fake_chat()
   failing_chat$stream <- function(...) stop("warmup unavailable")

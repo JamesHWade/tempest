@@ -1,6 +1,5 @@
 test_that("graft memory helpers manage streams, corrections, withdrawal, and reuse", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("ellmer")
   skip_if_not("graft_store" %in% getNamespaceExports("graft"))
 
   store_dir <- withr::local_tempdir()
@@ -169,7 +168,6 @@ test_that("graft memory helpers manage streams, corrections, withdrawal, and reu
 
 test_that("graft memory tools expose multi-stream recall and extract @extra$graft metadata", {
   skip_if_not_installed("graft")
-  skip_if_not_installed("ellmer")
   skip_if_not("graft_tools" %in% getNamespaceExports("graft"))
 
   store <- graft::graft_store(

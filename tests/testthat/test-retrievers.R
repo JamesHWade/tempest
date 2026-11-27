@@ -1241,7 +1241,6 @@ test_that("search request policy retries only bounded transient statuses", {
 })
 
 test_that("DuckDuckGo adapter parses deterministic HTML fixtures", {
-  skip_if_not_installed("xml2")
   skip_if_not_installed("rvest")
   html <- paste0(
     '<div class="result"><a class="result__a" ',

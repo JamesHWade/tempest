@@ -1,6 +1,4 @@
 test_that("Tempest session bundles save and resume durable state", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     citation_policy = "claim_verified",
     chat_fn = function(role, model, system_prompt, echo) {

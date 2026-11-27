@@ -1,5 +1,4 @@
 test_that("schema 14 session restore protects research identity", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -251,7 +250,6 @@ test_that("schema 14 session restore protects research identity", {
 })
 
 test_that("schema 14 progress history is exact and session-bound", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

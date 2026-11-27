@@ -1,6 +1,4 @@
 test_that("session bundles exclude process-local and generic registries", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -57,8 +55,6 @@ test_that("session bundles exclude process-local and generic registries", {
 })
 
 test_that("expert-session writer rejects incomplete live bindings", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -114,8 +110,6 @@ test_that("expert-session writer rejects incomplete live bindings", {
 })
 
 test_that("session restore rejects contract and expert-binding tampering", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

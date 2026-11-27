@@ -1,8 +1,4 @@
 test_that("pending Deputy runs block schema 14 persistence", {
-  skip_if_not_installed("coro")
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
 
@@ -109,10 +105,6 @@ test_that("pending Deputy runs block schema 14 persistence", {
 })
 
 test_that("issued and processing completions block schema 14 persistence", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

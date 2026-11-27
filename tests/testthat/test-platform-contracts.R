@@ -41,8 +41,6 @@ test_that("platform paths enforce portable bundle boundaries", {
 })
 
 test_that("platform completion digests survive deep Turn duplication", {
-  skip_if_not_installed("ellmer")
-
   response <- enc2utf8("Queued response — 東京.")
   provider_turn <- ellmer::AssistantTurn(
     list(ellmer::ContentText(response)),

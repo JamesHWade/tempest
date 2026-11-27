@@ -341,8 +341,6 @@ test_that("Deputy context binds program identity to the manifest", {
 
 
 test_that("Tempest context survives Deputy delegation and hooks", {
-  skip_if_not_installed("deputy")
-
   parent_deputy_session_id <- "tempest-session-parent"
   child_deputy_session_id <- "tempest-session-child"
   program_reference <- test_program_reference("review")

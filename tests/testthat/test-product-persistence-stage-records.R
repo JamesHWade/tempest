@@ -1,6 +1,4 @@
 test_that("stage-record sidecars are mandatory regular bundle files", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -68,8 +66,6 @@ test_that("stage-record sidecars are mandatory regular bundle files", {
 
 test_that("stage-record sidecars reject same-root symlinks", {
   skip_on_os("windows")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -144,8 +140,6 @@ test_that("stage-record sidecars reject same-root symlinks", {
 
 test_that("bundle root manifests reject internal and escaping symlinks", {
   skip_on_os("windows")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )
@@ -248,8 +242,6 @@ test_that("bundle root manifests reject internal and escaping symlinks", {
 })
 
 test_that("stage-record sidecars bind manifest, workspace, and output kind", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     citation_policy = "claim_verified",
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -598,8 +590,6 @@ test_that("stage-record sidecars bind manifest, workspace, and output kind", {
 })
 
 test_that("verification stage records cover every claim-span support pair", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     citation_policy = "claim_verified",
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -708,8 +698,6 @@ test_that("verification stage records cover every claim-span support pair", {
 })
 
 test_that("session bundles expose only product persistence inventory", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
   )

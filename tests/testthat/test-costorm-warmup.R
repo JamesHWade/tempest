@@ -281,8 +281,6 @@ test_that("synchronous warmup enrichment failures remain best effort", {
 })
 
 test_that("timed out Deputy warmup stays pending until terminal trace", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("later")
   skip_if_not_installed("promises")
   raw_expert <- fake_chat()

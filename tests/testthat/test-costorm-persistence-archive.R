@@ -1,18 +1,12 @@
 test_that("extracted Co-STORM archives require the exact current product", {
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  fixture <- test_persistence_costorm_session(
+    topic = "Archive validation",
+    expert_id = "expert.archive"
   )
   root <- withr::local_tempdir()
   make_bundle <- function(name) {
     path <- file.path(root, name)
-    session <- tempest_session(
-      "Archive validation",
-      config = cfg,
-      experts = list(test_expert(expert_id = paste0("expert.", name)))
-    )
-    tempest_session_save(session, path)
+    tempest_session_save(fixture$session, path)
     path
   }
 
@@ -134,20 +128,14 @@ test_that("extracted Co-STORM archives require the exact current product", {
 
 test_that("extracted Co-STORM archive roots cannot be symbolic links", {
   skip_on_os("windows")
-  skip_if_not_installed("ellmer")
-  skip_if_not_installed("jsonlite")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
+  fixture <- test_persistence_costorm_session(
+    topic = "Archive root symlink",
+    expert_id = "expert.archive-symlink"
   )
   root <- withr::local_tempdir()
   bundle <- file.path(root, "bundle")
   alias <- file.path(root, "bundle-alias")
-  session <- tempest_session(
-    "Archive root symlink",
-    config = cfg,
-    experts = list(test_expert(expert_id = "expert.archive-symlink"))
-  )
-  tempest_session_save(session, bundle)
+  tempest_session_save(fixture$session, bundle)
   expect_identical(file.symlink(bundle, alias), TRUE)
 
   expect_error(

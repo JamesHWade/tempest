@@ -1,5 +1,4 @@
 test_that("tempest_run rejects invalid runtime budgets before provider work", {
-  skip_if_not_installed("ellmer")
   cfg <- tempest_config(max_active_experts = 2L)
   invalid <- list(
     list(topic = character()),
@@ -19,7 +18,6 @@ test_that("tempest_run rejects invalid runtime budgets before provider work", {
 })
 
 test_that("tempest_run rejects a mismatched TempestRetriever before execution", {
-  skip_if_not_installed("ellmer")
   chat_calls <- 0L
   run_config <- tempest_config(
     max_search_results = 2L,
@@ -100,7 +98,6 @@ test_that("generated experts normalize to stable S7 profiles", {
 })
 
 test_that("tempest_generate_experts returns validated profiles", {
-  skip_if_not_installed("ellmer")
   provider_result <- list(
     personas = list(list(
       name = "Dr. Scope",
@@ -130,7 +127,6 @@ test_that("tempest_generate_experts returns validated profiles", {
 })
 
 test_that("tempest_run uses the selected expert team", {
-  skip_if_not_installed("ellmer")
   expert <- tempest_expert(
     name = "Selected Expert",
     title = "Domain specialist",
@@ -243,7 +239,6 @@ test_that("tempest_run rejects state-only continuation", {
 })
 
 test_that("public partial STORM resumes cannot expand their request", {
-  skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
   output_root <- withr::local_tempdir()
   run_id <- "public-partial-request"
@@ -336,7 +331,6 @@ test_that("tempest_run resume starts fresh when no manifest exists", {
 })
 
 test_that("tempest_run rejects a resumed checkpoint for another topic", {
-  skip_if_not_installed("ellmer")
   chat_calls <- 0L
   config <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
@@ -383,7 +377,6 @@ test_that("tempest_run rejects a resumed checkpoint for another topic", {
 })
 
 test_that("tempest_run preserves absorbing terminal manifest identities", {
-  skip_if_not_installed("ellmer")
   chat_calls <- 0L
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) {
@@ -536,7 +529,6 @@ test_that("tempest_run preserves absorbing terminal manifest identities", {
 })
 
 test_that("tempest_run emits ordered STORM progress events", {
-  skip_if_not_installed("ellmer")
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8L) {
       tibble::tibble(
@@ -780,9 +772,6 @@ test_that("tempest_run emits ordered STORM progress events", {
 })
 
 test_that("STORM research harvests OpenAI native annotations", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
-
   url <- "https://example.org/storm-native-source"
   source_id <- tempest:::tempest_source_id(url)
   turn <- native_openai_json_turn(
@@ -909,7 +898,6 @@ test_that("STORM research harvests OpenAI native annotations", {
 })
 
 test_that("STORM research does not downgrade dsprrr contract failures", {
-  skip_if_not_installed("ellmer")
   expert_chat <- fake_chat(text = list("Provider work must not begin."))
   config <- tempest_config(
     cache_enabled = FALSE,
@@ -973,7 +961,6 @@ test_that("STORM research does not downgrade dsprrr contract failures", {
   expect_length(expert_chat$.calls(), 0L)
 })
 test_that("tempest_run emits a failed verification stage event", {
-  skip_if_not_installed("ellmer")
   verification_called <- FALSE
   local_mocked_bindings(
     tempest_wiki_search = function(query, limit = 8L) {
@@ -1027,7 +1014,6 @@ test_that("tempest_run emits a failed verification stage event", {
 })
 
 test_that("tempest_run emits terminal progress events on failure", {
-  skip_if_not_installed("ellmer")
   collector <- tempest_progress_collector()
   cfg <- tempest_config(
     chat_fn = function(role, model, system_prompt, echo) fake_chat()
@@ -1078,7 +1064,6 @@ test_that("tempest_run emits terminal progress events on failure", {
 })
 
 test_that("tempest_run propagates progress callback failures", {
-  skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
   calls <- 0L
   callback <- function(event) {
@@ -1105,7 +1090,6 @@ test_that("tempest_run propagates progress callback failures", {
 })
 
 test_that("final STORM persistence failure is recorded without masking it", {
-  skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
   output_root <- withr::local_tempdir()
   original_save <- tempest:::tempest_storm_save_artifacts
@@ -1164,8 +1148,6 @@ test_that("final STORM persistence failure is recorded without masking it", {
 })
 
 test_that("STORM publishes report authority atomically and restores it", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("graft")
   fixture <- storm_progress_fixture()
   output_root <- withr::local_tempdir()
@@ -1292,8 +1274,6 @@ test_that("STORM publishes report authority atomically and restores it", {
 })
 
 test_that("STORM finalization failure preserves a running report-free bundle", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("graft")
   mode <- "error"
   original_finalize <- tempest:::tempest_product_authority_finalize_manifest
@@ -1371,8 +1351,6 @@ test_that("STORM finalization failure preserves a running report-free bundle", {
 })
 
 test_that("STORM preserves a terminal Deputy attempt when extraction fails", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("graft")
   fixture <- storm_progress_fixture()
   output_root <- withr::local_tempdir()
@@ -1441,8 +1419,6 @@ test_that("STORM preserves a terminal Deputy attempt when extraction fails", {
 })
 
 test_that("default STORM verification authorizes extracted claims", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   skip_if_not_installed("graft")
   fixture <- storm_progress_fixture()
   config <- tempest_config(
@@ -1504,8 +1480,6 @@ test_that("STORM appends a safe execution review after polish", {
 })
 
 test_that("tempest_run binds each expert answer to one Deputy execution", {
-  skip_if_not_installed("deputy")
-  skip_if_not_installed("ellmer")
   fixture <- storm_progress_fixture()
   expert_chat <- fake_chat(
     text = list(paste0(
@@ -1642,7 +1616,6 @@ test_that("tempest_run binds each expert answer to one Deputy execution", {
 })
 
 test_that("retired STORM compatibility arguments are unknown", {
-  skip_if_not_installed("ellmer")
   provider_calls <- 0L
   config <- tempest_config(
     cache_enabled = FALSE,
