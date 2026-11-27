@@ -510,9 +510,7 @@ tempest_extract_claims_execution_bind <- function(
   )
 }
 
-#' @keywords internal
-tempest_extract_facts_from_answer <- function(
-  chat,
+tempest_prepare_fact_extraction_stage <- function(
   answer_text,
   store,
   module,
@@ -527,6 +525,7 @@ tempest_extract_facts_from_answer <- function(
   parent_run_id = NA_character_,
   delegation_id = NA_character_,
   tool_call_id = NA_character_,
+  commit_if = NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   record_stage_callback <- record_stage %||% tempest_stage_record_discard
@@ -543,20 +542,12 @@ tempest_extract_facts_from_answer <- function(
     delegation_id = delegation_id,
     tool_call_id = tool_call_id
   )
-  module <- binding$module
-  # Use a separate extraction call to minimize hallucinated facts. dsprrr gets
-  # the same source context as the fallback prompt so native-provider citations
-  # can still use the optimized module path when available.
+  # Use a separate extraction call to minimize hallucinated facts. Pass the
+  # same source context to dsprrr so native-provider citations can be mapped.
   source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
-  extraction_inputs <- tempest_claim_extraction_inputs(
-    answer_text,
-    store,
-    source_ids
-  )
-  stage_result <- tempest_execute_stage(
-    module,
-    chat,
-    inputs = extraction_inputs,
+  list(
+    module = binding$module,
+    inputs = tempest_claim_extraction_inputs(answer_text, store, source_ids),
     context = list(
       workspace = store,
       known_source_ids = vapply(
@@ -582,6 +573,9 @@ tempest_extract_facts_from_answer <- function(
       if (is.null(output)) {
         return(record_stage_callback(record))
       }
+      if (!is.null(commit_if) && !tempest_async_is_current(commit_if)) {
+        return(invisible(record))
+      }
       store$add_extracted_claim_batch(
         claims = output,
         evidence_spans = tempest_extracted_evidence_spans(output),
@@ -589,6 +583,52 @@ tempest_extract_facts_from_answer <- function(
       )
       invisible(record)
     }
+  )
+}
+
+#' @keywords internal
+tempest_extract_facts_from_answer <- function(
+  chat,
+  answer_text,
+  store,
+  module,
+  source_ids = NULL,
+  session_id = NA_character_,
+  expert_id = NA_character_,
+  retrieval_step_id = NA_character_,
+  perspective_id = NA_character_,
+  section_id = NA_character_,
+  deputy_run_id = NA_character_,
+  deputy_session_id = NA_character_,
+  parent_run_id = NA_character_,
+  delegation_id = NA_character_,
+  tool_call_id = NA_character_,
+  record_stage = function(record, output = NULL) invisible(record)
+) {
+  prepared <- tempest_prepare_fact_extraction_stage(
+    answer_text = answer_text,
+    store = store,
+    module = module,
+    source_ids = source_ids,
+    session_id = session_id,
+    expert_id = expert_id,
+    retrieval_step_id = retrieval_step_id,
+    perspective_id = perspective_id,
+    section_id = section_id,
+    deputy_run_id = deputy_run_id,
+    deputy_session_id = deputy_session_id,
+    parent_run_id = parent_run_id,
+    delegation_id = delegation_id,
+    tool_call_id = tool_call_id,
+    record_stage = record_stage
+  )
+  stage_result <- tempest_execute_stage(
+    prepared$module,
+    chat,
+    inputs = prepared$inputs,
+    context = prepared$context,
+    output_reference = prepared$output_reference,
+    record_stage = prepared$record_stage
   )
   invisible(stage_result)
 }
@@ -614,9 +654,11 @@ tempest_extract_facts_from_answer_async <- function(
   record_stage = function(record, output = NULL) invisible(record)
 ) {
   tempest_require("promises", "Async fact extraction requires promises.")
-  record_stage_callback <- record_stage %||% tempest_stage_record_discard
-  binding <- tempest_extract_claims_execution_bind(
+  prepared <- tempest_prepare_fact_extraction_stage(
+    answer_text = answer_text,
+    store = store,
     module = module,
+    source_ids = source_ids,
     session_id = session_id,
     expert_id = expert_id,
     retrieval_step_id = retrieval_step_id,
@@ -626,51 +668,18 @@ tempest_extract_facts_from_answer_async <- function(
     deputy_session_id = deputy_session_id,
     parent_run_id = parent_run_id,
     delegation_id = delegation_id,
-    tool_call_id = tool_call_id
+    tool_call_id = tool_call_id,
+    commit_if = commit_if,
+    record_stage = record_stage
   )
-  module <- binding$module
-  source_ids <- unique(source_ids[!is.na(source_ids) & nzchar(source_ids)])
-  inputs <- tempest_claim_extraction_inputs(answer_text, store, source_ids)
   request <- tempest_execute_stage_async(
-    module,
+    prepared$module,
     chat,
-    inputs = inputs,
-    context = list(
-      workspace = store,
-      known_source_ids = vapply(
-        store$list_retrieved_sources(),
-        `[[`,
-        character(1),
-        "id"
-      ),
-      claim_context = binding$claim_context,
-      deputy_execution = binding$deputy_execution
-    ),
-    output_reference = function(output, running_record, context) {
-      tempest_stage_output_reference(
-        "workspace_claims",
-        vapply(output, \(claim) claim@claim_id, character(1)),
-        content_digest = tempest_stage_claims_output_digest(
-          output,
-          running_record
-        )
-      )
-    },
+    inputs = prepared$inputs,
+    context = prepared$context,
+    output_reference = prepared$output_reference,
     is_current = commit_if,
-    record_stage = function(record, output = NULL) {
-      if (is.null(output)) {
-        return(record_stage_callback(record))
-      }
-      if (!tempest_async_is_current(commit_if)) {
-        return(invisible(record))
-      }
-      store$add_extracted_claim_batch(
-        claims = output,
-        evidence_spans = tempest_extracted_evidence_spans(output),
-        commit = function() record_stage_callback(record, output)
-      )
-      invisible(record)
-    }
+    record_stage = prepared$record_stage
   )
   promises::then(request, function(stage_result) invisible(stage_result))
 }

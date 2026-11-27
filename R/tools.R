@@ -30,8 +30,6 @@ tempest_detect_provider <- function(model) {
 #' @return List of ellmer tools, or NULL if provider doesn
 #' @keywords internal
 tempest_get_native_web_tools <- function(provider) {
-  tempest_require("ellmer", "Provider-native web tools require ellmer.")
-
   tools <- switch(
     provider,
     "openai" = list(
@@ -418,12 +416,6 @@ tempest_harvest_native_sources_from_turn <- function(turn, store) {
 }
 
 #' @keywords internal
-tempest_harvest_native_sources_from_chat <- function(chat, store) {
-  turn <- tryCatch(chat$last_turn(), error = function(e) NULL)
-  tempest_harvest_native_sources_from_turn(turn, store)
-}
-
-#' @keywords internal
 tempest_tool_source_payload <- function(source, excerpt_chars = 1200L) {
   excerpt_chars <- as.integer(excerpt_chars %||% 1200L)
   if (is.na(excerpt_chars) || excerpt_chars < 0L) {
@@ -780,7 +772,6 @@ tempest_tools_web <- function(
   search_provider = "native",
   max_search_results = NULL
 ) {
-  tempest_require("ellmer", "Tool calling for web research.")
   stopifnot(tempest_retriever_compatible(retriever))
 
   max_search_results <- max_search_results %||%
@@ -873,7 +864,6 @@ tempest_tools_web <- function(
 
 #' @keywords internal
 tempest_tools_evidence_read <- function(retriever) {
-  tempest_require("ellmer", "Tool calling for evidence review.")
   stopifnot(tempest_retriever_compatible(retriever))
   retriever$workspace |>
     tempest_tool_review_functions() |>
@@ -885,7 +875,6 @@ tempest_tools_evidence_write <- function(
   retriever,
   claim_provenance = list()
 ) {
-  tempest_require("ellmer", "Tool calling for evidence writing.")
   stopifnot(tempest_retriever_compatible(retriever))
   tempest_tool_write_functions(
     retriever$workspace,
@@ -948,7 +937,6 @@ tempest_tools_source_management <- function(
   allow_claim_writes = TRUE,
   claim_provenance = list()
 ) {
-  tempest_require("ellmer", "Tool calling for retrieval.")
   stopifnot(inherits(retriever, "TempestRetriever"))
 
   tools <- tempest_tools_evidence_read(retriever)
@@ -986,8 +974,6 @@ tempest_register_default_tools <- function(
   allow_claim_writes = TRUE,
   claim_provenance = list()
 ) {
-  tempest_require("ellmer", "Tool calling for retrieval.")
-
   # Determine if we should use native provider tools
   use_native <- FALSE
   if (identical(search_provider, "native") && !is.null(model)) {

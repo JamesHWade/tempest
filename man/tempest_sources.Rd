@@ -16,7 +16,7 @@ URL, title, media type, content context, retrieval time, and metadata.
 \description{
 Reports every evidence resource consumed by a product, including accepted
 organizational knowledge supplied through \code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}} or
-\code{\link[=tempest_artifact_knowledge]{tempest_artifact_knowledge()}}.
+\code{\link[=tempest_reuse_artifact_research]{tempest_reuse_artifact_research()}}.
 }
 \examples{
 \dontrun{

@@ -26,46 +26,27 @@ tempest_enriched_required_string <- function(value, name, class) {
 }
 
 tempest_enriched_await_promise <- function(promise, session, timeout) {
-  state <- new.env(parent = emptyenv())
-  state$done <- FALSE
-  state$value <- NULL
-  state$error <- NULL
-
-  promises::then(
+  tempest_await_promise(
     promise,
-    onFulfilled = function(value) {
-      state$value <- value
-      state$done <- TRUE
-    },
-    onRejected = function(error) {
-      state$error <- error
-      state$done <- TRUE
-    }
-  )
-
-  deadline <- unname(proc.time()[["elapsed"]]) + timeout
-  while (!state$done) {
-    remaining <- deadline - unname(proc.time()[["elapsed"]])
-    if (remaining <= 0) {
+    timeout_s = timeout,
+    poll_s = 0.05,
+    sleep_s = 0,
+    on_timeout = function() {
       session$cancel()
       tempest_enriched_execution_abort(
         "Deputy R execution did not settle before its deadline.",
         class = "tempest_execution_error",
         deputy_outcome = "await_timed_out"
       )
+    },
+    on_error = function(error) {
+      tempest_enriched_execution_abort(
+        "Deputy R execution could not be completed.",
+        class = "tempest_execution_error",
+        deputy_outcome = "promise_error"
+      )
     }
-    later::run_now(timeoutSecs = min(remaining, 0.05))
-  }
-
-  if (!is.null(state$error)) {
-    tempest_enriched_execution_abort(
-      "Deputy R execution could not be completed.",
-      class = "tempest_execution_error",
-      deputy_outcome = "promise_error"
-    )
-  }
-
-  state$value
+  )
 }
 
 tempest_enriched_directory_files <- function(directory) {

@@ -8,15 +8,6 @@ tempest_briefing_item_confidences <- function() {
   c("low", "medium", "high")
 }
 
-# A briefing decides structurally whether a verified claim changes accepted
-# knowledge: it compares the claim text with the Claim records that were
-# retained in the artifact selection at the start of the run. A claim that restates
-# an accepted Claim is a duplicate and may only support a no-change item; any
-# other verified claim is new and reads as an observation of what changed.
-tempest_briefing_claim_dispositions <- function() {
-  c("new", "duplicate")
-}
-
 tempest_workspace_accepted_claim_keys <- function(workspace) {
   if (!inherits(workspace, "ResearchWorkspace")) {
     return(character())

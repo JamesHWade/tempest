@@ -71,7 +71,6 @@ tempest_shiny_require_ui <- function(panels) {
 tempest_shiny_require_server <- function(panels) {
   tempest_require("shiny", "tempest_shiny_server() runs Shiny modules.")
   if (any(c("chat", "storm") %in% panels)) {
-    tempest_require("ellmer", "Tempest Shiny sessions require ellmer.")
     tempest_require(
       "promises",
       "Tempest Shiny background work requires promises."

@@ -165,3 +165,7 @@ tempest_product_record_hash <- function(value) {
     serialize = FALSE
   )
 }
+
+tempest_product_sha256_id <- function(value) {
+  paste0("sha256:", tempest_product_record_hash(value))
+}

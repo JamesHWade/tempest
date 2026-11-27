@@ -8,8 +8,8 @@ Authors@R: c(
 Description: Implements an R-native clone of the STORM and Co-STORM
     research-and-writing workflows using 'ellmer' for LLM orchestration and
     'shinychat' for an interactive Shiny UI. Includes web retrieval tools,
-    evidence tracking with citations, mind-map style topic planning, and
-    evaluation helpers built on 'vitals'. Tempest owns provisional scientific
+    evidence tracking with citations, and mind-map style topic planning.
+    Tempest owns provisional scientific
     research state, claim-centered evidence, authoritative STORM and Co-STORM
     product flows, and scientific reports. It delegates execution to 'deputy',
     structured research programs to 'dsprrr', and accepted-knowledge
@@ -46,7 +46,6 @@ Suggests:
     brand.yml,
     bslib (>= 0.6.0),
     callr,
-    dplyr,
     DT,
     duckdb,
     graft (>= 0.0.0.9000),
@@ -66,9 +65,7 @@ Suggests:
     shinychat (>= 0.4.0.9000),
     shinymcp (>= 0.0.0.9000),
     testthat (>= 3.2.0),
-    tidyr,
     visNetwork,
-    vitals (>= 0.3.0),
     withr,
     zip
 Remotes:
@@ -137,6 +134,9 @@ Collate:
     'ecosystem-contracts.R'
     'program-set.R'
     'stage-record.R'
+    'stage-fallbacks.R'
+    'stage-evaluators.R'
+    'stage-execution.R'
     'otel.R'
     'product-report.R'
     'product-result.R'
@@ -154,8 +154,11 @@ Collate:
     'research-workspace-persistence.R'
     'costorm-persistence.R'
     'storm-persistence.R'
+    'product-context.R'
     'promotion-types.R'
+    'promotion-proof.R'
     'trajectory-artifacts.R'
+    'trajectory-validation.R'
     'trajectory-review.R'
     'research-record-identity.R'
     'promotion-persistence.R'

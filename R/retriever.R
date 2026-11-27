@@ -300,8 +300,8 @@ tempest_http_get <- function(
 
 #' @keywords internal
 tempest_html_to_text <- function(html) {
-  # Prefer rvest/xml2 when available.
-  if (tempest_has("xml2") && tempest_has("rvest")) {
+  # Prefer rvest when available (xml2 is in Imports).
+  if (tempest_has("rvest")) {
     doc <- xml2::read_html(html)
     # Remove script/style/noscript nodes.
     for (tag in c("script", "style", "noscript")) {
@@ -331,15 +331,7 @@ tempest_html_to_text <- function(html) {
   tempest_trim(txt)
 }
 
-#' Fetch URL as markdown using ragnar
-#'
-#' Uses ragnar's read_as_markdown() for high-quality content extraction.
-#' Handles HTML, PDFs, and many other document types.
-#'
-#' @param url The URL to fetch.
-#' @return A list with `kind`, `text`, `title`, and `error`.
-#' @keywords internal
-tempest_fetch_url_markdown <- function(url, user_agent = NULL) {
+tempest_retriever_require_url <- function(url) {
   url <- tempest_normalize_url(url)
   if (is.na(url)) {
     tempest_abort(
@@ -354,23 +346,33 @@ tempest_fetch_url_markdown <- function(url, user_agent = NULL) {
       )
     )
   }
+  url
+}
+
+tempest_retriever_is_pdf <- function(url, content_type = "") {
+  grepl("application/pdf", content_type, fixed = TRUE) ||
+    grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)
+}
+
+#' Fetch URL as markdown using ragnar
+#'
+#' Uses ragnar's read_as_markdown() for high-quality content extraction.
+#' Handles HTML, PDFs, and many other document types.
+#'
+#' @param url The URL to fetch.
+#' @return A list with `kind`, `text`, `title`, and `error`.
+#' @keywords internal
+tempest_fetch_url_markdown <- function(url, user_agent = NULL) {
+  url <- tempest_retriever_require_url(url)
 
   # Determine content type from URL extension
-  is_pdf <- grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)
-  kind <- if (is_pdf) "pdf" else "html"
+  kind <- if (tempest_retriever_is_pdf(url)) "pdf" else "html"
 
   result <- tryCatch(
     {
       resp <- tempest_http_get(url, user_agent = user_agent)
       ctype <- httr2::resp_header(resp, "content-type") %||% ""
-      kind <- if (
-        grepl("application/pdf", ctype, fixed = TRUE) ||
-          grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)
-      ) {
-        "pdf"
-      } else {
-        "html"
-      }
+      kind <- if (tempest_retriever_is_pdf(url, ctype)) "pdf" else "html"
       tmp <- tempfile(fileext = if (identical(kind, "pdf")) ".pdf" else ".html")
       on.exit(unlink(tmp), add = TRUE)
       writeBin(httr2::resp_body_raw(resp), tmp)
@@ -451,20 +453,7 @@ tempest_ragnar_store_build_index <- function(store) {
 
 #' @keywords internal
 tempest_fetch_url_text <- function(url, user_agent = NULL) {
-  url <- tempest_normalize_url(url)
-  if (is.na(url)) {
-    tempest_abort(
-      c(
-        "Invalid URL.",
-        i = "Provide a non-empty HTTP or HTTPS URL."
-      ),
-      class = c(
-        "tempest_retriever_url_error",
-        "tempest_retriever_error",
-        "tempest_error"
-      )
-    )
-  }
+  url <- tempest_retriever_require_url(url)
 
   # Use ragnar's read_as_markdown when available (preferred)
   if (tempest_has("ragnar")) {
@@ -482,10 +471,7 @@ tempest_fetch_url_text <- function(url, user_agent = NULL) {
   resp <- tempest_http_get(url, user_agent = user_agent)
   ctype <- httr2::resp_header(resp, "content-type") %||% ""
 
-  if (
-    grepl("application/pdf", ctype, fixed = TRUE) ||
-      grepl("\\.pdf($|\\?)", url, ignore.case = TRUE)
-  ) {
+  if (tempest_retriever_is_pdf(url, ctype)) {
     if (!tempest_has("pdftools")) {
       return(list(
         kind = "pdf",
@@ -549,28 +535,6 @@ tempest_wiki_search <- function(query, limit = 8) {
     url = paste0("https://en.wikipedia.org/wiki/", gsub(" ", "_", hits$title)),
     snippet = gsub("<[^>]+>", "", hits$snippet)
   )
-}
-
-#' @keywords internal
-tempest_wiki_page_plaintext <- function(title) {
-  res <- tempest_wikipedia_api(list(
-    action = "query",
-    prop = "extracts",
-    explaintext = 1,
-    exintro = 0,
-    exsectionformat = "plain",
-    redirects = 1,
-    titles = title,
-    format = "json",
-    utf8 = 1
-  ))
-  pages <- res$query$pages
-  if (is.null(pages)) {
-    return(NA_character_)
-  }
-  # pages is a named list keyed by pageid
-  page <- pages[[1]]
-  page$extract %||% NA_character_
 }
 
 #' @keywords internal
@@ -1560,7 +1524,6 @@ tempest_search_brave <- function(query, k = 8L) {
 #' @return Tibble with title, url, snippet columns.
 #' @keywords internal
 tempest_search_duckduckgo <- function(query, k = 8L) {
-  tempest_require("xml2", "DuckDuckGo search requires HTML parsing.")
   tempest_require("rvest", "DuckDuckGo search requires HTML parsing.")
 
   req <- httr2::request("https://html.duckduckgo.com/html/") |>
@@ -1769,9 +1732,6 @@ tempest_search_azure_ai_search <- function(query, k = 8L) {
 tempest_extract_toc_from_url <- function(url) {
   tryCatch(
     {
-      if (!tempest_has("xml2")) {
-        return(character())
-      }
       url <- tempest_normalize_url(url)
       if (is.na(url)) {
         return(character())

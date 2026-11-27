@@ -1,6 +1,4 @@
 test_that("tempest_extract_toc_from_url extracts nested headings", {
-  skip_if_not_installed("xml2")
-
   html <- paste0(
     "<html><body>",
     "<h2>Overview</h2>",
@@ -31,21 +29,6 @@ test_that("tempest_extract_toc_from_url handles NA gracefully", {
   result <- tempest:::tempest_extract_toc_from_url(NA_character_)
   expect_type(result, "character")
   expect_length(result, 0)
-})
-
-test_that("tempest_extract_toc_from_url returns empty when xml2 is unavailable", {
-  requested <- FALSE
-  local_mocked_bindings(
-    tempest_has = function(pkg) FALSE,
-    tempest_http_get = function(...) {
-      requested <<- TRUE
-      stop("network request should not occur")
-    }
-  )
-  result <- tempest:::tempest_extract_toc_from_url("https://example.com")
-
-  expect_identical(result, character())
-  expect_identical(requested, FALSE)
 })
 
 test_that("tempest_wiki_page_sections formats nested sections", {

@@ -135,22 +135,29 @@ tempest_product_flag <- function(value, arg) {
   value
 }
 
-tempest_product_version <- function(value, arg = "version") {
-  value <- tempest_product_scalar(value, arg)
-  if (!grepl("^[A-Za-z0-9][A-Za-z0-9._+-]*$", value)) {
-    tempest_product_validation_abort(
-      "{.arg {arg}} must contain only letters, numbers, `.`, `_`, `+`, or `-`."
-    )
-  }
-  value
-}
-
 tempest_product_prop_chr <- function(default = NA_character_) {
   S7::new_property(S7::class_character, default = default)
 }
 
 tempest_product_prop_list <- function() {
   S7::new_property(S7::class_list, default = list())
+}
+
+tempest_product_nullable <- function(value) {
+  if (
+    is.null(value) ||
+      (length(value) == 1L && is.atomic(value) && is.na(value))
+  ) {
+    return(NULL)
+  }
+  unname(value)
+}
+
+tempest_product_nullable_tree <- function(value) {
+  if (is.list(value)) {
+    return(lapply(value, tempest_product_nullable_tree))
+  }
+  tempest_product_nullable(value)
 }
 
 
@@ -427,14 +434,6 @@ tempest_contract_sensitive_values <- function(value, path) {
   if (tempest_contract_sensitive_scalar(value)) path else character()
 }
 
-tempest_product_prop_chr <- function(default = NA_character_) {
-  S7::new_property(S7::class_character, default = default)
-}
-
-tempest_product_prop_list <- function() {
-  S7::new_property(S7::class_list, default = list())
-}
-
 TempestValidationResult <- S7::new_class(
   "tempest_validation_result",
   properties = list(
@@ -487,25 +486,4 @@ tempest_validation_result <- function(
     details = details,
     created_at = created_at
   )
-}
-
-tempest_validation_results <- function(results) {
-  results <- results %||% list()
-  if (
-    !is.list(results) ||
-      any(
-        !vapply(
-          results,
-          function(result) {
-            S7::S7_inherits(result, TempestValidationResult)
-          },
-          logical(1)
-        )
-      )
-  ) {
-    tempest_product_validation_abort(
-      "{.arg validation_results} must contain only results from {.fn tempest_validation_result}."
-    )
-  }
-  results
 }

@@ -464,16 +464,19 @@ tempest_costorm_report_finalize <- function(
     min_support_score = tempest_session_config(session)@min_support_score,
     stage_records = tempest_session_stage_records(session)
   )
+  assert_publication_quiescent <- function() {
+    tempest_session_async_work_assert_exclusive(session, work_id, "report")
+    if (length(tempest_session_pending_deputy_runs(session)) > 0L) {
+      tempest_costorm_session_abort(
+        "Co-STORM publication found a pending Deputy execution."
+      )
+    }
+    tempest_session_agent_completion_assert_quiescent(session)
+  }
   if (!tempest_async_is_current(is_current)) {
     return(NULL)
   }
-  tempest_session_async_work_assert_exclusive(session, work_id, "report")
-  if (length(tempest_session_pending_deputy_runs(session)) > 0L) {
-    tempest_costorm_session_abort(
-      "Co-STORM publication found a pending Deputy execution."
-    )
-  }
-  tempest_session_agent_completion_assert_quiescent(session)
+  assert_publication_quiescent()
   candidate <- tempest_product_authority_finalize_manifest(
     tempest_session_manifest(session),
     tempest_session_stage_records(session),
@@ -490,13 +493,7 @@ tempest_costorm_report_finalize <- function(
   if (!tempest_async_is_current(is_current)) {
     return(NULL)
   }
-  tempest_session_async_work_assert_exclusive(session, work_id, "report")
-  if (length(tempest_session_pending_deputy_runs(session)) > 0L) {
-    tempest_costorm_session_abort(
-      "Co-STORM publication found a pending Deputy execution."
-    )
-  }
-  tempest_session_agent_completion_assert_quiescent(session)
+  assert_publication_quiescent()
   tempest_session_commit_terminal_report(session, candidate, report_md)
   report_md
 }

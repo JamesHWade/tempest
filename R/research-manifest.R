@@ -293,17 +293,6 @@ tempest_research_manifest_validate_ids <- function(value, path) {
   value
 }
 
-tempest_research_manifest_reference_list <- function(value, arg) {
-  value <- value %||% list()
-  if (!is.list(value) || is.data.frame(value)) {
-    tempest_research_manifest_abort(
-      "{.arg {arg}} must be a canonical JSON-compatible list."
-    )
-  }
-  value <- tempest_research_manifest_canonical_value(value, arg)
-  tempest_research_manifest_validate_ids(value, arg)
-}
-
 tempest_research_manifest_unknown_fields <- function(
   value,
   allowed,

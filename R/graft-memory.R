@@ -425,6 +425,74 @@ tempest_graft_selection_status <- function(
   )
 }
 
+tempest_graft_validate_review_inputs <- function(
+  stream,
+  actor,
+  reason,
+  action = c("accept", "withdraw")
+) {
+  action <- match.arg(action)
+  stream <- trimws(as.character(stream %||% ""))
+  actor <- trimws(as.character(actor %||% ""))
+  reason <- trimws(as.character(reason %||% ""))
+  if (!nzchar(stream)) {
+    msg <- if (identical(action, "accept")) {
+      "Choose or enter a topic stream name before accepting."
+    } else {
+      "Choose an accepted stream to withdraw."
+    }
+    tempest_graft_memory_abort(msg, class = "tempest_input_error")
+  }
+  if (!nzchar(actor)) {
+    verb <- if (identical(action, "accept")) "accepting" else "withdrawing"
+    tempest_graft_memory_abort(
+      "Enter a reviewer name before {verb}.",
+      class = "tempest_input_error"
+    )
+  }
+  if (!nzchar(reason)) {
+    msg <- if (identical(action, "accept")) {
+      "Enter a brief review reason before accepting."
+    } else {
+      "Enter a brief reason before withdrawing."
+    }
+    tempest_graft_memory_abort(msg, class = "tempest_input_error")
+  }
+  list(stream = stream, actor = actor, reason = reason)
+}
+
+tempest_graft_resolve_expected_head <- function(
+  current_head,
+  expected,
+  stream,
+  action = c("accept", "withdraw")
+) {
+  action <- match.arg(action)
+  verb <- if (identical(action, "accept")) "accepting" else "withdrawing"
+  if (is.null(expected)) {
+    return(current_head)
+  }
+  if (identical(action, "accept") && identical(expected, "")) {
+    if (!is.null(current_head)) {
+      tempest_graft_memory_abort(
+        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before {verb}."
+      )
+    }
+    return(NULL)
+  }
+  expected_id <- if (S7::S7_inherits(expected, graft::Decision)) {
+    expected@id
+  } else {
+    expected
+  }
+  if (is.null(current_head) || !identical(current_head@id, expected_id)) {
+    tempest_graft_memory_abort(
+      "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before {verb}."
+    )
+  }
+  current_head
+}
+
 tempest_graft_accept_selection <- function(
   store,
   selection_id,
@@ -436,65 +504,34 @@ tempest_graft_accept_selection <- function(
   key = NULL
 ) {
   tempest_graft_memory_require("Accepting research into project memory")
-  stream <- trimws(as.character(stream %||% ""))
-  actor <- trimws(as.character(actor %||% ""))
-  reason <- trimws(as.character(reason %||% ""))
-  if (!nzchar(stream)) {
-    tempest_graft_memory_abort(
-      "Choose or enter a topic stream name before accepting.",
-      class = "tempest_input_error"
-    )
-  }
-  if (!nzchar(actor)) {
-    tempest_graft_memory_abort(
-      "Enter a reviewer name before accepting.",
-      class = "tempest_input_error"
-    )
-  }
-  if (!nzchar(reason)) {
-    tempest_graft_memory_abort(
-      "Enter a brief review reason before accepting.",
-      class = "tempest_input_error"
-    )
-  }
+  inputs <- tempest_graft_validate_review_inputs(
+    stream = stream,
+    actor = actor,
+    reason = reason,
+    action = "accept"
+  )
   # Validate that the selection holds a valid Tempest research publication.
   tempest_read_artifact_research(store, selection_id)
   history <- tryCatch(
-    graft::graft_history(store, stream),
+    graft::graft_history(store, inputs$stream),
     error = function(error) list()
   )
   current_head <- if (length(history)) history[[length(history)]] else NULL
-  expected_decision <- if (is.null(expected)) {
-    current_head
-  } else if (identical(expected, "")) {
-    if (!is.null(current_head)) {
-      tempest_graft_memory_abort(
-        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before accepting."
-      )
-    }
-    NULL
-  } else {
-    expected_id <- if (S7::S7_inherits(expected, graft::Decision)) {
-      expected@id
-    } else {
-      expected
-    }
-    if (is.null(current_head) || !identical(current_head@id, expected_id)) {
-      tempest_graft_memory_abort(
-        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before accepting."
-      )
-    }
-    current_head
-  }
+  expected_decision <- tempest_graft_resolve_expected_head(
+    current_head = current_head,
+    expected = expected,
+    stream = inputs$stream,
+    action = "accept"
+  )
   request_key <- key %||% paste0("accept-", tempest_uuid("graft"))
   graft::graft_accept(
     store,
     graft::graft_read_selection(store, selection_id),
-    stream = stream,
+    stream = inputs$stream,
     expected = expected_decision,
     key = request_key,
-    actor = actor,
-    reason = reason,
+    actor = inputs$actor,
+    reason = inputs$reason,
     purpose = purpose
   )
 }
@@ -508,62 +545,38 @@ tempest_graft_withdraw_stream <- function(
   key = NULL
 ) {
   tempest_graft_memory_require("Withdrawing research from project memory")
-  stream <- trimws(as.character(stream %||% ""))
-  actor <- trimws(as.character(actor %||% ""))
-  reason <- trimws(as.character(reason %||% ""))
-  if (!nzchar(stream)) {
-    tempest_graft_memory_abort(
-      "Choose an accepted stream to withdraw.",
-      class = "tempest_input_error"
-    )
-  }
-  if (!nzchar(actor)) {
-    tempest_graft_memory_abort(
-      "Enter a reviewer name before withdrawing.",
-      class = "tempest_input_error"
-    )
-  }
-  if (!nzchar(reason)) {
-    tempest_graft_memory_abort(
-      "Enter a brief reason before withdrawing.",
-      class = "tempest_input_error"
-    )
-  }
-  history <- graft::graft_history(store, stream)
+  inputs <- tempest_graft_validate_review_inputs(
+    stream = stream,
+    actor = actor,
+    reason = reason,
+    action = "withdraw"
+  )
+  history <- graft::graft_history(store, inputs$stream)
   if (!length(history)) {
     tempest_graft_memory_abort(
-      "No decisions exist for stream {.val {stream}}."
+      "No decisions exist for stream {.val {inputs$stream}}."
     )
   }
   head <- history[[length(history)]]
   if (!identical(head@action, "accept")) {
     tempest_graft_memory_abort(
-      "Stream {.val {stream}} is not currently accepted."
+      "Stream {.val {inputs$stream}} is not currently accepted."
     )
   }
-  expected_decision <- if (is.null(expected)) {
-    head
-  } else {
-    expected_id <- if (S7::S7_inherits(expected, graft::Decision)) {
-      expected@id
-    } else {
-      expected
-    }
-    if (!identical(head@id, expected_id)) {
-      tempest_graft_memory_abort(
-        "Stream {.val {stream}} has changed since it was displayed. Refresh and review the latest decision before withdrawing."
-      )
-    }
-    expected
-  }
+  expected_decision <- tempest_graft_resolve_expected_head(
+    current_head = head,
+    expected = expected,
+    stream = inputs$stream,
+    action = "withdraw"
+  )
   request_key <- key %||% paste0("withdraw-", tempest_uuid("graft"))
   graft::graft_withdraw(
     store,
-    stream = stream,
+    stream = inputs$stream,
     expected = expected_decision,
     key = request_key,
-    actor = actor,
-    reason = reason
+    actor = inputs$actor,
+    reason = inputs$reason
   )
 }
 
@@ -740,4 +753,42 @@ tempest_graft_consultations <- function(x) {
       as.data.frame(rec, stringsAsFactors = FALSE)
     })
   )
+}
+
+tempest_graft_session_consultations <- function(product) {
+  empty <- tempest_graft_consultations(NULL)
+  if (is.null(product) || !inherits(product, "TempestSession")) {
+    return(empty)
+  }
+  chats <- list()
+  moderator_chat <- tryCatch(
+    tempest_session_chat(product, "moderator"),
+    error = function(error) NULL
+  )
+  if (!is.null(moderator_chat)) {
+    chats[[length(chats) + 1L]] <- moderator_chat
+  }
+  manager <- tryCatch(
+    tempest_session_expert_manager(product),
+    error = function(error) NULL
+  )
+  if (!is.null(manager)) {
+    chats <- c(chats, tempest_deputy_expert_session_chats(manager))
+  }
+  if (!length(chats)) {
+    return(empty)
+  }
+  frames <- lapply(chats, function(chat) {
+    tryCatch(
+      tempest_graft_consultations(chat),
+      error = function(error) empty
+    )
+  })
+  frames <- Filter(\(df) is.data.frame(df) && nrow(df) > 0L, frames)
+  if (!length(frames)) {
+    return(empty)
+  }
+  out <- do.call(rbind, frames)
+  rownames(out) <- NULL
+  out
 }

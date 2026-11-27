@@ -21,38 +21,32 @@ tempest_promotion_bundle_files <- function() {
 }
 
 tempest_promotion_file_checksum <- function(path) {
-  digest::digest(
-    path,
-    algo = "sha256",
-    file = TRUE,
-    serialize = FALSE
-  )
+  tempest_product_bundle_checksum(dirname(path), basename(path))
 }
 
 tempest_promotion_write_json <- function(path, value) {
-  json <- tryCatch(
-    jsonlite::toJSON(
-      value,
-      auto_unbox = TRUE,
-      null = "null",
-      na = "null",
-      digits = NA,
-      pretty = TRUE,
-      force = TRUE
-    ),
+  tryCatch(
+    tempest_product_write_json(path, value, digits = NA, force = TRUE),
     error = function(error) {
       tempest_promotion_persistence_abort(
         "Could not encode a promotion bundle file."
       )
     }
   )
-  tempest_atomic_write_lines(json, path)
-  invisible(path)
 }
 
 tempest_promotion_read_json <- function(path, what) {
   tryCatch(
-    jsonlite::fromJSON(path, simplifyVector = FALSE),
+    tempest_product_read_json(
+      path,
+      what = what,
+      class = c(
+        "tempest_promotion_persistence_error",
+        "tempest_persistence_error",
+        "tempest_promotion_error",
+        "tempest_error"
+      )
+    ),
     error = function(error) {
       tempest_promotion_persistence_abort(
         "{what} is not valid current-schema JSON."
@@ -62,8 +56,7 @@ tempest_promotion_read_json <- function(path, what) {
 }
 
 tempest_promotion_symlink <- function(path) {
-  target <- Sys.readlink(path)
-  !is.na(target) && nzchar(target)
+  tempest_persistence_leaf_path_is_symlink(path)
 }
 
 tempest_promotion_assert_no_symlink_path <- function(path, what) {
@@ -141,7 +134,7 @@ tempest_promotion_manifest_core <- function(bundle_id, checksum) {
 }
 
 tempest_promotion_install <- function(staging, path) {
-  file.rename(staging, path)
+  tempest_product_install_bundle(staging, path)
 }
 
 tempest_promotion_validate_manifest <- function(manifest) {

@@ -30,24 +30,49 @@ tempest_product_authority_expert_ids <- function(experts) {
   )
 }
 
-tempest_product_authority_governed <- function(manifest, stage_records) {
-  governed_program <- any(vapply(
-    manifest@programs,
-    function(reference) {
-      !is.null(reference$governed_procedure_ref %||% NULL)
-    },
-    logical(1)
-  ))
-  governed_stage <- any(vapply(
-    stage_records,
-    function(record) {
-      identical(record@execution_path, "governed") ||
-        !is.na(record@governed_procedure_revision_id) ||
-        !is.null(record@trace_references$governed_procedure %||% NULL)
-    },
-    logical(1)
-  ))
-  governed_program || governed_stage
+tempest_product_authority_deputy_terminal_statuses <- function() {
+  c(
+    "abandoned",
+    "complete",
+    "cost_limit",
+    "error",
+    "hook_requested_stop",
+    "input_token_limit",
+    "interrupted",
+    "output_token_limit",
+    "provider_error",
+    "request_limit",
+    "tool_call_limit",
+    "total_token_limit"
+  )
+}
+
+tempest_product_authority_validate_delegation_parents <- function(
+  traces,
+  abort_fn,
+  message
+) {
+  delegated <- Filter(
+    \(trace) identical(trace$trace_type, "deputy_delegation"),
+    traces
+  )
+  for (trace in delegated) {
+    parents <- Filter(
+      function(parent) {
+        identical(parent$trace_type, "deputy_run") &&
+          identical(parent$deputy_run_id, trace$parent_run_id) &&
+          identical(parent$agent_id, trace$parent_agent_id) &&
+          identical(parent$status, "complete") &&
+          identical(parent$completion_disposition, "issued") &&
+          identical(parent$correlation_id, trace$correlation_id)
+      },
+      traces
+    )
+    if (length(parents) != 1L) {
+      abort_fn(message)
+    }
+  }
+  invisible(traces)
 }
 
 tempest_product_authority_threshold <- function(stage_records, config) {
@@ -200,15 +225,6 @@ tempest_product_authority_validate <- function(
   ) {
     tempest_product_authority_abort(
       "Publication authority requires a succeeded product with an exact report binding."
-    )
-  }
-  if (
-    manifest@status %in%
-      c("failed", "cancelled") &&
-      (!is.null(report_md) || !is.null(report_reference))
-  ) {
-    tempest_product_authority_abort(
-      "A failed or cancelled product cannot retain a published report."
     )
   }
 
@@ -575,21 +591,7 @@ tempest_product_authority_deputy_manifest_traces <- function(
       )
     }
     if (
-      !trace$status %in%
-        c(
-          "abandoned",
-          "complete",
-          "cost_limit",
-          "error",
-          "hook_requested_stop",
-          "input_token_limit",
-          "interrupted",
-          "output_token_limit",
-          "provider_error",
-          "request_limit",
-          "tool_call_limit",
-          "total_token_limit"
-        )
+      !trace$status %in% tempest_product_authority_deputy_terminal_statuses()
     ) {
       tempest_stage_record_abort(
         "A Deputy run trace must carry one exact terminal status."
@@ -868,28 +870,11 @@ tempest_product_authority_manifest_validate_trace_ids <- function(
       }
     }
   }
-  delegated <- Filter(
-    \(trace) identical(trace$trace_type, "deputy_delegation"),
-    deputy_traces
+  tempest_product_authority_validate_delegation_parents(
+    deputy_traces,
+    tempest_stage_record_abort,
+    "A Deputy delegation tuple must resolve one exact completed parent run."
   )
-  for (trace in delegated) {
-    parents <- Filter(
-      function(parent) {
-        identical(parent$trace_type, "deputy_run") &&
-          identical(parent$deputy_run_id, trace$parent_run_id) &&
-          identical(parent$agent_id, trace$parent_agent_id) &&
-          identical(parent$status, "complete") &&
-          identical(parent$completion_disposition, "issued") &&
-          identical(parent$correlation_id, trace$correlation_id)
-      },
-      deputy_traces
-    )
-    if (length(parents) != 1L) {
-      tempest_stage_record_abort(
-        "A Deputy delegation tuple must resolve one exact completed parent run."
-      )
-    }
-  }
   for (trace in stage_traces) {
     run_id <- trace$deputy_run_id %||% NULL
     session_id <- trace$deputy_session_id %||% NULL

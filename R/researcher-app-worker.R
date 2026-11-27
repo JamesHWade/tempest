@@ -79,11 +79,11 @@ tempest_researcher_app_flag <- function(value, name) {
   value
 }
 
-tempest_researcher_app_safe_message <- function(value) {
+tempest_researcher_app_safe_message <- function(value, max_chars = 320L) {
   if (!is.character(value) || length(value) != 1L || is.na(value)) {
     return(NULL)
   }
-  value <- substr(value, 1L, 320L)
+  value <- substr(value, 1L, max_chars)
   gsub(
     "(?i)\\b(api[_-]?key|authorization|bearer|password|token)\\b(?:\\s*[:=]\\s*|\\s+)(?:bearer\\s+)?[^[:space:]]+(?:\\s+[^[:space:]]+)?",
     "\\1=[redacted]",
@@ -263,13 +263,7 @@ tempest_researcher_app_safe_progress <- function(event) {
     if (!is.character(value) || !length(value) || is.na(value[[1L]])) {
       return(NULL)
     }
-    value <- substr(value[[1L]], 1L, 240L)
-    gsub(
-      "(?i)\\b(api[_-]?key|authorization|bearer|password|token)\\b(?:\\s*[:=]\\s*|\\s+)(?:bearer\\s+)?[^[:space:]]+(?:\\s+[^[:space:]]+)?",
-      "\\1=[redacted]",
-      value,
-      perl = TRUE
-    )
+    tempest_researcher_app_safe_message(value[[1L]], max_chars = 240L)
   })
   safe <- safe[!vapply(safe, is.null, logical(1))]
   if (!length(safe)) NULL else safe
@@ -679,13 +673,7 @@ tempest_researcher_app_callr_entry <- function(
         "tempest_researcher_app_tools_error"
       )
       error_message <- if (any(classes %in% safe_classes)) {
-        message <- substr(conditionMessage(error), 1L, 320L)
-        gsub(
-          "(?i)\\b(api[_-]?key|authorization|bearer|password|token)\\b(?:\\s*[:=]\\s*|\\s+)(?:bearer\\s+)?[^[:space:]]+(?:\\s+[^[:space:]]+)?",
-          "\\1=[redacted]",
-          message,
-          perl = TRUE
-        )
+        tempest_researcher_app_safe_message(conditionMessage(error))
       } else {
         NULL
       }
