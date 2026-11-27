@@ -1455,42 +1455,28 @@ tempest_session_bundle_path <- function(path, ...) {
 
 #' @keywords internal
 tempest_session_bundle_write_json <- function(path, rel_path, value) {
-  tryCatch(
-    tempest_product_write_json(
-      tempest_session_bundle_path(path, rel_path),
-      value
-    ),
-    error = function(error) {
-      tempest_abort(
-        "Could not write session bundle file {.path {rel_path}}.",
-        class = tempest_session_persistence_error_class(
-          "tempest_session_save_error"
-        ),
-        parent = error
-      )
-    }
+  tempest_persistence_bundle_write_json(
+    path,
+    rel_path,
+    value,
+    what = "session bundle",
+    class = tempest_session_persistence_error_class(
+      "tempest_session_save_error"
+    )
   )
-  rel_path
 }
 
 #' @keywords internal
 tempest_session_bundle_write_text <- function(path, rel_path, value) {
-  if (!rlang::is_string(value)) {
-    return(character())
-  }
-  tryCatch(
-    tempest_write_text(tempest_session_bundle_path(path, rel_path), value),
-    error = function(error) {
-      tempest_abort(
-        "Could not write session bundle file {.path {rel_path}}.",
-        class = tempest_session_persistence_error_class(
-          "tempest_session_save_error"
-        ),
-        parent = error
-      )
-    }
+  tempest_persistence_bundle_write_text(
+    path,
+    rel_path,
+    value,
+    what = "session bundle",
+    class = tempest_session_persistence_error_class(
+      "tempest_session_save_error"
+    )
   )
-  rel_path
 }
 
 #' @keywords internal
@@ -1629,7 +1615,6 @@ tempest_session_save <- function(
     )
   }
   tempest_session_assert_persistence_quiescent(session, action = "save")
-  tempest_require("jsonlite", "Tempest session persistence requires jsonlite.")
 
   bundle_dir <- tempest_session_prepare_bundle_dir(path, overwrite = overwrite)
   staging_dir <- tempfile(
@@ -1719,9 +1704,6 @@ tempest_session_save <- function(
       )
     )
   }
-  files <- c(
-    files
-  )
 
   if (length(snapshot$suggested_questions) > 0L) {
     files <- c(
@@ -2083,16 +2065,6 @@ tempest_session_bundle_validate_manifest <- function(
     "session.json"
   )
   undeclared_on_disk <- setdiff(physical_files, normalized_files)
-  parts <- strsplit(normalized_files, "/", fixed = TRUE)
-  unsafe <- grepl("^(/|~|[A-Za-z]:)", normalized_files) |
-    vapply(
-      parts,
-      function(parts) {
-        any(!nzchar(parts)) || any(parts %in% c(".", ".."))
-      },
-      logical(1)
-    )
-  missing <- files[!file.exists(file.path(bundle_dir, files))]
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
@@ -2101,61 +2073,17 @@ tempest_session_bundle_validate_manifest <- function(
       "tempest_session_restore_error"
     )
   )
-  missing_checksums <- setdiff(files, names(checksums))
-  extra_checksums <- setdiff(names(checksums), files)
-  available <- setdiff(files[!unsafe], missing)
-  stage_record_path <- file.path(bundle_dir, "stage_records.json")
-  non_regular_stage_records <- if (
-    file.exists(stage_record_path) &&
-      (!utils::file_test("-f", stage_record_path) ||
-        nzchar(Sys.readlink(stage_record_path)))
-  ) {
-    "stage_records.json"
-  } else {
-    character()
-  }
-  bundle_root <- paste0(
-    normalizePath(bundle_dir, winslash = "/", mustWork = TRUE),
-    "/"
+  mismatched <- tempest_persistence_bundle_mismatched_checksums(
+    bundle_dir,
+    files,
+    checksums
   )
-  escaping <- available[vapply(
-    available,
-    function(file) {
-      resolved <- normalizePath(
-        file.path(bundle_dir, file),
-        winslash = "/",
-        mustWork = TRUE
-      )
-      !startsWith(resolved, bundle_root)
-    },
-    logical(1)
-  )]
-  checksum_candidates <- setdiff(
-    available,
-    c(escaping, non_regular_stage_records)
-  )
-  mismatched <- checksum_candidates[vapply(
-    checksum_candidates,
-    function(file) {
-      expected <- if (file %in% names(checksums)) {
-        checksums[[file]]
-      } else {
-        NA_character_
-      }
-      is.na(expected) ||
-        !identical(tempest_product_bundle_checksum(bundle_dir, file), expected)
-    },
-    logical(1)
-  )]
   undeclared_required <- setdiff(required, files)
   unexpected_files <- setdiff(files, allowed)
+  invalid_optional <- intersect(mismatched, optional_presentation)
+  invalid_required <- setdiff(mismatched, optional_presentation)
 
-  structural_problems <- c(
-    if (length(files) == 0L) "Manifest declares no files.",
-    if (anyDuplicated(normalized_files)) {
-      "Manifest declares duplicate file paths."
-    },
-    if (any(unsafe)) "Manifest contains unsafe file paths.",
+  fatal_problems <- c(
     if (length(undeclared_required) > 0L) {
       paste0(
         "Manifest omits required files: ",
@@ -2177,61 +2105,14 @@ tempest_session_bundle_validate_manifest <- function(
         "."
       )
     },
-    if (length(non_regular_stage_records) > 0L) {
-      "The stage-record sidecar must be a regular non-symlink file."
-    },
-
-    if (length(extra_checksums) > 0L) {
-      paste0(
-        "Manifest contains checksums for undeclared files: ",
-        paste(extra_checksums, collapse = ", "),
-        "."
-      )
-    }
-  )
-
-  invalid_files <- unique(c(
-    missing,
-    missing_checksums,
-    escaping,
-    mismatched
-  ))
-  invalid_optional <- intersect(invalid_files, optional_presentation)
-  invalid_required <- setdiff(invalid_files, optional_presentation)
-  required_problems <- c(
-    if (length(intersect(missing, invalid_required)) > 0L) {
-      paste0(
-        "Required files are missing: ",
-        paste(intersect(missing, invalid_required), collapse = ", "),
-        "."
-      )
-    },
-    if (length(intersect(missing_checksums, invalid_required)) > 0L) {
-      paste0(
-        "Required files have no checksum: ",
-        paste(
-          intersect(missing_checksums, invalid_required),
-          collapse = ", "
-        ),
-        "."
-      )
-    },
-    if (length(intersect(escaping, invalid_required)) > 0L) {
-      paste0(
-        "Required files resolve outside the bundle: ",
-        paste(intersect(escaping, invalid_required), collapse = ", "),
-        "."
-      )
-    },
-    if (length(intersect(mismatched, invalid_required)) > 0L) {
+    if (length(invalid_required) > 0L) {
       paste0(
         "Required files failed checksum validation: ",
-        paste(intersect(mismatched, invalid_required), collapse = ", "),
+        paste(invalid_required, collapse = ", "),
         "."
       )
     }
   )
-  fatal_problems <- c(structural_problems, required_problems)
   if (length(fatal_problems) > 0L) {
     tempest_session_restore_abort(paste(fatal_problems, collapse = " "))
   }
@@ -2242,7 +2123,7 @@ tempest_session_bundle_validate_manifest <- function(
       "."
     ))
   }
-  invisible(setdiff(files, invalid_optional))
+  invisible(files)
 }
 
 #' @keywords internal

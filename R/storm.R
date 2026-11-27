@@ -188,7 +188,6 @@ tempest_run_internal <- function(
   .requested_steps = NULL,
   .admit_knowledge = NULL
 ) {
-  tempest_require("ellmer", "tempest_run() requires ellmer.")
   if (!is.character(topic) || length(topic) != 1L || is.na(topic)) {
     tempest_config_abort("{.arg topic} must be a single non-empty string.")
   }
@@ -1131,6 +1130,48 @@ tempest_run_internal <- function(
             }
           }
 
+          ask_perspective_question <- function(q) {
+            # Decompose query into targeted search queries
+            decomposed <- tempest_decompose_query(
+              writer,
+              q,
+              topic,
+              module = programs$query_decomposition,
+              max_queries = config@max_search_queries_per_turn,
+              record_stage = record_stage
+            )
+            search_instructions <- paste0(
+              "Suggested search queries:\n",
+              paste0("- ", decomposed$queries, collapse = "\n"),
+              "\n\n"
+            )
+            prompt <- paste0(
+              "Perspective: ",
+              p_name,
+              "\n",
+              "Description: ",
+              p_desc,
+              "\n\n",
+              "Question: ",
+              q,
+              "\n\n",
+              search_instructions,
+              "Instructions:\n",
+              "- Use web_search + fetch_url as needed.\n",
+              "- Only state factual claims that are supported by sources you fetched.\n",
+              "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
+              "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
+              "Answer:"
+            )
+            process_expert_answer(
+              expert,
+              prompt,
+              extractor,
+              expert_id,
+              perspective_id
+            )
+          }
+
           if (identical(research_strategy, "key_questions")) {
             # Ask expert to answer each planned key question (limited)
             qs_limited <- head(qs, max_questions_per_perspective)
@@ -1140,46 +1181,7 @@ tempest_run_internal <- function(
               )
             }
             for (q in qs_limited) {
-              # Decompose query into targeted search queries
-              decomposed <- tempest_decompose_query(
-                writer,
-                q,
-                topic,
-                module = programs$query_decomposition,
-                max_queries = config@max_search_queries_per_turn,
-                record_stage = record_stage
-              )
-              search_instructions <- paste0(
-                "Suggested search queries:\n",
-                paste0("- ", decomposed$queries, collapse = "\n"),
-                "\n\n"
-              )
-
-              prompt <- paste0(
-                "Perspective: ",
-                p_name,
-                "\n",
-                "Description: ",
-                p_desc,
-                "\n\n",
-                "Question: ",
-                q,
-                "\n\n",
-                search_instructions,
-                "Instructions:\n",
-                "- Use web_search + fetch_url as needed.\n",
-                "- Only state factual claims that are supported by sources you fetched.\n",
-                "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
-                "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
-                "Answer:"
-              )
-              process_expert_answer(
-                expert,
-                prompt,
-                extractor,
-                expert_id,
-                perspective_id
-              )
+              ask_perspective_question(q)
             }
           } else {
             # Conversation-style interviewing: writer proposes the next best question,
@@ -1207,48 +1209,7 @@ tempest_run_internal <- function(
               )
               q <- nxt$question
               done <- isTRUE(nxt$done)
-
-              # Decompose query into targeted search queries
-              decomposed <- tempest_decompose_query(
-                writer,
-                q,
-                topic,
-                module = programs$query_decomposition,
-                max_queries = config@max_search_queries_per_turn,
-                record_stage = record_stage
-              )
-              search_instructions <- paste0(
-                "Suggested search queries:\n",
-                paste0("- ", decomposed$queries, collapse = "\n"),
-                "\n\n"
-              )
-
-              prompt <- paste0(
-                "Perspective: ",
-                p_name,
-                "\n",
-                "Description: ",
-                p_desc,
-                "\n\n",
-                "Question: ",
-                q,
-                "\n\n",
-                search_instructions,
-                "Instructions:\n",
-                "- Use web_search + fetch_url as needed.\n",
-                "- Only state factual claims that are supported by sources you fetched.\n",
-                "- For each factual sentence, add one or more citations like [Sxxxxxxxxxxxx].\n",
-                "- If evidence is weak or unclear, say so and do not overclaim.\n\n",
-                "Answer:"
-              )
-
-              harvest <- process_expert_answer(
-                expert,
-                prompt,
-                extractor,
-                expert_id,
-                perspective_id
-              )
+              harvest <- ask_perspective_question(q)
               answered <- c(
                 answered,
                 paste0("Q: ", q, "\nA: ", harvest$answer_text)

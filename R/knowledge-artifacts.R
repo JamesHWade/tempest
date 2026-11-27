@@ -38,6 +38,18 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
       "{.field selection$records} must be an unnamed list of 1 to 1000 records."
     )
   }
+  check_exact_id <- function(obj, field) {
+    value <- tempest_resource_safe_scalar(
+      obj[[field]],
+      field,
+      identifier = TRUE
+    )
+    if (!identical(value, obj[[field]])) {
+      tempest_knowledge_abort(
+        "Artifact identifiers must not contain surrounding whitespace."
+      )
+    }
+  }
   fields <- c("record_id", "revision_id", "class", "sha256", "dependencies")
   for (ref in refs) {
     if (!is.list(ref) || !setequal(names(ref), fields)) {
@@ -46,16 +58,7 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
       )
     }
     for (field in c("record_id", "revision_id", "class")) {
-      value <- tempest_resource_safe_scalar(
-        ref[[field]],
-        field,
-        identifier = TRUE
-      )
-      if (!identical(value, ref[[field]])) {
-        tempest_knowledge_abort(
-          "Artifact identifiers must not contain surrounding whitespace."
-        )
-      }
+      check_exact_id(ref, field)
     }
     if (!ref$class %in% tempest_knowledge_record_allowlist()) {
       tempest_knowledge_abort(
@@ -82,16 +85,7 @@ tempest_artifact_selection <- function(selection, allow_empty = FALSE) {
         )
       }
       for (field in c("record_id", "revision_id")) {
-        value <- tempest_resource_safe_scalar(
-          dependency[[field]],
-          field,
-          identifier = TRUE
-        )
-        if (!identical(value, dependency[[field]])) {
-          tempest_knowledge_abort(
-            "Artifact identifiers must not contain surrounding whitespace."
-          )
-        }
+        check_exact_id(dependency, field)
       }
       matched <- vapply(
         refs,
@@ -182,6 +176,25 @@ tempest_artifact_resource <- function(selection, ref, content) {
   )
 }
 
+tempest_artifact_check_total_bytes <- function(texts) {
+  sizes <- vapply(
+    texts,
+    function(content) {
+      if (!rlang::is_string(content) || is.na(content)) {
+        tempest_knowledge_abort(
+          "Artifact contents must be nonmissing text strings."
+        )
+      }
+      nchar(enc2utf8(content), type = "bytes")
+    },
+    numeric(1)
+  )
+  if (sum(sizes) > 1024^2) {
+    tempest_knowledge_abort("Artifact contents exceed 1 MiB.")
+  }
+  invisible(sum(sizes))
+}
+
 #' Bring a retained artifact selection into a research run
 #'
 #' The host resolves immutable content and checks current permission and
@@ -226,21 +239,7 @@ tempest_artifact_knowledge <- function(selection, contents) {
       "{.arg contents} must cover the selected record ids exactly once."
     )
   }
-  sizes <- vapply(
-    contents,
-    function(content) {
-      if (!rlang::is_string(content) || is.na(content)) {
-        tempest_knowledge_abort(
-          "Artifact contents must be nonmissing text strings."
-        )
-      }
-      nchar(enc2utf8(content), type = "bytes")
-    },
-    numeric(1)
-  )
-  if (sum(sizes) > 1024^2) {
-    tempest_knowledge_abort("Artifact contents exceed 1 MiB.")
-  }
+  tempest_artifact_check_total_bytes(contents)
   records <- lapply(selection$records, function(ref) {
     tempest_artifact_resource(selection, ref, contents[[ref$record_id]])
   })
@@ -282,18 +281,7 @@ tempest_artifact_selection_validate <- function(selection, resources) {
       "Artifact resources do not cover the retained selection exactly."
     )
   }
-  if (
-    sum(vapply(
-      artifacts,
-      function(resource) {
-        nchar(enc2utf8(resource@content), type = "bytes")
-      },
-      numeric(1)
-    )) >
-      1024^2
-  ) {
-    tempest_knowledge_abort("Artifact contents exceed 1 MiB.")
-  }
+  tempest_artifact_check_total_bytes(lapply(artifacts, \(r) r@content))
   for (ref in selection$records) {
     resource <- artifacts[[match(ref$record_id, ids)]]
     tempest_resource_data(resource)

@@ -16,18 +16,7 @@ tempest_program_set_abort <- function(
 }
 
 tempest_program_set_stages <- function() {
-  c(
-    "perspectives",
-    "personas",
-    "query_decomposition",
-    "extract_claims",
-    "verify_claim_support",
-    "next_question",
-    "draft_outline",
-    "refined_outline",
-    "section_writing",
-    "lead_section"
-  )
+  tempest_opaque_identifier_stages
 }
 
 tempest_program_set_string <- function(value, arg) {
@@ -479,41 +468,11 @@ tempest_program_set_stage_state <- function(program_set, stage) {
   )
 }
 
-tempest_program_set_metadata <- function(program_set) {
-  entries <- program_set@entries
-  stages <- tempest_program_set_stages()
-  list(
-    contract_versions = stats::setNames(
-      vapply(entries, \(entry) entry$contract_version, integer(1)),
-      stages
-    ),
-    evaluators = stats::setNames(
-      lapply(
-        entries,
-        \(entry) {
-          list(
-            evaluator_id = entry$evaluator_id,
-            evaluator_version = entry$evaluator_version
-          )
-        }
-      ),
-      stages
-    )
-  )
-}
-
 tempest_program_set_bundle_record <- function(entries) {
   list(
     format = "tempest-program-set",
     schema_version = 2L,
     entries = entries
-  )
-}
-
-tempest_program_set_expected_files <- function() {
-  c(
-    "program-set.json",
-    paste0("programs/", tempest_program_set_stages(), ".rds")
   )
 }
 
@@ -875,136 +834,4 @@ tempest_program_set_validate_inventory <- function(root) {
       "Every declared ProgramSet path must resolve inside its bundle."
     )
   }
-}
-
-tempest_program_set_read_manifest <- function(root) {
-  manifest <- tryCatch(
-    jsonlite::read_json(
-      file.path(root, "program-set.json"),
-      simplifyVector = FALSE
-    ),
-    error = function(error) {
-      tempest_program_set_abort(
-        "Could not read the ProgramSet manifest.",
-        parent = error,
-        class = "tempest_program_set_persistence_error"
-      )
-    }
-  )
-  fields <- c("format", "schema_version", "entries")
-  manifest_names <- names(manifest)
-  if (
-    !is.list(manifest) ||
-      !identical(manifest_names, fields)
-  ) {
-    tempest_program_set_abort(
-      "The ProgramSet manifest must contain exactly format, schema_version, and entries.",
-      class = "tempest_program_set_persistence_error"
-    )
-  }
-  if (!identical(manifest$format, "tempest-program-set")) {
-    tempest_program_set_abort(
-      "The ProgramSet manifest format is unsupported.",
-      class = "tempest_program_set_persistence_error"
-    )
-  }
-  if (!identical(manifest$schema_version, 2L)) {
-    tempest_program_set_abort(
-      "The ProgramSet manifest schema version is unsupported.",
-      class = "tempest_program_set_persistence_error"
-    )
-  }
-  entries <- tryCatch(
-    tempest_program_set_validate_entries(manifest$entries),
-    error = function(error) {
-      tempest_program_set_abort(
-        "The ProgramSet manifest entries are invalid.",
-        parent = error,
-        class = "tempest_program_set_persistence_error"
-      )
-    }
-  )
-  reference_types <- vapply(
-    entries,
-    \(entry) entry$artifact_reference$type,
-    character(1)
-  )
-  if (any(reference_types != "file")) {
-    tempest_program_set_abort(
-      "A file bundle may contain only bundle-relative file references.",
-      class = "tempest_program_set_persistence_error"
-    )
-  }
-  entries
-}
-
-tempest_program_set_compile_inputs <- function(value, arg, stages) {
-  value <- tempest_program_set_named_list(value, arg)
-  if (
-    length(value) == 0L ||
-      any(!names(value) %in% stages)
-  ) {
-    tempest_program_set_abort(
-      "{.arg {arg}} must name at least one known Tempest stage."
-    )
-  }
-  value
-}
-
-tempest_program_set_stage_values <- function(
-  value,
-  arg,
-  selected,
-  allow_single = FALSE,
-  default = NULL
-) {
-  if (is.null(value)) {
-    return(stats::setNames(rep(list(default), length(selected)), selected))
-  }
-  if (allow_single && inherits(value, "dsprrr::Teleprompter")) {
-    return(stats::setNames(rep(list(value), length(selected)), selected))
-  }
-  value <- tempest_program_set_named_list(value, arg)
-  if (!setequal(names(value), selected)) {
-    tempest_program_set_abort(
-      "{.arg {arg}} must contain exactly the selected compile stages."
-    )
-  }
-  value[selected]
-}
-
-tempest_program_set_compile_isolate <- function(
-  program,
-  stage,
-  expected_id,
-  registry = list()
-) {
-  isolated <- tryCatch(
-    program$copy(deep = TRUE),
-    error = function(error) {
-      tempest_program_set_abort(
-        "Could not isolate the program for stage {.val {stage}}.",
-        parent = error,
-        class = "tempest_program_set_compile_error"
-      )
-    }
-  )
-  if (!inherits(isolated, "Module")) {
-    tempest_program_set_abort(
-      "Program isolation did not return a dsprrr Module for stage {.val {stage}}.",
-      class = "tempest_program_set_compile_error"
-    )
-  }
-  isolated_id <- tempest_program_set_program_id(
-    isolated,
-    stage,
-    registry = registry
-  )
-  if (!identical(isolated_id, expected_id)) {
-    tempest_program_set_abort(
-      "Program isolation changed artifact identity for stage {.val {stage}}.",
-      class = "tempest_program_set_verification_error"
-    )
-  }
-  isolated
 }

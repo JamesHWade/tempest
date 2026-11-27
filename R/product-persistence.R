@@ -1,16 +1,76 @@
 #' @keywords internal
-tempest_product_write_json <- function(path, x) {
-  tempest_require("jsonlite", "STORM run persistence requires jsonlite.")
+tempest_product_write_json <- function(path, x, digits = 4, force = FALSE) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   json <- jsonlite::toJSON(
     x,
     auto_unbox = TRUE,
     pretty = TRUE,
     null = "null",
-    na = "null"
+    na = "null",
+    digits = digits,
+    force = force
   )
   tempest_atomic_write_lines(json, path)
   invisible(path)
+}
+
+tempest_persistence_bundle_write_json <- function(
+  path,
+  rel_path,
+  value,
+  what,
+  class
+) {
+  tryCatch(
+    tempest_product_write_json(file.path(path, rel_path), value),
+    error = function(error) {
+      tempest_abort(
+        "Could not write {what} file {.path {rel_path}}.",
+        class = class,
+        parent = error
+      )
+    }
+  )
+  rel_path
+}
+
+tempest_persistence_bundle_write_text <- function(
+  path,
+  rel_path,
+  value,
+  what,
+  class
+) {
+  if (!rlang::is_string(value)) {
+    return(character())
+  }
+  tryCatch(
+    tempest_write_text(file.path(path, rel_path), value),
+    error = function(error) {
+      tempest_abort(
+        "Could not write {what} file {.path {rel_path}}.",
+        class = class,
+        parent = error
+      )
+    }
+  )
+  rel_path
+}
+
+tempest_persistence_bundle_mismatched_checksums <- function(
+  bundle_dir,
+  files,
+  checksums
+) {
+  files[vapply(
+    files,
+    function(file) {
+      expected <- checksums[[file]] %||% NA_character_
+      is.na(expected) ||
+        !identical(tempest_product_bundle_checksum(bundle_dir, file), expected)
+    },
+    logical(1)
+  )]
 }
 
 # Condition-class hierarchy for Tempest persistence errors. Every persistence
@@ -319,7 +379,6 @@ tempest_product_read_json <- function(
   what = "JSON file",
   class = tempest_persistence_error_class()
 ) {
-  tempest_require("jsonlite", "Tempest persistence requires jsonlite.")
   if (!file.exists(path)) {
     tempest_abort(
       c("Cannot read {what}.", x = "File does not exist: {.path {path}}."),

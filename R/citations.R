@@ -4,7 +4,7 @@
 #'
 #' Reports every evidence resource consumed by a product, including accepted
 #' organizational knowledge supplied through [tempest_artifact_knowledge()] or
-#' [tempest_artifact_knowledge()].
+#' [tempest_reuse_artifact_research()].
 #'
 #' @param x A completed [tempest_run()] product or a `TempestSession`.
 #' @return A tibble with resource identity, kind, opaque locator, optional web

@@ -75,25 +75,6 @@ tempest_is_knowledge <- function(x) {
   identical(S7::S7_class(x), TempestKnowledge)
 }
 
-tempest_knowledge_record_ids <- function(value) {
-  if (is.null(value)) {
-    return(character())
-  }
-  value <- tempest_product_character(value, "record_ids")
-  if (anyDuplicated(value)) {
-    tempest_knowledge_abort("{.arg record_ids} must be unique.")
-  }
-  if (length(value) > tempest_knowledge_max_records()) {
-    tempest_knowledge_abort(paste0(
-      "{.arg record_ids} cannot exceed ",
-      tempest_knowledge_max_records(),
-      " accepted records."
-    ))
-  }
-  value
-}
-
-
 # Accepted Claims carry their exact statement text as metadata so the briefing
 # can decide structurally whether a verified claim restates accepted knowledge.
 tempest_knowledge_statement_metadata <- function(record_class, payload) {

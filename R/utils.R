@@ -233,3 +233,45 @@ tempest_write_text <- function(path, text) {
   tempest_atomic_write_lines(text, path)
   invisible(path)
 }
+
+tempest_await_promise <- function(
+  promise,
+  timeout_s,
+  on_timeout,
+  on_error = stop,
+  poll_s = 0.02,
+  sleep_s = 0.01
+) {
+  state <- new.env(parent = emptyenv())
+  state$resolved <- FALSE
+  state$value <- NULL
+  state$error <- NULL
+  promises::then(
+    promise,
+    onFulfilled = function(result) {
+      state$value <- result
+      state$resolved <- TRUE
+      invisible(result)
+    },
+    onRejected = function(condition) {
+      state$error <- condition
+      state$resolved <- TRUE
+      invisible(NULL)
+    }
+  )
+  deadline <- unname(proc.time()[["elapsed"]]) + timeout_s
+  while (!state$resolved) {
+    remaining <- deadline - unname(proc.time()[["elapsed"]])
+    if (remaining <= 0) {
+      return(on_timeout())
+    }
+    later::run_now(timeoutSecs = min(remaining, poll_s))
+    if (!state$resolved && sleep_s > 0) {
+      Sys.sleep(min(remaining, sleep_s))
+    }
+  }
+  if (!is.null(state$error)) {
+    return(on_error(state$error))
+  }
+  state$value
+}

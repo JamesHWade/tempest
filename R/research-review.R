@@ -1393,36 +1393,15 @@ tempest_research_review_await <- function(
       "The synchronous scientific review timeout must be positive and finite."
     )
   }
-  resolved <- FALSE
-  value <- NULL
-  error <- NULL
-  promises::then(
+  tempest_await_promise(
     promise,
-    onFulfilled = function(result) {
-      value <<- result
-      resolved <<- TRUE
-      invisible(result)
-    },
-    onRejected = function(condition) {
-      error <<- condition
-      resolved <<- TRUE
-      invisible(NULL)
+    timeout_s = timeout_s,
+    on_timeout = function() {
+      tempest_research_review_abort(
+        "Scientific claim review did not settle before the synchronous timeout."
+      )
     }
   )
-  deadline <- Sys.time() + timeout_s
-  while (!resolved && Sys.time() < deadline) {
-    later::run_now(0.02)
-    Sys.sleep(0.01)
-  }
-  if (!resolved) {
-    tempest_research_review_abort(
-      "Scientific claim review did not settle before the synchronous timeout."
-    )
-  }
-  if (!is.null(error)) {
-    stop(error)
-  }
-  value
 }
 
 tempest_research_review <- function(

@@ -23,38 +23,6 @@ tempest_session_mindmap_validate_update <- function(mindmap, workspace) {
 }
 
 #' @keywords internal
-tempest_type_mindmap <- function() {
-  tempest_require("ellmer")
-  node <- ellmer::type_object(
-    id = ellmer::type_string(
-      "Stable node id (short). Use 'root' for the root."
-    ),
-    label = ellmer::type_string("Node label"),
-    parent = ellmer::type_string(
-      "Parent node id (or null for root).",
-      required = FALSE
-    ),
-    notes = ellmer::type_string(
-      "Optional notes for this node.",
-      required = FALSE
-    ),
-    source_ids = ellmer::type_array(
-      ellmer::type_string("Supporting source ids"),
-      required = FALSE
-    )
-  )
-  edge <- ellmer::type_object(
-    from = ellmer::type_string("From node id"),
-    to = ellmer::type_string("To node id"),
-    relation = ellmer::type_string("Relation label", required = FALSE)
-  )
-  ellmer::type_object(
-    nodes = ellmer::type_array(node),
-    edges = ellmer::type_array(edge)
-  )
-}
-
-#' @keywords internal
 tempest_mindmap_init <- function(topic) {
   list(
     nodes = list(list(
@@ -126,34 +94,15 @@ tempest_costorm_await <- function(promise, timeout_s = 120) {
     "promises",
     "Synchronous Co-STORM execution requires promises."
   )
-  resolved <- FALSE
-  value <- NULL
-  error <- NULL
-  promises::then(
+  tempest_await_promise(
     promise,
-    onFulfilled = function(result) {
-      value <<- result
-      resolved <<- TRUE
-      invisible(result)
-    },
-    onRejected = function(condition) {
-      error <<- condition
-      resolved <<- TRUE
-      invisible(NULL)
+    timeout_s = timeout_s,
+    on_timeout = function() {
+      tempest_costorm_session_abort(
+        "Co-STORM async work did not settle in time."
+      )
     }
   )
-  deadline <- Sys.time() + timeout_s
-  while (!resolved && Sys.time() < deadline) {
-    later::run_now(0.02)
-    Sys.sleep(0.01)
-  }
-  if (!resolved) {
-    tempest_costorm_session_abort("Co-STORM async work did not settle in time.")
-  }
-  if (!is.null(error)) {
-    stop(error)
-  }
-  value
 }
 
 #' @keywords internal
@@ -771,7 +720,6 @@ TempestSession <- R6::R6Class(
       .admit_knowledge = NULL,
       .artifact_selection = NULL
     ) {
-      tempest_require("ellmer", "TempestSession requires ellmer.")
       restoring <- identical(.restore_token, tempest_costorm_restore_token)
       if (
         (!is.null(.restore_manifest) || !is.null(.restore_token)) &&
@@ -1851,25 +1799,6 @@ tempest_session_async_work_start <- function(
   work_id
 }
 
-tempest_session_async_work_activate <- function(session, work_id) {
-  work_id <- tempest_research_manifest_id(work_id, "work_id")
-  registry <- tempest_session_async_work_registry(session)
-  if (!exists(work_id, registry, inherits = FALSE)) {
-    tempest_session_async_work_abort(
-      "Unknown session async-work identifier."
-    )
-  }
-  record <- get(work_id, registry, inherits = FALSE)
-  if (!identical(record$state, "queued")) {
-    tempest_session_async_work_abort(
-      "Only queued session work can become active."
-    )
-  }
-  record$state <- "active"
-  assign(work_id, record, registry)
-  invisible(work_id)
-}
-
 tempest_session_async_work_finish <- function(session, work_id) {
   work_id <- tempest_research_manifest_id(work_id, "work_id")
   registry <- tempest_session_async_work_registry(session)
@@ -2395,37 +2324,6 @@ tempest_session_start_deputy_run <- function(session, pending_run) {
   session$.__enclos_env__$private$pending_deputy_runs_value <-
     tempest_costorm_pending_deputy_runs(pending_runs)
   invisible(pending_run)
-}
-
-tempest_session_finish_deputy_run <- function(session, trace) {
-  if (!inherits(session, "TempestSession")) {
-    tempest_costorm_session_abort(
-      "{.arg session} must be a TempestSession."
-    )
-  }
-  trace <- tempest_costorm_deputy_trace(
-    rlang::duplicate(trace, shallow = FALSE)
-  )
-  pending_runs <- tempest_session_pending_deputy_runs(session)
-  ids <- vapply(pending_runs, `[[`, character(1), "deputy_run_id")
-  index <- which(ids == trace$deputy_run_id)
-  if (length(index) != 1L) {
-    tempest_costorm_session_abort(
-      "A terminal Deputy trace must match one pending run."
-    )
-  }
-  pending_run <- pending_runs[[index]]
-  identity_fields <- setdiff(names(pending_run), "completion_id")
-  if (!identical(trace[identity_fields], pending_run[identity_fields])) {
-    tempest_costorm_session_abort(
-      "A terminal Deputy trace cannot change its pending run identity."
-    )
-  }
-  tempest_session_record_deputy_trace(session, trace)
-  pending_runs <- pending_runs[-index]
-  session$.__enclos_env__$private$pending_deputy_runs_value <-
-    tempest_costorm_pending_deputy_runs(pending_runs)
-  invisible(trace)
 }
 
 tempest_session_record_deputy_trace <- function(session, trace) {

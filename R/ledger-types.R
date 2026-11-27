@@ -529,6 +529,18 @@ tempest_evidence_span_record_fields <- function() {
   )
 }
 
+tempest_claim_support_record_fields <- function() {
+  c(
+    "claim_support_id",
+    "claim_id",
+    "evidence_span_id",
+    "source_id",
+    "verification_status",
+    "support_score",
+    "rationale"
+  )
+}
+
 tempest_dispute_record_fields <- function() {
   c(
     "dispute_id",

@@ -805,12 +805,44 @@ TempestDeputyExpertManager <- R6::R6Class(
   )
 )
 
+tempest_deputy_expert_session_chats <- function(manager) {
+  if (!inherits(manager, "TempestDeputyExpertManager")) {
+    return(list())
+  }
+  mgr_priv <- tryCatch(
+    manager$.__enclos_env__$private,
+    error = function(error) NULL
+  )
+  sessions_env <- if (is.list(mgr_priv) || is.environment(mgr_priv)) {
+    mgr_priv$sessions
+  } else {
+    NULL
+  }
+  if (!is.environment(sessions_env)) {
+    return(list())
+  }
+  session_ids <- tryCatch(
+    manager$list_sessions(),
+    error = function(error) character()
+  )
+  chats <- list()
+  for (session_id in session_ids) {
+    if (exists(session_id, envir = sessions_env, inherits = FALSE)) {
+      chats[[length(chats) + 1L]] <- get(
+        session_id,
+        envir = sessions_env,
+        inherits = FALSE
+      )
+    }
+  }
+  chats
+}
+
 tempest_create_deputy_expert_delegation_tool <- function(
   manager,
   topic,
   experts = NULL
 ) {
-  tempest_require("ellmer", "Expert delegation requires ellmer.")
   if (!inherits(manager, "TempestDeputyExpertManager")) {
     tempest_deputy_expert_abort(
       "{.arg manager} must be a Tempest Deputy expert manager."

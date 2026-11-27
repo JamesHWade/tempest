@@ -19,12 +19,6 @@
   letter-spacing: -0.01em;
 }
 
-.tempest-scripted-sidebar-intro {
-  color: var(--tempest-scripted-muted);
-  font-size: 0.9rem;
-  line-height: 1.5;
-}
-
 .tempest-scripted-settings-card,
 .tempest-review-filter-card,
 .tempest-review-boundary-card {

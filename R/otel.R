@@ -734,20 +734,6 @@ tempest_otel_complete_success <- function(context, fallback_taken = FALSE) {
   tempest_otel_context_end(context)
 }
 
-tempest_otel_complete_status <- function(
-  context,
-  status,
-  fallback_taken = FALSE
-) {
-  on.exit(tempest_otel_context_end(context), add = TRUE)
-  tempest_otel_mark_status(
-    context,
-    status,
-    fallback_taken = fallback_taken
-  )
-  tempest_otel_context_end(context)
-}
-
 tempest_otel_complete_error <- function(context, error) {
   on.exit(tempest_otel_context_end(context), add = TRUE)
   status <- if (tempest_otel_cancelled(error)) "cancelled" else "failed"

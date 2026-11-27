@@ -2,7 +2,6 @@
 
 #' @keywords internal
 tempest_type_perspectives <- function() {
-  tempest_require("ellmer")
   ellmer::type_object(
     title = ellmer::type_string("Suggested title for the final report."),
     perspectives = ellmer::type_array(
@@ -19,7 +18,6 @@ tempest_type_perspectives <- function() {
 
 #' @keywords internal
 tempest_type_personas <- function() {
-  tempest_require("ellmer")
   ellmer::type_object(
     personas = ellmer::type_array(
       ellmer::type_object(
@@ -51,7 +49,6 @@ tempest_type_personas <- function() {
 
 #' @keywords internal
 tempest_type_outline <- function() {
-  tempest_require("ellmer")
   subsection <- ellmer::type_object(
     title = ellmer::type_string("Subsection title"),
     bullets = ellmer::type_array(ellmer::type_string(
@@ -75,7 +72,6 @@ tempest_type_outline <- function() {
 
 #' @keywords internal
 tempest_type_fact_extract <- function() {
-  tempest_require("ellmer")
   src <- ellmer::type_object(
     source_id = ellmer::type_string("Source id like Sxxxxxxxxxxxx"),
     url = ellmer::type_string("URL if available", required = FALSE),
@@ -110,7 +106,6 @@ tempest_type_fact_extract <- function() {
 
 #' @keywords internal
 tempest_type_next_question <- function() {
-  tempest_require("ellmer")
   ellmer::type_object(
     question = ellmer::type_string("Next research question to ask the expert."),
     done = ellmer::type_boolean(
@@ -122,7 +117,6 @@ tempest_type_next_question <- function() {
 
 #' @keywords internal
 tempest_type_query_decomposition <- function() {
-  tempest_require("ellmer")
   ellmer::type_object(
     queries = ellmer::type_array(
       ellmer::type_string("A targeted search query")
@@ -132,7 +126,6 @@ tempest_type_query_decomposition <- function() {
 
 #' @keywords internal
 tempest_type_briefing_items <- function() {
-  tempest_require("ellmer")
   item <- ellmer::type_object(
     kind = ellmer::type_enum(
       tempest_briefing_item_kinds(),

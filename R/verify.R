@@ -3,7 +3,6 @@
 
 #' @keywords internal
 tempest_type_verification <- function() {
-  tempest_require("ellmer")
   ellmer::type_object(
     status = ellmer::type_enum(
       c(

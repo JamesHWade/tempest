@@ -316,11 +316,7 @@ tempest_shinychat_restore_messages <- function(
 }
 
 tempest_shinychat_escape_html <- function(text) {
-  text <- gsub("&", "&amp;", text, fixed = TRUE)
-  text <- gsub("<", "&lt;", text, fixed = TRUE)
-  text <- gsub(">", "&gt;", text, fixed = TRUE)
-  text <- gsub('"', "&quot;", text, fixed = TRUE)
-  gsub("'", "&#39;", text, fixed = TRUE)
+  htmltools::htmlEscape(text, attribute = TRUE)
 }
 
 tempest_shinychat_suggestion_cards <- function(

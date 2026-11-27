@@ -500,7 +500,6 @@ tempest_subscription_chat_params <- function(role, params) {
 }
 
 tempest_default_chat <- function(model, system_prompt, params, echo, role) {
-  tempest_require("ellmer", "LLM orchestration for STORM/Co-STORM.")
   if (startsWith(model, "openai/")) {
     return(tempest_chat_openai(
       system_prompt = system_prompt,

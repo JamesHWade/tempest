@@ -70,26 +70,6 @@ tempest_dsprrr_execution <- function(
   )
 }
 
-tempest_program_reference <- function(program) {
-  program <- tempest_dsprrr_execution_program(program)
-  program_artifact_id <- tryCatch(
-    dsprrr::program_artifact_id(program),
-    error = function(error) {
-      tempest_ecosystem_contract_abort(
-        "Could not identify the dsprrr program artifact.",
-        parent = error
-      )
-    }
-  )
-  list(
-    program_artifact_id = tempest_research_manifest_program_artifact_id(
-      program_artifact_id,
-      "program_artifact_id"
-    )
-  )
-}
-
-
 tempest_deputy_run_context <- function(
   manifest,
   stage,

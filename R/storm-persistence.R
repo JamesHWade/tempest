@@ -21,7 +21,6 @@ tempest_storm_prepare_run_dir <- function(output_dir, topic, run_id = NULL) {
       "{.arg output_dir} must be NULL or a single path string."
     )
   }
-  tempest_require("jsonlite", "Persisted STORM runs require jsonlite.")
 
   dir <- path.expand(output_dir)
   run_name <- tempest_storm_topic_slug(run_id %||% topic)
@@ -50,39 +49,24 @@ tempest_storm_artifact_paths <- function(run_dir) {
 
 #' @keywords internal
 tempest_storm_bundle_write_json <- function(path, rel_path, value) {
-  tryCatch(
-    tempest_product_write_json(file.path(path, rel_path), value),
-    error = function(error) {
-      tempest_abort(
-        "Could not write STORM bundle file {.path {rel_path}}.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
-        parent = error
-      )
-    }
+  tempest_persistence_bundle_write_json(
+    path,
+    rel_path,
+    value,
+    what = "STORM bundle",
+    class = tempest_persistence_error_class("tempest_run_persistence_error")
   )
-  rel_path
 }
 
 #' @keywords internal
 tempest_storm_bundle_write_text <- function(path, rel_path, value) {
-  if (!rlang::is_string(value)) {
-    return(character())
-  }
-  tryCatch(
-    tempest_write_text(file.path(path, rel_path), value),
-    error = function(error) {
-      tempest_abort(
-        "Could not write STORM bundle file {.path {rel_path}}.",
-        class = tempest_persistence_error_class(
-          "tempest_run_persistence_error"
-        ),
-        parent = error
-      )
-    }
+  tempest_persistence_bundle_write_text(
+    path,
+    rel_path,
+    value,
+    what = "STORM bundle",
+    class = tempest_persistence_error_class("tempest_run_persistence_error")
   )
-  rel_path
 }
 
 tempest_storm_stage_required_files <- function(completed_stages) {
@@ -611,71 +595,18 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   stage_required <- tempest_storm_stage_required_files(
     completed_stages
   )
-  unsafe <- !vapply(
-    normalized,
-    tempest_product_path_is_safe,
-    logical(1)
-  )
-  missing <- files[!file.exists(file.path(run_dir, files))]
   checksums <- tempest_persistence_manifest_checksums(
     manifest$checksums,
     files,
     "Schema 11 STORM checksum inventory",
     tempest_persistence_error_class("tempest_run_restore_error")
   )
-  missing_checksums <- setdiff(files, names(checksums))
-  extra_checksums <- setdiff(names(checksums), files)
-  available <- setdiff(files, missing)
-  stage_record_path <- file.path(run_dir, "stage_records.json")
-  non_regular_stage_records <- if (
-    file.exists(stage_record_path) &&
-      (!utils::file_test("-f", stage_record_path) ||
-        nzchar(Sys.readlink(stage_record_path)))
-  ) {
-    "stage_records.json"
-  } else {
-    character()
-  }
-  run_root <- paste0(
-    normalizePath(run_dir, winslash = "/", mustWork = TRUE),
-    "/"
+  mismatched <- tempest_persistence_bundle_mismatched_checksums(
+    run_dir,
+    files,
+    checksums
   )
-  escaping <- available[vapply(
-    available,
-    function(file) {
-      resolved <- normalizePath(
-        file.path(run_dir, file),
-        winslash = "/",
-        mustWork = TRUE
-      )
-      !startsWith(resolved, run_root)
-    },
-    logical(1)
-  )]
-  checksum_candidates <- setdiff(
-    available,
-    c(escaping, non_regular_stage_records)
-  )
-  mismatched <- checksum_candidates[vapply(
-    checksum_candidates,
-    function(file) {
-      expected <- if (file %in% names(checksums)) {
-        checksums[[file]]
-      } else {
-        NA_character_
-      }
-      is.na(expected) ||
-        !identical(
-          tempest_product_bundle_checksum(run_dir, file),
-          expected
-        )
-    },
-    logical(1)
-  )]
   problems <- c(
-    if (length(files) == 0L) "Manifest declares no files.",
-    if (anyDuplicated(normalized)) "Manifest declares duplicate files.",
-    if (any(unsafe)) "Manifest contains unsafe paths.",
     if (length(setdiff(required, files)) > 0L) {
       "Manifest omits required bundle files."
     },
@@ -693,26 +624,12 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
         "."
       )
     },
-    if (length(non_regular_stage_records) > 0L) {
-      "The stage-record sidecar must be a regular non-symlink file."
-    },
-
     if (length(setdiff(stage_required, files)) > 0L) {
       paste0(
         "Manifest omits product files required by completed stages: ",
         paste(setdiff(stage_required, files), collapse = ", "),
         "."
       )
-    },
-    if (length(missing) > 0L) "Manifest declares missing files.",
-    if (
-      length(missing_checksums) > 0L ||
-        length(extra_checksums) > 0L
-    ) {
-      "Manifest checksum inventory does not match its file inventory."
-    },
-    if (length(escaping) > 0L) {
-      "Manifest declares files outside the run directory."
     },
     if (length(mismatched) > 0L) "Manifest checksum validation failed."
   )
@@ -1934,7 +1851,6 @@ tempest_storm_save_artifacts <- function(
   )
   dir.create(staging_dir, recursive = TRUE, showWarnings = FALSE)
   on.exit(unlink(staging_dir, recursive = TRUE, force = TRUE), add = TRUE)
-  paths <- tempest_storm_artifact_paths(staging_dir)
   files <- character()
   files <- c(
     files,

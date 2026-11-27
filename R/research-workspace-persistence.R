@@ -241,32 +241,22 @@ tempest_research_workspace_restore_abort <- function(message, parent = NULL) {
 
 #' @keywords internal
 tempest_research_workspace_restore_schema <- function(snapshot) {
-  value <- snapshot$schema_version %||% NA_integer_
-  value <- tempest_exact_integer_scalar(
-    value,
-    "The workspace schema version",
+  tempest_research_workspace_require_current_schema(
+    snapshot,
+    what = "ResearchWorkspace snapshot",
     class = tempest_persistence_error_class(
       "tempest_research_workspace_restore_error"
     ),
-    minimum = 0L
+    version_what = "The workspace schema version"
   )
-  if (!identical(value, 8L)) {
-    tempest_product_unsupported_format_abort(
-      "ResearchWorkspace snapshot format",
-      value,
-      tempest_persistence_error_class(
-        "tempest_research_workspace_restore_error"
-      )
-    )
-  }
-  value
 }
 
 #' @keywords internal
 tempest_research_workspace_require_current_schema <- function(
   snapshot,
   what,
-  class
+  class,
+  version_what = paste0(what, " schema version")
 ) {
   if (!is.list(snapshot) || is.data.frame(snapshot)) {
     tempest_abort(
@@ -276,7 +266,7 @@ tempest_research_workspace_require_current_schema <- function(
   }
   schema_version <- tempest_persistence_schema_version(
     snapshot$schema_version %||% NA_integer_,
-    paste0(what, " schema version"),
+    version_what,
     class
   )
   if (!identical(schema_version, 8L)) {
@@ -330,15 +320,7 @@ tempest_research_workspace_record_fields <- function(field) {
     retrieved_resources = tempest_resource_record_fields(),
     proposed_claims = tempest_claim_record_fields(),
     evidence_spans = tempest_evidence_span_record_fields(),
-    claim_supports = c(
-      "claim_support_id",
-      "claim_id",
-      "evidence_span_id",
-      "source_id",
-      "verification_status",
-      "support_score",
-      "rationale"
-    ),
+    claim_supports = tempest_claim_support_record_fields(),
     disputes = tempest_dispute_record_fields(),
     claim_reviews = tempest_claim_review_record_fields(),
     tempest_research_workspace_restore_abort(
@@ -597,13 +579,10 @@ tempest_research_workspace_validate_claim_record <- function(record) {
       ids = TRUE
     )
   }
-  quotes <- record$supporting_quotes
-  if (!is.list(quotes) || is.data.frame(quotes) || !is.null(names(quotes))) {
-    tempest_research_workspace_restore_abort(
-      "Workspace record field supporting_quotes must be a flat string array."
-    )
-  }
-  tempest_research_workspace_record_string_array(quotes, "supporting_quotes")
+  tempest_research_workspace_record_string_array(
+    record$supporting_quotes,
+    "supporting_quotes"
+  )
   for (field in c(
     "support_score",
     "contradiction_score",
@@ -805,16 +784,18 @@ tempest_research_workspace_restore <- function(
     }
   }
 
-  records <- tempest_research_workspace_restore_records(
-    snapshot,
-    "retrieved_resources"
-  )
-  records <- tempest_research_workspace_exact_records(
-    records,
-    "retrieved_resources"
-  )
-  tempest_research_workspace_unique_record_ids(
-    records,
+  load_records <- function(field, id_field, label, validate_fn = NULL) {
+    records <- tempest_research_workspace_restore_records(snapshot, field)
+    records <- tempest_research_workspace_exact_records(records, field)
+    if (!is.null(validate_fn)) {
+      records <- lapply(records, validate_fn)
+    }
+    tempest_research_workspace_unique_record_ids(records, id_field, label)
+    records
+  }
+
+  records <- load_records(
+    "retrieved_resources",
     "resource_id",
     "Retrieved-resource records"
   )
@@ -843,22 +824,11 @@ tempest_research_workspace_restore <- function(
     candidate$list_retrieved_resources(),
     tempest_resource_identity
   )
-  span_records <- tempest_research_workspace_restore_records(
-    snapshot,
-    "evidence_spans"
-  )
-  span_records <- tempest_research_workspace_exact_records(
-    span_records,
-    "evidence_spans"
-  )
-  span_records <- lapply(
-    span_records,
-    tempest_research_workspace_validate_span_record
-  )
-  tempest_research_workspace_unique_record_ids(
-    span_records,
+  span_records <- load_records(
+    "evidence_spans",
     "evidence_span_id",
-    "Evidence-span records"
+    "Evidence-span records",
+    validate_fn = tempest_research_workspace_validate_span_record
   )
   for (i in seq_along(span_records)) {
     span <- tryCatch(
@@ -884,22 +854,11 @@ tempest_research_workspace_restore <- function(
     candidate$add_evidence_span(span)
   }
 
-  claim_records <- tempest_research_workspace_restore_records(
-    snapshot,
-    "proposed_claims"
-  )
-  claim_records <- tempest_research_workspace_exact_records(
-    claim_records,
-    "proposed_claims"
-  )
-  claim_records <- lapply(
-    claim_records,
-    tempest_research_workspace_validate_claim_record
-  )
-  tempest_research_workspace_unique_record_ids(
-    claim_records,
+  claim_records <- load_records(
+    "proposed_claims",
     "claim_id",
-    "Proposed-claim records"
+    "Proposed-claim records",
+    validate_fn = tempest_research_workspace_validate_claim_record
   )
   restored_claims <- list()
   for (i in seq_along(claim_records)) {
@@ -940,22 +899,11 @@ tempest_research_workspace_restore <- function(
     candidate$list_proposed_claims(),
     ~ .x@claim_id
   )
-  dispute_records <- tempest_research_workspace_restore_records(
-    snapshot,
-    "disputes"
-  )
-  dispute_records <- tempest_research_workspace_exact_records(
-    dispute_records,
-    "disputes"
-  )
-  dispute_records <- lapply(
-    dispute_records,
-    tempest_research_workspace_validate_dispute_record
-  )
-  tempest_research_workspace_unique_record_ids(
-    dispute_records,
+  dispute_records <- load_records(
+    "disputes",
     "dispute_id",
-    "Dispute records"
+    "Dispute records",
+    validate_fn = tempest_research_workspace_validate_dispute_record
   )
   for (i in seq_along(dispute_records)) {
     dispute <- tryCatch(
@@ -982,16 +930,8 @@ tempest_research_workspace_restore <- function(
     candidate$add_dispute(dispute)
   }
 
-  support_records <- tempest_research_workspace_restore_records(
-    snapshot,
-    "claim_supports"
-  )
-  support_records <- tempest_research_workspace_exact_records(
-    support_records,
-    "claim_supports"
-  )
-  tempest_research_workspace_unique_record_ids(
-    support_records,
+  support_records <- load_records(
+    "claim_supports",
     "claim_support_id",
     "Claim-support records"
   )
@@ -1079,16 +1019,8 @@ tempest_research_workspace_restore <- function(
     candidate$.__enclos_env__$private$claims_value <- restored_claims_value
   }
 
-  claim_review_records <- tempest_research_workspace_restore_records(
-    snapshot,
-    "claim_reviews"
-  )
-  claim_review_records <- tempest_research_workspace_exact_records(
-    claim_review_records,
-    "claim_reviews"
-  )
-  tempest_research_workspace_unique_record_ids(
-    claim_review_records,
+  claim_review_records <- load_records(
+    "claim_reviews",
     "review_id",
     "Claim-review records"
   )

@@ -312,21 +312,25 @@ tempest_reuse_artifact_research <- function(
   admit <- function() {
     event <- tempest_graft_decision(store, stream, decision)
     event_record <- tempest_graft_decision_record(event)
-    current <- graft::graft_recall(
-      store,
-      stream,
-      purpose,
-      eligible = eligible(event_record)
-    )
-    if (
-      !identical(current@status, "accepted") ||
-        is.null(current@decision) ||
-        !identical(current@decision@id, event@id)
-    ) {
-      tempest_knowledge_abort(
-        "The requested Graft decision is not the current accepted decision."
+    assert_current_accepted <- function() {
+      current <- graft::graft_recall(
+        store,
+        stream,
+        purpose,
+        eligible = eligible(event_record)
       )
+      if (
+        !identical(current@status, "accepted") ||
+          is.null(current@decision) ||
+          !identical(current@decision@id, event@id)
+      ) {
+        tempest_knowledge_abort(
+          "The requested Graft decision is not the current accepted decision."
+        )
+      }
+      current
     }
+    current <- assert_current_accepted()
     research <- tempest_read_artifact_research(store, current@selection@id)
     input <- list(
       selection_id = research$selection,
@@ -340,21 +344,7 @@ tempest_reuse_artifact_research <- function(
     )
     knowledge <- tempest_artifact_knowledge(input, research$contents)
     # Recheck after domain validation and materialization, before admission.
-    current <- graft::graft_recall(
-      store,
-      stream,
-      purpose,
-      eligible = eligible(event_record)
-    )
-    if (
-      !identical(current@status, "accepted") ||
-        is.null(current@decision) ||
-        !identical(current@decision@id, event@id)
-    ) {
-      tempest_knowledge_abort(
-        "The requested Graft decision is not the current accepted decision."
-      )
-    }
+    assert_current_accepted()
     knowledge
   }
   knowledge <- admit()

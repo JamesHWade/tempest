@@ -936,3 +936,36 @@ test_that("provider timeout reaches the callr worker", {
   observe_worker_timeout(45, NULL, 45)
   observe_worker_timeout(NULL, 18, 18)
 })
+
+test_that("worker callr entry resolves message sanitizer under baseenv()", {
+  dir <- withr::local_tempdir()
+  result_path <- file.path(dir, "result.rds")
+  release_path <- file.path(dir, "release")
+  file.create(release_path)
+
+  local_mocked_bindings(
+    tempest_researcher_worker = function(...) {
+      rlang::abort(
+        "Failed connecting to postgres://alice:topsecret@db.internal/app with token=tok12345",
+        class = "tempest_researcher_app_config_error"
+      )
+    }
+  )
+
+  entry <- tempest:::tempest_researcher_app_callr_entry
+  environment(entry) <- baseenv()
+  entry(
+    package_path = NULL,
+    libpath = .libPaths(),
+    work = list(),
+    result_path = result_path,
+    release_path = release_path
+  )
+
+  payload <- readRDS(result_path)
+  expect_identical(payload$ok, FALSE)
+  expect_identical(payload$error_class, "tempest_researcher_app_config_error")
+  expect_no_match(payload$error_message, "topsecret")
+  expect_no_match(payload$error_message, "tok12345")
+  expect_match(payload$error_message, "\\[redacted\\]")
+})

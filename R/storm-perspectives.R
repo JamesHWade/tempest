@@ -22,7 +22,6 @@ tempest_generate_experts <- function(
   verbose = FALSE,
   program_set = NULL
 ) {
-  tempest_require("ellmer", "Expert generation requires ellmer.")
   topic <- tempest_config_string(topic, "topic")
   n <- tempest_config_count(n, "n")
   if (n > config@max_active_experts) {
@@ -84,6 +83,39 @@ tempest_personas_ellmer_fallback <- function(chat, inputs, context) {
   )
 }
 
+tempest_prepare_expert_generation <- function(
+  topic,
+  n,
+  config,
+  requirements = NULL
+) {
+  topic <- tempest_config_string(topic, "topic")
+  n <- tempest_config_count(n, "n")
+  if (n > config@max_active_experts) {
+    tempest_config_abort(
+      "{.arg n} cannot exceed {.arg max_active_experts}."
+    )
+  }
+  chat <- tempest_make_chat(
+    config,
+    "coordinator",
+    system_prompt = tempest_prompt("persona_generator_system"),
+    echo = "none"
+  )
+  requirements <- tempest_persona_requirements(requirements)
+  list(
+    topic = topic,
+    n = n,
+    chat = chat,
+    inputs = list(
+      topic = topic,
+      n_experts = n,
+      requirements = requirements
+    ),
+    context = list(n_experts = n)
+  )
+}
+
 #' @keywords internal
 tempest_generate_experts_with_program <- function(
   topic,
@@ -94,37 +126,23 @@ tempest_generate_experts_with_program <- function(
   requirements = NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
-  tempest_require("ellmer", "Expert generation requires ellmer.")
-  topic <- tempest_config_string(topic, "topic")
-  n <- tempest_config_count(n, "n")
-  if (n > config@max_active_experts) {
-    tempest_config_abort(
-      "{.arg n} cannot exceed {.arg max_active_experts}."
-    )
-  }
-
-  chat <- tempest_make_chat(
-    config,
-    "coordinator",
-    system_prompt = tempest_prompt("persona_generator_system"),
-    echo = "none"
+  prepared <- tempest_prepare_expert_generation(
+    topic = topic,
+    n = n,
+    config = config,
+    requirements = requirements
   )
-
-  requirements <- tempest_persona_requirements(requirements)
-
   if (verbose) {
-    tempest_inform("Generating {n} expert profiles for: {.val {topic}}")
+    tempest_inform(
+      "Generating {prepared$n} expert profiles for: {.val {prepared$topic}}"
+    )
   }
 
   result <- tempest_execute_stage(
     module,
-    chat,
-    inputs = list(
-      topic = topic,
-      n_experts = n,
-      requirements = requirements
-    ),
-    context = list(n_experts = n),
+    prepared$chat,
+    inputs = prepared$inputs,
+    context = prepared$context,
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
@@ -150,31 +168,18 @@ tempest_generate_experts_async <- function(
   requirements = NULL,
   record_stage = function(record, output = NULL) invisible(record)
 ) {
-  tempest_require("ellmer", "Expert generation requires ellmer.")
   tempest_require("promises", "Async expert generation requires promises.")
-  topic <- tempest_config_string(topic, "topic")
-  n <- tempest_config_count(n, "n")
-  if (n > config@max_active_experts) {
-    tempest_config_abort(
-      "{.arg n} cannot exceed {.arg max_active_experts}."
-    )
-  }
-  chat <- tempest_make_chat(
-    config,
-    "coordinator",
-    system_prompt = tempest_prompt("persona_generator_system"),
-    echo = "none"
+  prepared <- tempest_prepare_expert_generation(
+    topic = topic,
+    n = n,
+    config = config,
+    requirements = requirements
   )
-  requirements <- tempest_persona_requirements(requirements)
   request <- tempest_execute_stage_async(
     program,
-    chat,
-    inputs = list(
-      topic = topic,
-      n_experts = n,
-      requirements = requirements
-    ),
-    context = list(n_experts = n),
+    prepared$chat,
+    inputs = prepared$inputs,
+    context = prepared$context,
     record_stage = function(record, output = NULL) {
       record_stage(record, output)
     }
