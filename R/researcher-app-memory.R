@@ -87,40 +87,7 @@ tempest_researcher_memory_read_record <- function(output_dir, report_id) {
 }
 
 tempest_researcher_memory_status_badge <- function(status, stream = NULL) {
-  label <- switch(
-    status %||% "provisional",
-    accepted = if (nzchar(stream %||% "")) {
-      paste("Accepted \u00b7", stream)
-    } else {
-      "Accepted"
-    },
-    superseded = if (nzchar(stream %||% "")) {
-      paste("Superseded \u00b7", stream)
-    } else {
-      "Superseded"
-    },
-    withdrawn = if (nzchar(stream %||% "")) {
-      paste("Withdrawn \u00b7", stream)
-    } else {
-      "Withdrawn"
-    },
-    provisional = "Provisional draft",
-    unknown = "Memory status unavailable",
-    "Not published to Graft"
-  )
-  tone <- switch(
-    status %||% "provisional",
-    accepted = "bg-success-subtle text-success-emphasis",
-    superseded = "bg-warning-subtle text-warning-emphasis",
-    withdrawn = "bg-secondary-subtle text-secondary-emphasis",
-    provisional = "bg-info-subtle text-info-emphasis",
-    unknown = "bg-warning-subtle text-warning-emphasis",
-    "bg-light text-muted"
-  )
-  shiny::tags$span(
-    class = paste("badge rounded-pill", tone),
-    label
-  )
+  tempest_graft_memory_status_badge(status = status, stream = stream)
 }
 
 tempest_researcher_memory_sidebar_ui <- function(streams = character()) {
@@ -252,42 +219,18 @@ tempest_researcher_memory_review_server <- function(
         feedback_is_error(TRUE)
         return()
       }
-      if (!isTRUE(input$reviewed)) {
-        feedback("Confirm that you reviewed the report and its cited evidence.")
-        feedback_is_error(TRUE)
-        return()
-      }
-      existing <- trimws(input$existing_stream %||% "")
-      stream <- if (nzchar(existing)) {
-        existing
-      } else {
-        trimws(input$stream %||% "")
-      }
-      streams_df <- displayed_streams()
-      state <- selection_state()
-      match_idx <- which(streams_df$stream == stream)
-      expected_head <- if (length(match_idx) > 0L) {
-        streams_df$decision_id[[match_idx[[1L]]]]
-      } else if (
-        !is.null(state) &&
-          identical(state$stream, stream) &&
-          rlang::is_string(state$decision_id)
-      ) {
-        state$decision_id
-      } else {
-        ""
-      }
-      tryCatch(
-        {
-          decision <- tempest_graft_accept_selection(
-            store = store,
-            selection_id = rec$selection_id,
-            stream = stream,
-            actor = input$actor %||% default_actor,
-            reason = input$reason %||% "",
-            purpose = purpose,
-            expected = expected_head
-          )
+      tempest_graft_memory_handle_accept(
+        input = input,
+        store = store,
+        purpose = purpose,
+        default_actor = default_actor,
+        streams_df = displayed_streams(),
+        state = selection_state(),
+        resolve_selection = function() rec$selection_id,
+        feedback = feedback,
+        feedback_is_error = feedback_is_error,
+        memory_revision = memory_revision,
+        on_accepted = function(decision) {
           tryCatch(
             tempest_researcher_memory_write_record(
               output_dir = output_dir,
@@ -299,49 +242,23 @@ tempest_researcher_memory_review_server <- function(
             ),
             error = function(error) NULL
           )
-          feedback(sprintf(
-            "Accepted into stream '%s' (decision %s).",
-            decision@stream,
-            substr(decision@id, 1L, 12L)
-          ))
-          feedback_is_error(FALSE)
-          memory_revision(shiny::isolate(memory_revision()) + 1L)
-        },
-        error = function(error) {
-          feedback(conditionMessage(error))
-          feedback_is_error(TRUE)
         }
       )
     })
 
     shiny::observeEvent(input$withdraw, {
-      state <- selection_state()
-      if (is.null(state) || !identical(state$status, "accepted")) {
-        feedback("Only a currently accepted stream can be withdrawn.")
-        feedback_is_error(TRUE)
-        return()
-      }
-      tryCatch(
-        {
-          decision <- tempest_graft_withdraw_stream(
-            store = store,
-            stream = state$stream,
-            actor = input$actor %||% default_actor,
-            reason = input$reason %||% "Withdrawn after review",
-            expected = state$decision_id
-          )
-          feedback(sprintf(
-            "Withdrew stream '%s' from active memory (decision %s). Historical reports remain readable.",
-            decision@stream,
-            substr(decision@id, 1L, 12L)
-          ))
-          feedback_is_error(FALSE)
-          memory_revision(shiny::isolate(memory_revision()) + 1L)
-        },
-        error = function(error) {
-          feedback(conditionMessage(error))
-          feedback_is_error(TRUE)
-        }
+      tempest_graft_memory_handle_withdraw(
+        input = input,
+        store = store,
+        default_actor = default_actor,
+        state = selection_state(),
+        feedback = feedback,
+        feedback_is_error = feedback_is_error,
+        memory_revision = memory_revision,
+        success_format = paste0(
+          "Withdrew stream '%s' from active memory (decision %s). ",
+          "Historical reports remain readable."
+        )
       )
     })
 
@@ -359,7 +276,7 @@ tempest_researcher_memory_review_server <- function(
             shiny::div(
               class = "d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2",
               shiny::tags$strong("Project memory (Graft)"),
-              tempest_researcher_memory_status_badge("unlinked")
+              tempest_graft_memory_status_badge("unlinked")
             ),
             shiny::p(
               class = "small text-body-secondary mb-0",
@@ -373,158 +290,33 @@ tempest_researcher_memory_review_server <- function(
         ))
       }
       state <- selection_state()
-      existing_streams <- displayed_streams()$stream
       default_stream <- state$stream %||%
         tempest_graft_stream_slug(report_title())
-      existing_choices <- c(
-        "Create new stream below" = "",
-        stats::setNames(existing_streams, existing_streams)
-      )
-      selected_existing <- if (default_stream %in% existing_streams) {
-        default_stream
-      } else {
-        ""
-      }
-
-      history_ui <- if (!is.null(state) && nrow(state$history) > 0L) {
-        shiny::tags$details(
-          class = "mt-2",
-          shiny::tags$summary(sprintf(
-            "Decision history (%d)",
-            nrow(state$history)
-          )),
-          shiny::tags$table(
-            class = "table table-sm mt-2 mb-0",
-            shiny::tags$thead(shiny::tags$tr(
-              shiny::tags$th("#"),
-              shiny::tags$th("Action"),
-              shiny::tags$th("Reviewer"),
-              shiny::tags$th("Reason"),
-              shiny::tags$th("Decision")
-            )),
-            shiny::tags$tbody(lapply(
-              seq_len(nrow(state$history)),
-              function(i) {
-                row <- state$history[i, , drop = FALSE]
-                shiny::tags$tr(
-                  shiny::tags$td(row$sequence),
-                  shiny::tags$td(row$action),
-                  shiny::tags$td(row$actor),
-                  shiny::tags$td(row$reason),
-                  shiny::tags$td(shiny::tags$code(substr(
-                    row$decision_id,
-                    1L,
-                    12L
-                  )))
-                )
-              }
-            ))
-          )
-        )
-      } else {
-        NULL
-      }
-
-      notice_ui <- if (!is.null(feedback())) {
-        shiny::div(
-          class = if (isTRUE(feedback_is_error())) {
-            "alert alert-warning py-2 px-3 mt-2 mb-0"
-          } else {
-            "alert alert-success py-2 px-3 mt-2 mb-0"
-          },
-          role = if (isTRUE(feedback_is_error())) "alert" else "status",
-          feedback()
-        )
-      } else {
-        NULL
-      }
-
-      shiny::tags$section(
-        class = "researcher-memory-review card mb-3",
-        `aria-label` = "Review and project memory",
-        shiny::div(
-          class = "card-body",
-          shiny::div(
-            class = "d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2",
-            shiny::tags$strong("Project memory (Graft)"),
-            tempest_researcher_memory_status_badge(state$status, state$stream)
-          ),
-          shiny::p(
-            class = "small text-body-secondary mb-2",
-            paste(
-              "Accepting records your explicit review in Graft so future",
-              "research runs and chats can consult these verified claims and sources."
-            )
-          ),
-          shiny::tags$details(
-            open = if (!identical(state$status, "accepted")) "open" else NULL,
-            shiny::tags$summary(
-              if (identical(state$status, "accepted")) {
-                "Update or withdraw accepted memory"
-              } else {
-                "Review and accept into project memory"
-              }
-            ),
-            shiny::div(
-              class = "mt-2 d-grid gap-2",
-              if (length(existing_streams) > 0L) {
-                shiny::selectInput(
-                  ns("existing_stream"),
-                  "Update an existing stream (optional)",
-                  choices = existing_choices,
-                  selected = selected_existing
-                )
-              },
-              shiny::textInput(
-                ns("stream"),
-                "New stream name",
-                value = default_stream
-              ),
-              shiny::textInput(
-                ns("actor"),
-                "Reviewer",
-                value = default_actor
-              ),
-              shiny::textAreaInput(
-                ns("reason"),
-                "Review reason",
-                placeholder = "Why is this finding ready to remember (or withdraw)?",
-                rows = 2
-              ),
-              shiny::checkboxInput(
-                ns("reviewed"),
-                "I reviewed this report and its cited evidence",
-                value = FALSE
-              ),
-              shiny::div(
-                class = "d-flex flex-wrap gap-2",
-                shiny::actionButton(
-                  ns("accept"),
-                  if (identical(state$status, "accepted")) {
-                    "Record new acceptance"
-                  } else {
-                    "Accept to project memory"
-                  },
-                  class = "btn-primary btn-sm"
-                ),
-                if (identical(state$status, "accepted")) {
-                  shiny::actionButton(
-                    ns("withdraw"),
-                    "Withdraw from active memory",
-                    class = "btn-outline-secondary btn-sm"
-                  )
-                },
-                shiny::actionButton(
-                  ns("refresh"),
-                  "Refresh status",
-                  class = "btn-outline-secondary btn-sm"
-                )
-              )
-            )
-          ),
-          notice_ui,
-          history_ui
-        )
+      tempest_graft_memory_review_card_ui(
+        ns = ns,
+        heading = "Project memory (Graft)",
+        status_code = state$status,
+        stream = state$stream,
+        existing_streams = displayed_streams()$stream,
+        default_stream = default_stream,
+        default_actor = default_actor,
+        feedback_text = feedback(),
+        feedback_is_error = feedback_is_error(),
+        state = state,
+        card_class = "researcher-memory-review card mb-3",
+        card_tag = "section",
+        aria_label = "Review and project memory",
+        intro_text = paste(
+          "Accepting records your explicit review in Graft so future",
+          "research runs and chats can consult these verified claims and sources."
+        ),
+        summary_new = "Review and accept into project memory",
+        accept_label = if (identical(state$status, "accepted")) {
+          "Record new acceptance"
+        } else {
+          "Accept to project memory"
+        },
+        open_when_unaccepted = TRUE
       )
     })
 

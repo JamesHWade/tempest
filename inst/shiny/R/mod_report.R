@@ -155,16 +155,11 @@ mod_report_server <- function(id, store) {
       content = function(file) {
         md <- report_md()
         shiny::req(nzchar(md))
-        rendered_md <- citation_markdown(
+        body_html <- as.character(markdown_ui(
           md,
           workspace = report_workspace(),
           include_references = TRUE
-        )
-        body_html <- if (has_pkg("commonmark")) {
-          commonmark::markdown_html(rendered_md)
-        } else {
-          paste0("<pre>", htmltools::htmlEscape(rendered_md), "</pre>")
-        }
+        ))
         writeLines(report_html_document(body_html), file)
       },
       contentType = "text/html"

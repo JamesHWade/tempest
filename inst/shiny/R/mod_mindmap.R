@@ -387,3 +387,150 @@ mindmap_accessible_tree <- function(mindmap, workspace = NULL) {
   })
   shiny::tags$ul(class = "list-unstyled d-grid gap-2", node_items)
 }
+
+# Convert a mind map (list of nodes/edges) into visNetwork data frames.
+mindmap_to_visnetwork <- function(mindmap) {
+  nodes <- mindmap$nodes %||% list()
+  edges <- mindmap$edges %||% list()
+  if (length(nodes) == 0) {
+    return(NULL)
+  }
+
+  parent_map <- list()
+  for (nd in nodes) {
+    if (!is.null(nd$parent)) {
+      parent_map[[nd$id]] <- nd$parent
+    }
+  }
+  node_level <- function(id) {
+    level <- 1L
+    cur <- id
+    visited <- character()
+    while (!is.null(parent_map[[cur]]) && !cur %in% visited) {
+      visited <- c(visited, cur)
+      level <- level + 1L
+      cur <- parent_map[[cur]]
+    }
+    level
+  }
+
+  # Shade nodes from light blue toward the brand primary as evidence grows.
+  color_for_count <- function(n) {
+    frac <- min(n / 5, 1)
+    r <- as.integer(200 - frac * (200 - 74))
+    g <- as.integer(220 - frac * (220 - 144))
+    b <- as.integer(240 - frac * (240 - 164))
+    sprintf("#%02X%02X%02X", r, g, b)
+  }
+
+  node_tooltip <- function(nd, id) {
+    notes_html <- if (!is.null(nd$notes) && nzchar(nd$notes)) {
+      paste0("<p>", htmltools::htmlEscape(nd$notes), "</p>")
+    } else {
+      ""
+    }
+    src_count <- length(nd$source_ids %||% character())
+    src_html <- if (src_count > 0) {
+      paste0(
+        "<p><em>Sources: ",
+        htmltools::htmlEscape(paste(nd$source_ids, collapse = ", ")),
+        "</em></p>"
+      )
+    } else {
+      ""
+    }
+    paste0(
+      "<b>",
+      htmltools::htmlEscape(nd$label %||% id),
+      "</b>",
+      notes_html,
+      src_html
+    )
+  }
+
+  ids <- vapply(
+    seq_along(nodes),
+    function(i) nodes[[i]]$id %||% paste0("node_", i),
+    character(1)
+  )
+  nodes_df <- data.frame(
+    id = ids,
+    label = vapply(
+      seq_along(nodes),
+      function(i) nodes[[i]]$label %||% ids[i],
+      character(1)
+    ),
+    level = vapply(ids, node_level, integer(1)),
+    color = vapply(
+      nodes,
+      function(nd) color_for_count(length(nd$source_ids %||% character())),
+      character(1)
+    ),
+    title = vapply(
+      seq_along(nodes),
+      function(i) node_tooltip(nodes[[i]], ids[i]),
+      character(1)
+    ),
+    stringsAsFactors = FALSE
+  )
+
+  edge_pairs <- vapply(
+    edges,
+    function(edge) paste(edge$from %||% "", edge$to %||% "", sep = "\r"),
+    character(1)
+  )
+  hierarchy_edges <- Filter(
+    Negate(is.null),
+    lapply(nodes, function(node) {
+      parent <- node$parent %||% NULL
+      if (is.null(parent)) {
+        return(NULL)
+      }
+      pair <- paste(parent, node$id, sep = "\r")
+      if (pair %in% edge_pairs) {
+        return(NULL)
+      }
+      list(
+        from = parent,
+        to = node$id,
+        relation = "Contains",
+        structural = TRUE
+      )
+    })
+  )
+  edges <- c(edges, hierarchy_edges)
+
+  edges_df <- if (length(edges) > 0) {
+    data.frame(
+      from = vapply(edges, function(e) e$from %||% "", character(1)),
+      to = vapply(edges, function(e) e$to %||% "", character(1)),
+      label = "",
+      title = vapply(
+        edges,
+        function(e) htmltools::htmlEscape(e$relation %||% "Related"),
+        character(1)
+      ),
+      dashes = vapply(edges, function(e) isTRUE(e$structural), logical(1)),
+      color = vapply(
+        edges,
+        function(e) if (isTRUE(e$structural)) "#B7C3CA" else "#8A9AA4",
+        character(1)
+      ),
+      arrows = "to",
+      stringsAsFactors = FALSE
+    )
+  } else {
+    data.frame(
+      from = character(),
+      to = character(),
+      label = character(),
+      title = character(),
+      dashes = logical(),
+      color = character(),
+      arrows = character(),
+      stringsAsFactors = FALSE
+    )
+  }
+
+  list(nodes = nodes_df, edges = edges_df)
+}

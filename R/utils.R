@@ -298,3 +298,184 @@ tempest_prompt_render <- function(name, ...) {
   tmpl <- tempest_prompt(name)
   glue::glue_data(list(...), tmpl, .open = "{{", .close = "}}")
 }
+
+# Shared safe URL validation and Markdown-to-HTML sanitization
+
+tempest_safe_markdown_elements <- function() {
+  c(
+    "a",
+    "blockquote",
+    "br",
+    "code",
+    "del",
+    "em",
+    "h1",
+    "h2",
+    "h3",
+    "h4",
+    "h5",
+    "h6",
+    "hr",
+    "li",
+    "ol",
+    "p",
+    "pre",
+    "section",
+    "strong",
+    "sup",
+    "table",
+    "tbody",
+    "td",
+    "th",
+    "thead",
+    "tr",
+    "ul"
+  )
+}
+
+tempest_safe_http_url <- function(value) {
+  if (is.null(value) || length(value) != 1L || is.na(value)) {
+    return(NULL)
+  }
+  if (is.factor(value)) {
+    value <- as.character(value)
+  }
+  if (!is.atomic(value)) {
+    return(NULL)
+  }
+  value <- as.character(value)
+  if (
+    !nzchar(value) ||
+      grepl("[[:cntrl:][:space:]<>\\\\]", value, perl = TRUE) ||
+      !grepl("^https?://", value, ignore.case = TRUE, perl = TRUE)
+  ) {
+    return(NULL)
+  }
+  parsed <- tryCatch(curl::curl_parse_url(value), error = function(error) NULL)
+  if (
+    is.null(parsed) ||
+      !tolower(parsed$scheme %||% "") %in% c("http", "https") ||
+      !nzchar(parsed$host %||% "") ||
+      nzchar(parsed$user %||% "") ||
+      nzchar(parsed$password %||% "")
+  ) {
+    return(NULL)
+  }
+  value
+}
+
+tempest_render_markdown_sanitized_html <- function(
+  markdown,
+  mode = c("strict", "unwrap"),
+  footnote_prefix = "research-"
+) {
+  mode <- match.arg(mode)
+  allowed <- tempest_safe_markdown_elements()
+  rendered <- commonmark::markdown_html(
+    markdown,
+    footnotes = TRUE,
+    extensions = TRUE
+  )
+  wrapper <- paste0(
+    "<!doctype html><html><body><main id=\"tempest-markdown\">",
+    rendered,
+    "</main></body></html>"
+  )
+  document <- xml2::read_html(
+    wrapper,
+    options = c("RECOVER", "NOERROR", "NOWARNING", "NONET")
+  )
+  root <- xml2::xml_find_first(document, "//main[@id='tempest-markdown']")
+  if (inherits(root, "xml_missing")) {
+    return("")
+  }
+
+  if (identical(mode, "unwrap")) {
+    xml2::xml_remove(xml2::xml_find_all(
+      root,
+      paste0(
+        ".//script|.//style|.//iframe|.//object|.//embed|.//svg|.//math|",
+        ".//template|.//form|.//input|.//button|.//textarea|.//select|",
+        ".//img|.//audio|.//video|.//source|.//link|.//meta|.//base|",
+        ".//comment()"
+      )
+    ))
+    elements <- as.list(xml2::xml_find_all(root, ".//*"))
+    for (element in rev(elements)) {
+      if (!tolower(xml2::xml_name(element)) %in% allowed) {
+        for (child in xml2::xml_contents(element)) {
+          xml2::xml_add_sibling(element, child, .where = "before")
+        }
+        xml2::xml_remove(element)
+      }
+    }
+    for (element in xml2::xml_find_all(root, ".//*")) {
+      allowed_attributes <- switch(
+        tolower(xml2::xml_name(element)),
+        a = c("id", "href", "title"),
+        ol = c("id", "start"),
+        "id"
+      )
+      attributes <- xml2::xml_attrs(element)
+      xml2::xml_attrs(element) <- attributes[
+        names(attributes) %in% allowed_attributes
+      ]
+    }
+    links <- xml2::xml_find_all(root, ".//a[@href]")
+    href <- xml2::xml_attr(links, "href")
+    safe <- grepl("^(https?://|#)", href, ignore.case = TRUE) &
+      !grepl("[[:cntrl:]]", href)
+    for (link in links[!safe]) {
+      attributes <- xml2::xml_attrs(link)
+      xml2::xml_attrs(link) <- attributes[names(attributes) != "href"]
+    }
+    return(paste(as.character(xml2::xml_contents(root)), collapse = "\n"))
+  }
+
+  nodes <- as.list(xml2::xml_find_all(root, ".//*"))
+  for (node in rev(nodes)) {
+    if (inherits(node, "xml_missing")) {
+      next
+    }
+    name <- tolower(xml2::xml_name(node))
+    if (!name %in% allowed) {
+      xml2::xml_remove(node)
+      next
+    }
+    original_href <- xml2::xml_attr(node, "href")
+    footnote_href <- !is.na(original_href) &&
+      grepl("^#fn(ref)?-[A-Za-z0-9_-]+$", original_href)
+    identifier <- xml2::xml_attr(node, "id")
+    footnote_id <- !is.na(identifier) &&
+      grepl("^fn(ref)?-[A-Za-z0-9_-]+$", identifier)
+    href <- if (identical(name, "a") && footnote_href) {
+      sub("^#", paste0("#", footnote_prefix), original_href)
+    } else if (identical(name, "a")) {
+      tempest_safe_http_url(original_href)
+    } else {
+      NULL
+    }
+    attributes <- names(xml2::xml_attrs(node))
+    for (attribute in attributes) {
+      xml2::xml_attr(node, attribute) <- NULL
+    }
+    if (footnote_id) {
+      xml2::xml_set_attr(node, "id", paste0(footnote_prefix, identifier))
+    }
+    if (!is.null(href)) {
+      xml2::xml_set_attr(node, "href", href)
+      if (footnote_href) {
+        xml2::xml_set_attr(node, "aria-label", "Follow research citation")
+      } else {
+        xml2::xml_set_attr(node, "target", "_blank")
+        xml2::xml_set_attr(node, "rel", "noopener noreferrer")
+      }
+    }
+  }
+
+  children <- xml2::xml_children(root)
+  if (length(children) == 0L) {
+    return("")
+  }
+  paste(as.character(children), collapse = "")
+}

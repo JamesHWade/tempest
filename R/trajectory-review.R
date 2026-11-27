@@ -1480,3 +1480,190 @@ TempestTrajectoryReview <- S7::new_class(
   ),
   validator = tempest_trajectory_review_validation_message
 )
+
+# Authority-join filtering and untrusted progress observation redaction helpers
+
+tempest_trajectory_record_prop <- function(value, field) {
+  if (S7::S7_inherits(value)) {
+    return(tryCatch(S7::prop(value, field), error = function(error) NULL))
+  }
+  if (is.list(value) && !is.data.frame(value) && field %in% names(value)) {
+    return(value[[field]])
+  }
+  NULL
+}
+
+tempest_trajectory_record_field <- function(value, field) {
+  raw <- tempest_trajectory_record_prop(value, field)
+  if (is.null(raw) || length(raw) != 1L || is.na(raw)) {
+    return("")
+  }
+  if (is.logical(raw)) {
+    return(if (isTRUE(raw)) "Yes" else "No")
+  }
+  if (is.numeric(raw)) {
+    return(as.character(raw))
+  }
+  if (!is.character(raw)) {
+    return("")
+  }
+  if (
+    isTRUE(tempest_contract_sensitive_scalar(raw)) ||
+      grepl("[[:cntrl:]]", raw, perl = TRUE)
+  ) {
+    return("redacted")
+  }
+  raw
+}
+
+tempest_trajectory_join_matched_fields <- function(join) {
+  proof <- tempest_trajectory_record_prop(join, "proof")
+  fields <- tempest_trajectory_record_prop(proof, "matched_fields")
+  if (
+    !is.list(fields) ||
+      is.data.frame(fields) ||
+      length(fields) == 0L ||
+      !all(vapply(
+        fields,
+        \(field) is.character(field) && length(field) == 1L && !is.na(field),
+        logical(1)
+      ))
+  ) {
+    return(character())
+  }
+  unname(unlist(fields, use.names = FALSE))
+}
+
+tempest_trajectory_authoritative_agent_indices <- function(
+  stage,
+  joins,
+  agents
+) {
+  attempt_id <- tempest_trajectory_record_field(stage, "attempt_id")
+  if (!nzchar(attempt_id) || length(joins) == 0L || length(agents) == 0L) {
+    return(integer())
+  }
+  exact_joins <- Filter(
+    function(join) {
+      proof <- tempest_trajectory_record_prop(join, "proof")
+      identical(
+        tempest_trajectory_record_field(join, "from_type"),
+        "stage_attempt"
+      ) &&
+        identical(
+          tempest_trajectory_record_field(join, "from_id"),
+          attempt_id
+        ) &&
+        identical(
+          tempest_trajectory_record_field(join, "relation"),
+          "executed_as"
+        ) &&
+        identical(
+          tempest_trajectory_record_field(join, "to_type"),
+          "deputy_run"
+        ) &&
+        identical(
+          tempest_trajectory_record_field(proof, "kind"),
+          "authority_validated"
+        ) &&
+        identical(
+          tempest_trajectory_join_matched_fields(join),
+          c("deputy_run_id", "deputy_session_id")
+        )
+    },
+    joins
+  )
+  run_ids <- unique(vapply(
+    exact_joins,
+    tempest_trajectory_record_field,
+    character(1),
+    field = "to_id"
+  ))
+  run_ids <- run_ids[nzchar(run_ids)]
+  linked <- unlist(lapply(run_ids, function(run_id) {
+    matches <- which(vapply(
+      agents,
+      function(agent) {
+        identical(
+          tempest_trajectory_record_field(agent, "deputy_run_id"),
+          run_id
+        ) &&
+          nzchar(tempest_trajectory_record_field(agent, "deputy_session_id"))
+      },
+      logical(1)
+    ))
+    if (length(matches) == 1L) matches else integer()
+  }))
+  unique(as.integer(linked))
+}
+
+tempest_trajectory_progress_closed_value <- function(value, allowed) {
+  if (!nzchar(value)) {
+    return("")
+  }
+  if (value %in% allowed) value else "redacted"
+}
+
+tempest_trajectory_progress_stage_value <- function(value, workflow, kind) {
+  if (!nzchar(value)) {
+    return("")
+  }
+  if (!workflow %in% c("storm", "costorm")) {
+    return("redacted")
+  }
+  allowed <- names(tempest_progress_labels(workflow, kind = kind))
+  tempest_trajectory_progress_closed_value(value, allowed)
+}
+
+tempest_trajectory_progress_record <- function(event) {
+  workflow <- tempest_trajectory_progress_closed_value(
+    tempest_trajectory_record_field(event, "workflow"),
+    c("storm", "costorm")
+  )
+  timestamp <- tempest_trajectory_record_field(event, "timestamp")
+  if (
+    nzchar(timestamp) &&
+      !isTRUE(tempest_ledger_timestamp_valid(timestamp))
+  ) {
+    timestamp <- ""
+  }
+  list(
+    event_id = tempest_trajectory_record_field(event, "event_id"),
+    run_id = tempest_trajectory_record_field(event, "run_id"),
+    workflow = workflow,
+    event_type = tempest_trajectory_progress_closed_value(
+      tempest_trajectory_record_field(event, "event_type"),
+      tempest_progress_event_types()
+    ),
+    stage = tempest_trajectory_progress_stage_value(
+      tempest_trajectory_record_field(event, "stage"),
+      workflow,
+      "stage"
+    ),
+    step = tempest_trajectory_progress_stage_value(
+      tempest_trajectory_record_field(event, "step"),
+      workflow,
+      "step"
+    ),
+    status = tempest_trajectory_progress_closed_value(
+      tempest_trajectory_record_field(event, "status"),
+      tempest_progress_statuses()
+    ),
+    timestamp = timestamp,
+    sequence = tempest_trajectory_record_field(event, "sequence"),
+    parent_event_id = tempest_trajectory_record_field(event, "parent_event_id"),
+    correlation_id = tempest_trajectory_record_field(event, "correlation_id")
+  )
+}
+
+tempest_trajectory_progress_records <- function(events, max_rows = 250L) {
+  if (!is.list(events) || is.data.frame(events)) {
+    return(list())
+  }
+  total <- length(events)
+  retained_events <- utils::tail(events, max_rows)
+  records <- lapply(retained_events, tempest_trajectory_progress_record)
+  attr(records, "total") <- total
+  attr(records, "omitted") <- max(0L, total - length(records))
+  records
+}
