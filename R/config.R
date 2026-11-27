@@ -1,6 +1,5 @@
 # Configuration
 
-#' @keywords internal
 tempest_config_abort <- function(message, ..., parent = NULL) {
   tempest_abort(
     message,
@@ -11,7 +10,6 @@ tempest_config_abort <- function(message, ..., parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_config_count <- function(value, arg, allow_zero = FALSE) {
   if (
     !is.numeric(value) ||
@@ -29,7 +27,6 @@ tempest_config_count <- function(value, arg, allow_zero = FALSE) {
   as.integer(value)
 }
 
-#' @keywords internal
 tempest_config_flag <- function(value, arg) {
   if (!is.logical(value) || length(value) != 1L || is.na(value)) {
     tempest_config_abort("{.arg {arg}} must be `TRUE` or `FALSE`.")
@@ -37,7 +34,6 @@ tempest_config_flag <- function(value, arg) {
   value
 }
 
-#' @keywords internal
 tempest_config_string <- function(value, arg) {
   if (
     !is.character(value) ||
@@ -50,7 +46,6 @@ tempest_config_string <- function(value, arg) {
   value
 }
 
-#' @keywords internal
 tempest_config_models <- function(models) {
   valid <- is.list(models) &&
     length(models) > 0L &&
@@ -103,7 +98,6 @@ tempest_config_models <- function(models) {
   models
 }
 
-#' @keywords internal
 tempest_config_chat_option <- function(chat) {
   if (is.null(chat)) {
     return(list(chat = NULL, model = NULL))
@@ -150,13 +144,6 @@ tempest_config_chat_option <- function(chat) {
   list(chat = chat, model = model)
 }
 
-#' TempestConfig (S7)
-#'
-#' Holds configuration for STORM / Co-STORM sessions: LLM models, prompts,
-#' retrieval settings, cache paths, and citation policy.
-#'
-#' @include ledger-types.R
-#' @keywords internal
 TempestConfig <- S7::new_class(
   "TempestConfig",
   properties = list(
@@ -518,14 +505,6 @@ tempest_default_chat <- function(model, system_prompt, params, echo, role) {
   )
 }
 
-#' Create a chat object for a given role
-#'
-#' @param config A `TempestConfig` object.
-#' @param role Role name (e.g., "coordinator", "writer", "expert").
-#' @param system_prompt Optional system prompt override.
-#' @param echo Echo setting for the chat.
-#' @return An ellmer-compatible Chat object.
-#' @keywords internal
 tempest_make_chat <- function(
   config,
   role,
@@ -590,7 +569,6 @@ tempest_make_chat <- function(
   chat
 }
 
-#' @keywords internal
 tempest_search_provider_choices <- function() {
   c(
     "native",
@@ -607,7 +585,6 @@ tempest_search_provider_choices <- function() {
   )
 }
 
-#' @keywords internal
 tempest_normalize_search_provider <- function(search_provider) {
   if (!rlang::is_string(search_provider)) {
     tempest_abort(
@@ -642,33 +619,6 @@ tempest_normalize_search_provider <- function(search_provider) {
   provider
 }
 
-#' Create a ragnar store with tempest metadata schema
-#'
-#' Creates a ragnar store configured with metadata columns useful for
-#' STORM/Co-STORM workflows: source tracking, citation linking, and
-#' content organization.
-#'
-#' @param embed_fn Embedding function (e.g., `ragnar::embed_openai()`).
-#' @param cache_dir Optional directory for persistent storage. If NULL,
-#'   creates an in-memory store.
-#' @param name Store name for tool registration.
-#' @param title Human-readable store title.
-#' @param reset Whether to replace an existing persistent store. Destructive
-#'   replacement is never performed unless this is `TRUE`.
-#' @return A ragnar store object.
-#'
-#' @details
-#' The store includes these metadata columns:
-#' \describe{
-#'   \item{source_id}{tempest source ID (Sxxxxxxxxxxxx) for citation linking}
-#'   \item{url}{Original source URL}
-#'   \item{title}{Document title}
-#'   \item{fetched_at}{ISO timestamp when content was fetched}
-#'   \item{content_type}{Content type (html, pdf, etc.)}
-#'   \item{perspective}{STORM perspective this content relates to (optional)}
-#' }
-#'
-#' @keywords internal
 tempest_create_ragnar_store <- function(
   embed_fn,
   cache_dir = NULL,

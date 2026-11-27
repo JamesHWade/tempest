@@ -20,7 +20,6 @@ tempest_promotion_abort <- function(
   )
 }
 
-
 tempest_promotion_digest <- function(value) {
   tempest_product_sha256_id(value)
 }
@@ -618,9 +617,6 @@ tempest_promotion_bundle_validation_message <- function(self) {
   )
 }
 
-#' A deterministic Tempest evidence-promotion proposal
-#'
-#' @keywords internal
 TempestPromotionBundle <- S7::new_class(
   "TempestPromotionBundle",
   properties = list(

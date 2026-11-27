@@ -809,13 +809,10 @@ tempest_storm_state_from_record <- function(record) {
   )
 }
 
-
-#' @keywords internal
 tempest_storm_stage_complete <- function(completed_stages, stage) {
   stage %in% completed_stages
 }
 
-#' @keywords internal
 tempest_storm_mark_stage_complete <- function(completed_stages, stage) {
   allowed <- c("perspectives", "research", "outline", "write", "polish")
   completed_stages <- unique(c(completed_stages, stage))

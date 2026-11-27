@@ -22,7 +22,6 @@ tempest_session_mindmap_validate_update <- function(mindmap, workspace) {
   mindmap
 }
 
-#' @keywords internal
 tempest_mindmap_init <- function(topic) {
   list(
     nodes = list(list(
@@ -36,7 +35,6 @@ tempest_mindmap_init <- function(topic) {
   )
 }
 
-#' @keywords internal
 tempest_mindmap_to_markdown <- function(m) {
   nodes <- m$nodes %||% list()
   edges <- m$edges %||% list()
@@ -83,7 +81,6 @@ tempest_mindmap_to_markdown <- function(m) {
   paste(out, collapse = "\n")
 }
 
-#' @keywords internal
 tempest_async_is_current <- function(is_current) {
   tryCatch(isTRUE(is_current()), error = function(error) FALSE)
 }
@@ -105,7 +102,6 @@ tempest_costorm_await <- function(promise, timeout_s = 120) {
   )
 }
 
-#' @keywords internal
 tempest_moderator_roster <- function(experts) {
   lapply(experts, function(expert) {
     list(
@@ -116,7 +112,6 @@ tempest_moderator_roster <- function(experts) {
   })
 }
 
-#' @keywords internal
 tempest_moderator_system_prompt <- function(topic, experts) {
   session_context <- jsonlite::toJSON(
     list(
@@ -179,7 +174,6 @@ tempest_costorm_retriever_workspace <- function(retriever) {
   }
   workspace
 }
-
 
 tempest_costorm_deputy_trace <- function(trace) {
   required <- c(
@@ -491,7 +485,6 @@ tempest_costorm_program_execution <- function(
   execution
 }
 
-#' @keywords internal
 # Resolve which retrieved sources an answer actually cites. Takes the workspace
 # directly so both the session turn path and the Deputy expert path pass the
 # same validated value.
@@ -520,7 +513,6 @@ tempest_answer_source_ids <- function(workspace, text, source_ids) {
   ))
 }
 
-#' @keywords internal
 tempest_costorm_mindmap_exchange <- function(
   user_text,
   answer_text,

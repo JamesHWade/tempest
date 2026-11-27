@@ -1,13 +1,3 @@
-test_that("Shiny adapter excludes generic research state", {
-  expect_identical("run" %in% names(formals(tempest_shiny_server)), FALSE)
-  server_code <- paste(deparse(body(tempest_shiny_server)), collapse = "\n")
-
-  expect_no_match(server_code, "TempestRun", fixed = TRUE)
-  expect_no_match(server_code, "tempest_run_", fixed = TRUE)
-  expect_no_match(server_code, "set_run", fixed = TRUE)
-  expect_no_match(server_code, "report_ready", fixed = TRUE)
-})
-
 test_that("STORM publication uses the exact launch configuration", {
   env <- tempest:::tempest_shiny_module_env()
   server_code <- paste(deparse(body(env$mod_storm_server)), collapse = "\n")
@@ -186,8 +176,9 @@ test_that("host telemetry docs keep the privacy-safe Collector boundary", {
   expect_no_match(readme, "Authorization=", fixed = TRUE)
 })
 
-test_that("Run review is internal and leaves public adapter shapes exact", {
+test_that("Run review is internal and leaves store shapes exact", {
   skip_if_not_installed("shiny")
+  env <- tempest:::tempest_shiny_module_env()
   expect_identical(
     tempest:::tempest_shiny_panel_choices(),
     c(
@@ -201,49 +192,9 @@ test_that("Run review is internal and leaves public adapter shapes exact", {
       "review"
     )
   )
-  server_code <- paste(deparse(body(tempest_shiny_server)), collapse = "\n")
-  store_code <- paste(deparse(body(tempest_shiny_store)), collapse = "\n")
-
-  expect_match(server_code, "mod_run_review_server", fixed = TRUE)
-  expect_match(server_code, "last_successful_product", fixed = TRUE)
-  expect_no_match(server_code, "review =", fixed = TRUE)
+  store_code <- paste(deparse(body(env$new_session_store)), collapse = "\n")
   expect_no_match(store_code, "review", fixed = TRUE)
-  expect_identical(length(tempest_shiny_store()), 13L)
-})
-
-test_that("Run review panel does not widen the public server handle", {
-  skip_if_not_installed("shiny")
-  store <- tempest_shiny_store()
-
-  shiny::testServer(
-    tempest_shiny_server,
-    args = list(
-      config = tempest_config(),
-      store = store,
-      panels = "review"
-    ),
-    {
-      expect_named(
-        session$returned,
-        c(
-          "store",
-          "costorm_session",
-          "costorm_events",
-          "costorm_evidence",
-          "storm_events",
-          "report_md",
-          "report_workspace",
-          "report_topic",
-          "report_navigation_event",
-          "touch_costorm_session"
-        )
-      )
-      expect_disjoint(
-        names(session$returned),
-        c("review", "review_id", "storm_product")
-      )
-    }
-  )
+  expect_identical(length(env$new_session_store()), 13L)
 })
 
 test_that("STORM run identity mismatches fail closed and clean worker state", {
@@ -619,7 +570,7 @@ test_that("Shiny archive transport delegates product validation", {
 
 test_that("public Shiny store exposes only product-named state", {
   skip_if_not_installed("shiny")
-  store <- tempest_shiny_store()
+  store <- tempest:::tempest_shiny_module_env()$new_session_store()
 
   expect_named(
     store,
@@ -669,7 +620,7 @@ test_that("Shiny publishes only authority-validated Co-STORM reports", {
     config = config,
     experts = list(test_expert(expert_id = "expert.shiny-costorm"))
   )
-  store <- tempest_shiny_store()
+  store <- tempest:::tempest_shiny_module_env()$new_session_store()
   store$set_costorm_session(session)
   evidence <- test_persistence_add_costorm_evidence(
     session,
@@ -735,7 +686,7 @@ test_that("Shiny publishes only authority-validated STORM reports", {
     ),
     output_dir = NULL
   )
-  store <- tempest_shiny_store()
+  store <- tempest:::tempest_shiny_module_env()$new_session_store()
   env <- tempest:::tempest_shiny_module_env()
 
   expect_identical(
@@ -758,60 +709,4 @@ test_that("Shiny publishes only authority-validated STORM reports", {
     class = "tempest_product_report_error"
   )
   expect_identical(shiny::isolate(store$report_md()), before)
-})
-
-test_that("Shiny server handle separates Co-STORM and STORM state", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
-  config <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  store <- tempest_shiny_store()
-  product_session <- tempest_session(
-    "Shiny product boundary",
-    config = config,
-    experts = list(test_expert()),
-    retriever = tempest_retriever(
-      config = config,
-      workspace = test_research_workspace()
-    )
-  )
-
-  shiny::testServer(
-    tempest_shiny_server,
-    args = list(config = config, store = store, panels = "sources"),
-    {
-      handle <- session$returned
-      expect_named(
-        handle,
-        c(
-          "store",
-          "costorm_session",
-          "costorm_events",
-          "costorm_evidence",
-          "storm_events",
-          "report_md",
-          "report_workspace",
-          "report_topic",
-          "report_navigation_event",
-          "touch_costorm_session"
-        )
-      )
-      expect_identical(handle$store, store)
-      shared_store$set_costorm_session(product_session)
-      session$flushReact()
-
-      expect_identical(current_costorm_session(), product_session)
-      expect_identical(
-        shiny::isolate(costorm_events()),
-        tempest_execution_events(product_session)
-      )
-      expect_named(
-        shiny::isolate(costorm_evidence()),
-        c("resources", "claims", "disputes")
-      )
-      expect_identical(shiny::isolate(storm_events()), list())
-      expect_identical(shiny::isolate(report_navigation_event()), 0L)
-    }
-  )
 })

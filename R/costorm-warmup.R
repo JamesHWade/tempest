@@ -743,26 +743,6 @@ tempest_warmup_commit_async <- function(session, state, is_current) {
   })
 }
 
-#' Warm up a Co-STORM session asynchronously
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' Runs one bounded, evidence-seeking orientation for each active expert without
-#' blocking the caller. Expert requests run in bounded parallel batches, while
-#' transcript and evidence commits occur deterministically in expert order. A
-#' single mind-map update follows the completed evidence commits.
-#'
-#' @param session A [TempestSession] created by [tempest_session()].
-#' @param timeout_s Maximum seconds allowed for each expert orientation. Use
-#'   `NULL`, a non-positive value, or a non-finite value to disable timeouts.
-#' @param max_parallel_experts Maximum number of expert requests started at the
-#'   same time.
-#' @param is_current A zero-argument function that returns `TRUE` while the
-#'   originating host session is current. Stale operations resolve without
-#'   committing late results.
-#' @return A promise that resolves to an internal `tempest_warmup_result` S7
-#'   object with aggregate counts and per-expert audit records.
-#' @keywords internal
 tempest_session_warmup_async <- function(
   session,
   timeout_s = getOption("tempest.costorm.warmup_timeout_s", 120),

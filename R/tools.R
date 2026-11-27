@@ -1,14 +1,5 @@
 # Tools for ellmer tool calling
 
-#' Detect provider from model name
-#'
-#' Parses model names like "openai/gpt-5.6-luna" or
-#' "anthropic/claude-sonnet"
-#' to extract the provider.
-#'
-#' @param model Model name string
-#' @return Provider name (e.g., "openai", "anthropic", "google") or NULL if unknown
-#' @keywords internal
 tempest_detect_provider <- function(model) {
   if (is.null(model) || !is.character(model) || length(model) == 0) {
     return(NULL)
@@ -21,14 +12,6 @@ tempest_detect_provider <- function(model) {
   NULL
 }
 
-#' Get provider-native web tools
-#'
-#' Returns the appropriate web search/fetch tools for a given provider.
-#' These are ellmer's built-in tools that use provider-native APIs.
-#'
-#' @param provider Provider name ("openai", "anthropic", "google")
-#' @return List of ellmer tools, or NULL if provider doesn
-#' @keywords internal
 tempest_get_native_web_tools <- function(provider) {
   tools <- switch(
     provider,
@@ -48,16 +31,10 @@ tempest_get_native_web_tools <- function(provider) {
   tools
 }
 
-#' Check if provider has native web search
-#'
-#' @param provider Provider name
-#' @return TRUE if provider supports native web search
-#' @keywords internal
 tempest_provider_has_native_search <- function(provider) {
   provider %in% c("openai", "anthropic", "google")
 }
 
-#' @keywords internal
 tempest_native_scalar <- function(...) {
   values <- list(...)
   for (value in values) {
@@ -72,7 +49,6 @@ tempest_native_scalar <- function(...) {
   NA_character_
 }
 
-#' @keywords internal
 tempest_native_source_candidates <- function(x) {
   candidates <- list()
 
@@ -171,7 +147,6 @@ tempest_native_source_candidates <- function(x) {
   candidates
 }
 
-#' @keywords internal
 tempest_native_resource_from_url <- function(
   url,
   title = NA_character_,
@@ -211,7 +186,6 @@ tempest_native_resource_from_url <- function(
   )
 }
 
-#' @keywords internal
 tempest_merge_resource_record <- function(old, new) {
   if (!tempest_is_exact_resource(new)) {
     tempest_research_workspace_abort(
@@ -282,7 +256,6 @@ tempest_merge_resource_record <- function(old, new) {
   )
 }
 
-#' @keywords internal
 tempest_upsert_native_resource <- function(store, resource) {
   if (is.null(resource)) {
     return(NA_character_)
@@ -295,7 +268,6 @@ tempest_upsert_native_resource <- function(store, resource) {
   resource@resource_id
 }
 
-#' @keywords internal
 tempest_harvest_native_source_candidates <- function(
   x,
   store,
@@ -321,7 +293,6 @@ tempest_harvest_native_source_candidates <- function(
   unique(ids[!is.na(ids) & nzchar(ids)])
 }
 
-#' @keywords internal
 tempest_harvest_native_sources_from_content <- function(content, store) {
   ids <- character()
 
@@ -388,7 +359,6 @@ tempest_harvest_native_sources_from_content <- function(content, store) {
   unique(ids[!is.na(ids) & nzchar(ids)])
 }
 
-#' @keywords internal
 tempest_harvest_native_sources_from_json <- function(json, store) {
   tempest_harvest_native_source_candidates(
     json,
@@ -397,7 +367,6 @@ tempest_harvest_native_sources_from_json <- function(json, store) {
   )
 }
 
-#' @keywords internal
 tempest_harvest_native_sources_from_turn <- function(turn, store) {
   if (is.null(turn) || is.null(store)) {
     return(character())
@@ -415,7 +384,6 @@ tempest_harvest_native_sources_from_turn <- function(turn, store) {
   unique(ids[!is.na(ids) & nzchar(ids)])
 }
 
-#' @keywords internal
 tempest_tool_source_payload <- function(source, excerpt_chars = 1200L) {
   excerpt_chars <- as.integer(excerpt_chars %||% 1200L)
   if (is.na(excerpt_chars) || excerpt_chars < 0L) {
@@ -438,7 +406,6 @@ tempest_tool_source_payload <- function(source, excerpt_chars = 1200L) {
   )
 }
 
-#' @keywords internal
 tempest_tool_source_summary_payload <- function(source) {
   list(
     source_id = source$id,
@@ -451,7 +418,6 @@ tempest_tool_source_summary_payload <- function(source) {
   )
 }
 
-#' @keywords internal
 tempest_tool_evidence_span_payload <- function(span) {
   list(
     evidence_span_id = span@evidence_span_id,
@@ -467,7 +433,6 @@ tempest_tool_evidence_span_payload <- function(span) {
   )
 }
 
-#' @keywords internal
 tempest_tool_claim_payload <- function(
   claim,
   store = NULL,
@@ -502,7 +467,6 @@ tempest_tool_claim_payload <- function(
   )
 }
 
-#' @keywords internal
 tempest_add_tool_claim <- function(
   store,
   claim_text,
@@ -549,7 +513,6 @@ tempest_add_tool_claim <- function(
   claim
 }
 
-#' @keywords internal
 tempest_resolve_claim_provenance <- function(provenance) {
   if (is.null(provenance)) {
     return(list())
@@ -560,7 +523,6 @@ tempest_resolve_claim_provenance <- function(provenance) {
   provenance
 }
 
-#' @keywords internal
 tempest_tool_review_functions <- function(workspace) {
   get_retrieved_source <- function(source_id, excerpt_chars = 1200L) {
     src <- workspace$get_retrieved_source(source_id)
@@ -648,7 +610,6 @@ tempest_tool_review_functions <- function(workspace) {
   )
 }
 
-#' @keywords internal
 tempest_tool_review_ellmer_tools <- function(review) {
   annotations <- ellmer::tool_annotations(
     read_only_hint = TRUE,
@@ -715,7 +676,6 @@ tempest_tool_review_ellmer_tools <- function(review) {
   )
 }
 
-#' @keywords internal
 tempest_tool_write_functions <- function(workspace, provenance = list()) {
   add_proposed_claim <- function(
     claim_text,
@@ -735,7 +695,6 @@ tempest_tool_write_functions <- function(workspace, provenance = list()) {
   list(add_proposed_claim = add_proposed_claim)
 }
 
-#' @keywords internal
 tempest_tool_write_ellmer_tools <- function(write) {
   list(
     ellmer::tool(
@@ -765,7 +724,6 @@ tempest_tool_write_ellmer_tools <- function(write) {
   )
 }
 
-#' @keywords internal
 tempest_tools_web <- function(
   retriever,
   model = NULL,
@@ -862,7 +820,6 @@ tempest_tools_web <- function(
   )
 }
 
-#' @keywords internal
 tempest_tools_evidence_read <- function(retriever) {
   stopifnot(tempest_retriever_compatible(retriever))
   retriever$workspace |>
@@ -870,7 +827,6 @@ tempest_tools_evidence_read <- function(retriever) {
     tempest_tool_review_ellmer_tools()
 }
 
-#' @keywords internal
 tempest_tools_evidence_write <- function(
   retriever,
   claim_provenance = list()
@@ -883,7 +839,6 @@ tempest_tools_evidence_write <- function(
     tempest_tool_write_ellmer_tools()
 }
 
-#' @keywords internal
 tempest_semantic_retrieval_registrar <- function(retriever) {
   stopifnot(tempest_retriever_compatible(retriever))
   if (is.null(retriever$ragnar_store) || !tempest_has("ragnar")) {
@@ -899,122 +854,6 @@ tempest_semantic_retrieval_registrar <- function(retriever) {
     )
     invisible(chat)
   }
-}
-
-#' @keywords internal
-tempest_tools_retrieval <- function(
-  retriever,
-  allow_claim_writes = TRUE,
-  claim_provenance = list()
-) {
-  tools <- c(
-    tempest_tools_web(retriever, search_provider = "custom"),
-    tempest_tools_evidence_read(retriever)
-  )
-  if (isTRUE(allow_claim_writes)) {
-    tools <- c(
-      tools,
-      tempest_tools_evidence_write(retriever, claim_provenance)
-    )
-  }
-
-  tools
-}
-
-#' Get source/claim management tools (without web_search/fetch_url)
-#'
-#' Returns tools for managing sources and claims, but not the web search tools.
-#' Used when provider-native web search is enabled.
-#'
-#' @param retriever A TempestRetriever object
-#' @param allow_claim_writes Whether to include `add_proposed_claim`.
-#' @param claim_provenance Optional provenance recorded on claims written via
-#'   `add_proposed_claim`.
-#' @return List of ellmer tools for source/claim management
-#' @keywords internal
-tempest_tools_source_management <- function(
-  retriever,
-  allow_claim_writes = TRUE,
-  claim_provenance = list()
-) {
-  stopifnot(inherits(retriever, "TempestRetriever"))
-
-  tools <- tempest_tools_evidence_read(retriever)
-  if (isTRUE(allow_claim_writes)) {
-    tools <- c(
-      tools,
-      tempest_tools_evidence_write(retriever, claim_provenance)
-    )
-  }
-  tools
-}
-
-#' Register default tools on a chat
-#'
-#' Registers web search and source/claim management tools on a chat object.
-#' When search_provider is "native" and the provider supports it, uses the
-#' provider's built-in web search. Otherwise uses custom tempest tools.
-#'
-#' @param chat An ellmer chat object
-#' @param retriever A TempestRetriever object
-#' @param model Model name (used to detect provider for native tools)
-#' @param search_provider Search provider setting from config
-#' @param allow_claim_writes Whether to register claim-writing tools. Read-heavy
-#'   roles can set this to `FALSE` and still inspect sources, claims, evidence,
-#'   and unsupported claims.
-#' @param claim_provenance Optional provenance recorded on claims written via
-#'   `add_proposed_claim`.
-#' @return The chat object (invisibly)
-#' @keywords internal
-tempest_register_default_tools <- function(
-  chat,
-  retriever,
-  model = NULL,
-  search_provider = "native",
-  allow_claim_writes = TRUE,
-  claim_provenance = list()
-) {
-  # Determine if we should use native provider tools
-  use_native <- FALSE
-  if (identical(search_provider, "native") && !is.null(model)) {
-    provider <- tempest_detect_provider(model)
-    if (!is.null(provider) && tempest_provider_has_native_search(provider)) {
-      native_tools <- tempest_get_native_web_tools(provider)
-      if (!is.null(native_tools)) {
-        chat$register_tools(native_tools)
-        use_native <- TRUE
-      }
-    }
-  }
-
-  # If not using native tools, register custom web search/fetch tools
-  if (!use_native) {
-    tools <- tempest_tools_retrieval(
-      retriever,
-      allow_claim_writes = allow_claim_writes,
-      claim_provenance = claim_provenance
-    )
-    chat$register_tools(tools)
-  } else {
-    # Still register source/claim management tools even with native search
-    mgmt_tools <- tempest_tools_source_management(
-      retriever,
-      allow_claim_writes = allow_claim_writes,
-      claim_provenance = claim_provenance
-    )
-    chat$register_tools(mgmt_tools)
-  }
-
-  # Register ragnar retrieve tool if store is available
-  if (!is.null(retriever$ragnar_store) && tempest_has("ragnar")) {
-    ragnar::ragnar_register_tool_retrieve(
-      chat,
-      retriever$ragnar_store,
-      store_description = "the STORM knowledge base containing fetched web sources"
-    )
-  }
-
-  invisible(chat)
 }
 
 # Product-owned model selection and fixed scientific tool attachment

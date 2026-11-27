@@ -746,8 +746,7 @@ test_that("the 0.2 surface has no T1 compatibility vocabulary", {
   )
   product_entry_points <- list(
     tempest_session_restore,
-    tempest_session_resume,
-    tempest_shiny_server
+    tempest_session_resume
   )
   expect_equal(
     vapply(

@@ -1,4 +1,3 @@
-#' @keywords internal
 tempest_session_restore_abort <- function(message, parent = NULL) {
   tempest_abort(
     c("Cannot restore TempestSession snapshot.", x = message),
@@ -10,7 +9,6 @@ tempest_session_restore_abort <- function(message, parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_expert_session_records_from_json <- function(records) {
   tempest_persistence_exact_records(
     records,
@@ -22,7 +20,6 @@ tempest_expert_session_records_from_json <- function(records) {
   )
 }
 
-#' @keywords internal
 tempest_session_snapshot_value_abort <- function(
   message,
   action,
@@ -40,7 +37,6 @@ tempest_session_snapshot_value_abort <- function(
   )
 }
 
-#' @keywords internal
 tempest_session_snapshot_record <- function(
   value,
   field,
@@ -58,7 +54,6 @@ tempest_session_snapshot_record <- function(
   )
 }
 
-#' @keywords internal
 tempest_session_credential_free_value <- function(value, field, action) {
   sensitive <- tempest_contract_sensitive_values(value, field)
   if (length(sensitive) > 0L) {
@@ -74,7 +69,6 @@ tempest_session_credential_free_value <- function(value, field, action) {
   invisible(value)
 }
 
-#' @keywords internal
 tempest_session_transcript_record <- function(value, action = "snapshot") {
   if (is.null(value)) {
     tempest_session_snapshot_value_abort(
@@ -116,7 +110,6 @@ tempest_session_transcript_record <- function(value, action = "snapshot") {
   value
 }
 
-#' @keywords internal
 tempest_session_mindmap_record <- function(value, action = "snapshot") {
   value <- tempest_session_snapshot_record(value, "mindmap", action = action)
   if (
@@ -225,7 +218,6 @@ tempest_session_mindmap_record <- function(value, action = "snapshot") {
   value
 }
 
-#' @keywords internal
 tempest_session_mindmap_binding_abort <- function(message, action) {
   if (identical(action, "restore")) {
     tempest_session_restore_abort(message)
@@ -243,7 +235,6 @@ tempest_session_mindmap_binding_abort <- function(message, action) {
   )
 }
 
-#' @keywords internal
 tempest_session_mindmap_assert_binding <- function(
   mindmap,
   workspace,
@@ -329,7 +320,6 @@ tempest_session_mindmap_assert_binding <- function(
   invisible(mindmap)
 }
 
-#' @keywords internal
 tempest_session_portable_snapshot <- function(snapshot, action = "snapshot") {
   portable <- snapshot[c("transcript", "mindmap", "progress_events")]
   for (field in names(portable)) {
@@ -397,7 +387,6 @@ tempest_session_portable_snapshot <- function(snapshot, action = "snapshot") {
   invisible(snapshot)
 }
 
-#' @keywords internal
 tempest_session_suggested_questions <- function(value, action = "snapshot") {
   if (identical(action, "restore")) {
     if (
@@ -449,7 +438,6 @@ tempest_session_suggested_questions <- function(value, action = "snapshot") {
   value
 }
 
-#' @keywords internal
 tempest_session_snapshot_fields <- function() {
   c(
     "schema_version",
@@ -472,7 +460,6 @@ tempest_session_snapshot_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_session_retired_expert_ids_from_record <- function(value, expert_ids) {
   valid <- is.list(value) &&
     !is.data.frame(value) &&
@@ -509,7 +496,6 @@ tempest_session_retired_expert_ids_from_record <- function(value, expert_ids) {
   ids
 }
 
-#' @keywords internal
 tempest_session_report_record <- function(value, action = "snapshot") {
   if (is.null(value)) {
     return(NULL)
@@ -632,30 +618,6 @@ tempest_session_assert_persistence_quiescent <- function(
   invisible(NULL)
 }
 
-#' Snapshot a Co-STORM session
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' `tempest_session_snapshot()` returns a structured, in-memory representation
-#' of the durable state in a [TempestSession]. The only supported snapshot is
-#' the exact current schema-14 product shape; no legacy or migration reader is
-#' provided. It includes the research
-#' manifest; fixed session and configuration identity; the authoritative
-#' [ResearchWorkspace]; expert profiles; transcript and mind map; the latest
-#' report Markdown; stage-record, progress-event, and expert-session metadata;
-#' and the retained artifact selection. Live chat
-#' handles, runtime clients, tools, closures, generic workflows, generic
-#' artifact catalogs, Shiny reactive state, credentials, and provider request
-#' bodies are not included.
-#'
-#' Use [tempest_session_restore()] to rebuild a session from the returned list,
-#' or [tempest_session_save()] to write the same durable state to a directory
-#' bundle. A stage attempt that is still running is projected to a cancelled
-#' durable record without changing the live session.
-#'
-#' @param session A [TempestSession] object.
-#' @return A list containing an exact schema-14 session snapshot.
-#' @keywords internal
 tempest_session_snapshot <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_abort(
@@ -917,7 +879,6 @@ tempest_session_snapshot <- function(session) {
   snapshot
 }
 
-#' @keywords internal
 tempest_session_validate_expert_sessions <- function(
   expert_sessions,
   experts,
@@ -1059,34 +1020,6 @@ tempest_session_restore_expert_sessions <- function(session, expert_sessions) {
   invisible(session)
 }
 
-#' Restore a Co-STORM session from a snapshot
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' `tempest_session_restore()` rebuilds a [TempestSession] from a structured
-#' snapshot created by [tempest_session_snapshot()] or read by
-#' [tempest_session_resume()]. It restores the research manifest and
-#' authoritative workspace, and creates fresh chat/tool handles using `config`.
-#' Only the exact current schema-14 snapshot is accepted. Older, future,
-#' missing, extra, coerced, or mismatched shapes are rejected without migration.
-#'
-#' Historical progress events are restored as session artifact data and can be
-#' reduced with [tempest_progress_state()]. They are not replayed into the new
-#' `progress` callback; future calls on the restored session use that callback.
-#' Stage-record history is restored for audit, but running attempts are rejected
-#' rather than resumed.
-#'
-#' @param snapshot A list from [tempest_session_snapshot()].
-#' @param config Runtime [TempestConfig] used to recreate chats, retrievers, and
-#'   tools.
-#' @param progress Optional callback for future `tempest_progress_event`
-#'   objects.
-#' @param program_set A [TempestProgramSet] carrying the same program
-#'   identities recorded in the snapshot. If `NULL`, the builtin set is used.
-#' @param knowledge Freshly admitted artifact knowledge matching the saved
-#'   selection. Required when the session contains artifact evidence.
-#' @return A restored [TempestSession].
-#' @keywords internal
 tempest_session_restore <- function(
   snapshot,
   config = tempest_config(),
@@ -1316,7 +1249,6 @@ tempest_session_parse_snapshot <- function(snapshot) {
   )
 }
 
-#' @keywords internal
 tempest_session_restore_internal <- function(
   snapshot,
   config = tempest_config(),
@@ -1486,12 +1418,10 @@ tempest_session_restore_internal <- function(
   session
 }
 
-#' @keywords internal
 tempest_session_bundle_path <- function(path, ...) {
   file.path(path, ...)
 }
 
-#' @keywords internal
 tempest_session_bundle_write_json <- function(path, rel_path, value) {
   tempest_persistence_bundle_write_json(
     path,
@@ -1504,7 +1434,6 @@ tempest_session_bundle_write_json <- function(path, rel_path, value) {
   )
 }
 
-#' @keywords internal
 tempest_session_bundle_write_text <- function(path, rel_path, value) {
   tempest_persistence_bundle_write_text(
     path,
@@ -1517,7 +1446,6 @@ tempest_session_bundle_write_text <- function(path, rel_path, value) {
   )
 }
 
-#' @keywords internal
 tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
   if (!rlang::is_string(path) || !nzchar(tempest_trim(path))) {
     tempest_abort(
@@ -1604,7 +1532,6 @@ tempest_session_prepare_bundle_dir <- function(path, overwrite = FALSE) {
   normalizePath(bundle_dir, winslash = "/", mustWork = FALSE)
 }
 
-#' @keywords internal
 tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
   tempest_product_atomic_commit_bundle(
     staging_dir,
@@ -1621,7 +1548,7 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' `r lifecycle::badge("experimental")`
 #'
 #' `tempest_session_save()` writes a schema-versioned directory bundle for a
-#' [TempestSession]. The exact current format is schema 14, with no legacy or
+#' [tempest_session()]. The exact current format is schema 14, with no legacy or
 #' compatibility writer. The bundle stores the research manifest, authoritative
 #' workspace, explicit stage-record history, retained artifact selection,
 #' and narrow report product. Every declared file is checksummed, and the
@@ -1632,9 +1559,9 @@ tempest_session_commit_bundle <- function(staging_dir, bundle_dir) {
 #' without changing the live session.
 #'
 #' Use [tempest_session_resume()] to load the bundle with a fresh runtime
-#' [TempestConfig].
+#' [tempest_config()].
 #'
-#' @param session A [TempestSession] object.
+#' @param session A [tempest_session()] object.
 #' @param path Directory where the session bundle should be written.
 #' @param overwrite If `TRUE`, replace an existing bundle directory.
 #' @return Invisibly returns the normalized bundle directory.
@@ -1801,7 +1728,6 @@ tempest_session_save <- function(
   invisible(tempest_session_commit_bundle(staging_dir, bundle_dir))
 }
 
-#' @keywords internal
 tempest_session_bundle_optional_json <- function(
   path,
   default = NULL,
@@ -1819,7 +1745,6 @@ tempest_session_bundle_optional_json <- function(
   )
 }
 
-#' @keywords internal
 tempest_session_progress_event_fields <- function() {
   c(
     "event_id",
@@ -1838,7 +1763,6 @@ tempest_session_progress_event_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_session_restore_progress_events <- function(
   events,
   session_id,
@@ -1953,12 +1877,10 @@ tempest_session_restore_progress_events <- function(
   records
 }
 
-#' @keywords internal
 tempest_session_bundle_optional_presentation_files <- function() {
   "artifacts/suggested_questions.json"
 }
 
-#' @keywords internal
 tempest_session_bundle_manifest_fields <- function() {
   c(
     "schema_version",
@@ -1977,7 +1899,6 @@ tempest_session_bundle_manifest_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_session_bundle_workspace_fields <- function() {
   c(
     "schema_version",
@@ -1988,7 +1909,6 @@ tempest_session_bundle_workspace_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_session_bundle_validate_manifest <- function(
   bundle_dir,
   manifest
@@ -2164,7 +2084,6 @@ tempest_session_bundle_validate_manifest <- function(
   invisible(files)
 }
 
-#' @keywords internal
 tempest_costorm_bundle_validate_product <- function(
   snapshot,
   return_parsed = FALSE
@@ -2176,7 +2095,6 @@ tempest_costorm_bundle_validate_product <- function(
   invisible(parsed$snapshot)
 }
 
-#' @keywords internal
 tempest_costorm_bundle_read <- function(
   path,
   archive = FALSE
@@ -2375,7 +2293,6 @@ tempest_costorm_bundle_read <- function(
   )
 }
 
-#' @keywords internal
 tempest_costorm_archive_read <- function(path) {
   tempest_costorm_bundle_read(path, archive = TRUE)$path
 }
@@ -2383,23 +2300,23 @@ tempest_costorm_archive_read <- function(path) {
 #' Resume a saved Co-STORM session bundle
 #'
 #' `tempest_session_resume()` reads a directory bundle written by
-#' [tempest_session_save()] and rebuilds a [TempestSession] with a fresh runtime
-#' [TempestConfig]. Only the exact current schema-14 bundle is accepted; no
+#' [tempest_session_save()] and rebuilds a [tempest_session()] with a fresh runtime
+#' [tempest_config()]. Only the exact current schema-14 bundle is accepted; no
 #' compatibility or migration reader is provided. Historical progress events are
 #' loaded for display and reduction, but they are not replayed into `progress`.
 #' Stage-record history is restored for audit, but running attempts are rejected
 #' rather than resumed.
 #'
 #' @param path Directory containing a session bundle.
-#' @param config Runtime [TempestConfig] used to recreate chats, retrievers, and
+#' @param config Runtime [tempest_config()] used to recreate chats, retrievers, and
 #'   tools.
 #' @param progress Optional callback for future `tempest_progress_event`
 #'   objects.
-#' @param program_set A [TempestProgramSet] carrying the same program
+#' @param program_set A `TempestProgramSet` carrying the same program
 #'   identities recorded in the bundle. If `NULL`, the builtin set is used.
 #' @param knowledge Freshly admitted artifact knowledge matching the saved
 #'   selection. Required when the session contains artifact evidence.
-#' @return A restored [TempestSession].
+#' @return A restored [tempest_session()].
 #' @export
 tempest_session_resume <- function(
   path,
@@ -2419,7 +2336,6 @@ tempest_session_resume <- function(
   )
 }
 
-#' @keywords internal
 tempest_session_resume_internal <- function(
   path,
   config = tempest_config(),

@@ -1,6 +1,5 @@
 # STORM outline stage
 
-#' @keywords internal
 tempest_draft_outline <- function(
   writer,
   topic,
@@ -20,7 +19,6 @@ tempest_draft_outline <- function(
   stage_result$output
 }
 
-#' @keywords internal
 tempest_refine_outline <- function(
   writer,
   topic,
@@ -59,7 +57,6 @@ tempest_refine_outline <- function(
   stage_result$output
 }
 
-#' @keywords internal
 tempest_outline_summary <- function(outline) {
   outline <- tempest_normalize_outline(outline)
   paste(
@@ -79,7 +76,6 @@ tempest_outline_summary <- function(outline) {
   )
 }
 
-#' @keywords internal
 tempest_subsections_markdown <- function(subsections) {
   if (
     !is.list(subsections) ||
@@ -117,7 +113,6 @@ tempest_subsections_markdown <- function(subsections) {
   )
 }
 
-#' @keywords internal
 tempest_normalize_outline <- function(x) {
   if (is.null(x) || !is.list(x)) {
     tempest_abort(

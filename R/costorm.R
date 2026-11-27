@@ -1,49 +1,8 @@
 # Co-STORM session class and constructors
 
-#' TempestSession
-#'
-#' Maintains state for a Co-STORM session: multi-agent dialog, mind map,
-#' provisional scientific evidence, and report state.
-#'
-#' @section Internal implementation:
-#'
-#' `TempestSession` is an unexported mutable implementation returned by
-#' [tempest_session()]. Its supported product state is the correlated research
-#' manifest, workspace, transcript, mind map, experts, progress events, and
-#' canonical report. Process-local execution members are internal and are not
-#' part of the persistence or public API contract.
-#'
-#' @keywords internal
 TempestSession <- R6::R6Class(
   "TempestSession",
   public = list(
-    #' @description
-    #' Internal constructor. Use [tempest_session()] for the supported API.
-    #' @param topic The research topic.
-    #' @param config A `TempestConfig` object.
-    #' @param n_experts Number of expert agents.
-    #' @param experts Optional list of validated expert profiles. If `NULL`,
-    #'   experts are generated automatically using `tempest_generate_experts()`.
-    #' @param retriever Optional `TempestRetriever` or compatible retriever
-    #'   object with a [ResearchWorkspace] at `$workspace` and
-    #'   `search(query, k)` and `fetch(url)` methods. `search()` returns a data
-    #'   frame with `title` and HTTP/HTTPS `url` columns; `snippet` is optional
-    #'   and Tempest derives or verifies `source_id`. Create the workspace with
-    #'   [tempest_research_workspace()] and source IDs with [tempest_source_id()].
-    #' @param progress Optional function called with `tempest_progress_event`
-    #'   objects as the session makes progress.
-    #' @param session_id Optional stable session identifier. If `NULL`, a new
-    #'   identifier is generated.
-    #' @param program_set A [TempestProgramSet] used for every structured
-    #'   Co-STORM stage.
-    #' @param .admit_knowledge Internal callback receiving the validated
-    #'   workspace for fresh knowledge admission.
-    #' @param .artifact_selection Internal selection retained in a fresh manifest
-    #'   before accepted records are inserted after successful construction.
-    #' @param .restore_manifest Internal research manifest supplied only by
-    #'   Tempest's bundle-restoration seam.
-    #' @param .restore_token Internal authorization token for bundle
-    #'   restoration.
     initialize = function(
       topic,
       config = tempest_config(),
@@ -375,19 +334,11 @@ TempestSession <- R6::R6Class(
       invisible(self)
     },
 
-    #' @description
-    #' Suggest follow-up questions for the user based on the conversation so far.
-    #' @param n Maximum number of questions to return.
-    #' @return A character vector of questions (possibly empty).
     suggest_questions = function(n = 4) {
       tempest_session_assert_mutable(self, "generate suggestions")
       tempest_costorm_await(tempest_session_suggest_questions_async(self, n))
     },
 
-    #' @description
-    #' Process one explicit user turn through the Deputy moderator.
-    #' @param user_input User input.
-    #' @return A list with the moderator answer and exact Deputy identity.
     step = function(user_input = NULL) {
       tempest_session_assert_mutable(self, "process a dialogue turn")
       tempest_session_async_work_assert_startable(self, "dialogue")
@@ -414,11 +365,6 @@ TempestSession <- R6::R6Class(
       )
     },
 
-    #' @description
-    #' Run a warmup phase where each expert researches their initial questions.
-    #' This primes the knowledge base with foundational research before interactive Q&A.
-    #' @param verbose If TRUE, prints progress messages.
-    #' @return A list with results from each expert's warmup.
     warmup = function(verbose = TRUE) {
       tempest_session_assert_mutable(self, "warm up experts")
       verbose <- tempest_product_flag(verbose, "verbose")
@@ -431,13 +377,6 @@ TempestSession <- R6::R6Class(
       invisible(result)
     },
 
-    #' @description
-    #' Verify claims, create and commit the canonical report, move the
-    #' manifest to `succeeded`, and seal the workspace.
-    #' @param style Report style: "technical" or "executive".
-    #' @param include_references Include references section.
-    #' @return The committed Markdown report. Use [tempest_report()] to read
-    #'   the exact committed bytes later.
     publish = function(
       style = c("technical", "executive"),
       include_references = TRUE
@@ -449,11 +388,6 @@ TempestSession <- R6::R6Class(
       ))
     },
 
-    #' @description
-    #' Add a new expert to the panel dynamically.
-    #' @param area The area of expertise needed.
-    #' @param name Optional name for the new expert.
-    #' @return The new expert profile (invisibly).
     add_expert = function(area, name = NULL) {
       tempest_session_assert_mutable(self, "add an expert")
       active <- private$get_active_experts()
@@ -506,10 +440,6 @@ TempestSession <- R6::R6Class(
       invisible(new_expert)
     },
 
-    #' @description
-    #' Retire an expert from the panel.
-    #' @param expert_id The stable id of the expert to retire.
-    #' @return Logical indicating success.
     retire_expert = function(expert_id) {
       tempest_session_assert_mutable(self, "retire an expert")
       idx <- private$find_expert(expert_id)
@@ -521,7 +451,6 @@ TempestSession <- R6::R6Class(
     }
   ),
   active = list(
-    #' @field session_id Stable session identifier.
     session_id = function(value) {
       if (!missing(value)) {
         tempest_costorm_session_abort(
@@ -530,7 +459,6 @@ TempestSession <- R6::R6Class(
       }
       private$session_id_value
     },
-    #' @field topic Research topic.
     topic = function(value) {
       if (!missing(value)) {
         tempest_costorm_session_abort(
@@ -539,7 +467,6 @@ TempestSession <- R6::R6Class(
       }
       private$topic_value
     },
-    #' @field status Current product status.
     status = function(value) {
       if (!missing(value)) {
         tempest_costorm_session_abort(
@@ -548,7 +475,6 @@ TempestSession <- R6::R6Class(
       }
       private$manifest_value@status
     },
-    #' @field experts Read-only expert roster.
     experts = function(value) {
       if (!missing(value)) {
         tempest_costorm_session_abort(
@@ -557,7 +483,6 @@ TempestSession <- R6::R6Class(
       }
       rlang::duplicate(private$experts_value, shallow = FALSE)
     },
-    #' @field transcript Read-only conversation transcript.
     transcript = function(value) {
       if (!missing(value)) {
         tempest_costorm_session_abort(
@@ -566,7 +491,6 @@ TempestSession <- R6::R6Class(
       }
       rlang::duplicate(private$transcript_value, shallow = FALSE)
     },
-    #' @field mindmap Read-only mind-map projection.
     mindmap = function(value) {
       if (!missing(value)) {
         tempest_costorm_session_abort(
@@ -884,7 +808,7 @@ TempestSession <- R6::R6Class(
 #' @param experts Optional list of validated expert profiles. If `NULL`,
 #'   experts are generated automatically.
 #' @param retriever Optional `TempestRetriever` or compatible retriever object
-#'   with a [ResearchWorkspace] at `$workspace` and `search(query, k)` and
+#'   with a `ResearchWorkspace` at `$workspace` and `search(query, k)` and
 #'   `fetch(url)` methods. `search()` returns a data frame with `title` and
 #'   HTTP/HTTPS `url` columns; `snippet` is optional and Tempest derives or
 #'   verifies `source_id`. Create the workspace with

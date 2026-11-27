@@ -9,7 +9,11 @@ test_that("retrieval tools expose canonical research vocabulary", {
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = store
   )
-  tools <- tempest:::tempest_tools_retrieval(retriever)
+  tools <- tempest:::tempest_research_tools(
+    retriever,
+    role = "expert",
+    search_provider = "wikipedia"
+  )
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
   by_name <- function(name) tools[[match(name, tool_names)]]
 
@@ -111,7 +115,11 @@ test_that("research tool effects obey Deputy's capability and mode policies", {
   retriever <- tempest_retriever(
     config = tempest_config(cache_dir = withr::local_tempdir())
   )
-  tools <- tempest:::tempest_tools_retrieval(retriever)
+  tools <- tempest:::tempest_research_tools(
+    retriever,
+    role = "expert",
+    search_provider = "wikipedia"
+  )
   tool_names <- vapply(tools, \(tool) tool@name, character(1))
   read_names <- c(
     "get_retrieved_source",
@@ -500,7 +508,10 @@ test_that("source-management tools expose claim tools without web tools", {
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = store
   )
-  tools <- tempest:::tempest_tools_source_management(retriever)
+  tools <- c(
+    tempest:::tempest_tools_evidence_read(retriever),
+    tempest:::tempest_tools_evidence_write(retriever)
+  )
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
   by_name <- function(name) tools[[match(name, tool_names)]]
 
@@ -544,9 +555,12 @@ test_that("claim write tools record dynamic provenance", {
     expert_id = expert@expert_id,
     retrieval_step_id = "tool-turn-1"
   )
-  tools <- tempest:::tempest_tools_source_management(
-    retriever,
-    claim_provenance = function() current
+  tools <- c(
+    tempest:::tempest_tools_evidence_read(retriever),
+    tempest:::tempest_tools_evidence_write(
+      retriever,
+      claim_provenance = function() current
+    )
   )
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
   by_name <- function(name) tools[[match(name, tool_names)]]
@@ -571,10 +585,7 @@ test_that("source-management tools can be registered read-only", {
     config = tempest_config(cache_dir = withr::local_tempdir()),
     workspace = producer_test_workspace(1)
   )
-  tools <- tempest:::tempest_tools_source_management(
-    retriever,
-    allow_claim_writes = FALSE
-  )
+  tools <- tempest:::tempest_tools_evidence_read(retriever)
   tool_names <- vapply(tools, function(tool) tool@name, character(1))
 
   expect_contains(
@@ -609,11 +620,11 @@ test_that("default tool registration respects read-only evidence roles", {
     }
   )
 
-  tempest:::tempest_register_default_tools(
+  tempest:::tempest_research_attach_tools(
     chat,
     retriever,
-    search_provider = "wikipedia",
-    allow_claim_writes = FALSE
+    role = "coordinator",
+    search_provider = "wikipedia"
   )
 
   tool_names <- vapply(registered[[1]], function(tool) tool@name, character(1))

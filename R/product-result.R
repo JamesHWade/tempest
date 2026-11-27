@@ -15,15 +15,6 @@ tempest_product_result_abort <- function(
   )
 }
 
-#' Completed Tempest research product
-#'
-#' The validated value returned by [tempest_run()]. Read it with
-#' [tempest_report()], [tempest_sources()], [tempest_claims()],
-#' [tempest_claim_supports()], [tempest_trajectory_review()], and the
-#' promotion functions. Retrievers, mutable workspaces, manifests, and stage
-#' state stay internal to validation, persistence, telemetry, and promotion.
-#'
-#' @keywords internal
 TempestResult <- S7::new_class(
   "TempestResult",
   package = "tempest",

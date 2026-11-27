@@ -29,9 +29,6 @@ tempest_knowledge_max_records <- function() {
   1000L
 }
 
-#' Retained research knowledge from an artifact selection
-#'
-#' @keywords internal
 TempestKnowledge <- S7::new_class(
   "TempestKnowledge",
   package = "tempest",
@@ -149,7 +146,6 @@ tempest_knowledge_record_text <- function(payload, record_id) {
   )
   paste(parts, collapse = "\n")
 }
-
 
 # Resolve the public `knowledge` argument into the validated artifact selection and the
 # builtin ProgramSet.

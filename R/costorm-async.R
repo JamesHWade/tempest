@@ -582,26 +582,6 @@ tempest_session_turn_cancel <- function(state) {
   invisible(state)
 }
 
-#' Process a completed Co-STORM turn asynchronously
-#'
-#' `r lifecycle::badge("experimental")`
-#'
-#' Records a completed user and moderator exchange, then asynchronously commits
-#' cited evidence, updates the session mind map, and optionally generates
-#' follow-up questions. Enrichment failures are returned as typed notices so
-#' host applications can choose their own presentation. Stale work is cancelled
-#' before it can commit later pipeline stages.
-#'
-#' @param session A [TempestSession] object.
-#' @param completion_id Opaque, process-local completion identifier returned by
-#'   `tempest_session_request_completion_async()`.
-#' @param suggest Whether to generate follow-up questions.
-#' @param n_suggestions Maximum number of follow-up questions.
-#' @param is_current Process-local predicate returning `TRUE` while this work is
-#'   allowed to commit. It is never retained in the result.
-#' @return A promise resolving to a typed, serializable
-#'   `tempest_session_turn_result` object.
-#' @keywords internal
 tempest_session_process_turn_async <- function(
   session,
   completion_id,

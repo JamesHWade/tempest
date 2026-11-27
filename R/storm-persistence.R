@@ -1,6 +1,5 @@
 # STORM run persistence
 
-#' @keywords internal
 tempest_storm_topic_slug <- function(topic, max_chars = 80) {
   slug <- tolower(tempest_trim(topic))
   slug <- gsub("[^a-z0-9]+", "-", slug)
@@ -11,7 +10,6 @@ tempest_storm_topic_slug <- function(topic, max_chars = 80) {
   substr(slug, 1, max_chars)
 }
 
-#' @keywords internal
 tempest_storm_prepare_run_dir <- function(output_dir, topic, run_id = NULL) {
   if (is.null(output_dir)) {
     return(NULL)
@@ -29,7 +27,6 @@ tempest_storm_prepare_run_dir <- function(output_dir, topic, run_id = NULL) {
   normalizePath(run_dir, winslash = "/", mustWork = TRUE)
 }
 
-#' @keywords internal
 tempest_storm_artifact_paths <- function(run_dir) {
   list(
     run_config = file.path(run_dir, "run_config.json"),
@@ -47,7 +44,6 @@ tempest_storm_artifact_paths <- function(run_dir) {
   )
 }
 
-#' @keywords internal
 tempest_storm_bundle_write_json <- function(path, rel_path, value) {
   tempest_persistence_bundle_write_json(
     path,
@@ -58,7 +54,6 @@ tempest_storm_bundle_write_json <- function(path, rel_path, value) {
   )
 }
 
-#' @keywords internal
 tempest_storm_bundle_write_text <- function(path, rel_path, value) {
   tempest_persistence_bundle_write_text(
     path,
@@ -87,7 +82,6 @@ tempest_storm_stage_required_files <- function(completed_stages) {
   ))
 }
 
-#' @keywords internal
 tempest_storm_persistence_abort <- function(message, action, parent = NULL) {
   suffix <- if (identical(action, "restore")) {
     "tempest_run_restore_error"
@@ -102,7 +96,6 @@ tempest_storm_persistence_abort <- function(message, action, parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_storm_record_strings <- function(value, field, action) {
   is_character_array <- is.character(value) && is.null(names(value))
   is_scalar_string_list <- is.list(value) &&
@@ -131,27 +124,22 @@ tempest_storm_record_strings <- function(value, field, action) {
   unname(value)
 }
 
-#' @keywords internal
 tempest_storm_perspective_fields <- function() {
   c("name", "description", "key_questions")
 }
 
-#' @keywords internal
 tempest_storm_outline_fields <- function() {
   c("title", "sections")
 }
 
-#' @keywords internal
 tempest_storm_outline_section_fields <- function() {
   c("title", "summary", "subsections")
 }
 
-#' @keywords internal
 tempest_storm_outline_subsection_fields <- function() {
   c("title", "bullets", "needed")
 }
 
-#' @keywords internal
 tempest_storm_validate_perspectives <- function(perspectives, action) {
   valid <- is.list(perspectives) &&
     !is.data.frame(perspectives) &&
@@ -198,7 +186,6 @@ tempest_storm_validate_perspectives <- function(perspectives, action) {
   invisible(perspectives)
 }
 
-#' @keywords internal
 tempest_storm_validate_outline <- function(outline, field, action) {
   fields <- names(outline)
   if (
@@ -283,7 +270,6 @@ tempest_storm_validate_outline <- function(outline, field, action) {
   invisible(outline)
 }
 
-#' @keywords internal
 tempest_storm_reference_fields <- function() {
   c(
     "id",
@@ -298,7 +284,6 @@ tempest_storm_reference_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_storm_validate_references <- function(state, workspace, action) {
   references <- state$references
   valid <- is.list(references) &&
@@ -370,7 +355,6 @@ tempest_storm_validate_references <- function(state, workspace, action) {
   invisible(references)
 }
 
-#' @keywords internal
 tempest_storm_validate_persisted_state <- function(
   state,
   workspace,
@@ -441,7 +425,6 @@ tempest_storm_validate_persisted_state <- function(
   invisible(state)
 }
 
-#' @keywords internal
 tempest_storm_bundle_manifest_fields <- function() {
   c(
     "topic",
@@ -459,7 +442,6 @@ tempest_storm_bundle_manifest_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_storm_bundle_owned_files <- function(include_manifest = FALSE) {
   files <- c(
     "workspace.json",
@@ -476,7 +458,6 @@ tempest_storm_bundle_owned_files <- function(include_manifest = FALSE) {
   if (isTRUE(include_manifest)) c("run_config.json", files) else files
 }
 
-#' @keywords internal
 tempest_storm_require_current_schema <- function(metadata) {
   schema_version <- tempest_persistence_schema_version(
     metadata$schema_version %||% NA_integer_,
@@ -493,7 +474,6 @@ tempest_storm_require_current_schema <- function(metadata) {
   schema_version
 }
 
-#' @keywords internal
 tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   schema_version <- tempest_storm_require_current_schema(manifest)
   manifest_fields <- names(manifest)
@@ -644,7 +624,6 @@ tempest_storm_bundle_validate_manifest <- function(run_dir, manifest) {
   invisible(files)
 }
 
-#' @keywords internal
 tempest_storm_workspace_identity_record <- function(workspace) {
   list(
     max_sources = tempest_research_workspace_max_sources_data(
@@ -655,8 +634,6 @@ tempest_storm_workspace_identity_record <- function(workspace) {
   )
 }
 
-
-#' @keywords internal
 tempest_storm_run_restore_abort <- function(message, parent = NULL) {
   tempest_abort(
     message,
@@ -666,7 +643,6 @@ tempest_storm_run_restore_abort <- function(message, parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_storm_program_set_abort <- function(message, action, parent = NULL) {
   class <- if (identical(action, "restore")) {
     tempest_persistence_error_class("tempest_run_restore_error")
@@ -681,7 +657,6 @@ tempest_storm_program_set_abort <- function(message, action, parent = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_storm_program_set_validate <- function(
   program_set,
   research_manifest,
@@ -789,7 +764,6 @@ tempest_storm_program_set_validate <- function(
   program_set
 }
 
-#' @keywords internal
 tempest_storm_restore_workspace <- function(
   metadata
 ) {
@@ -995,7 +969,6 @@ tempest_storm_assert_workspace_equivalent <- function(supplied, persisted) {
   supplied
 }
 
-#' @keywords internal
 tempest_storm_restore_manifest <- function(
   metadata,
   workspace,
@@ -1117,7 +1090,6 @@ tempest_storm_restore_manifest <- function(
   manifest
 }
 
-#' @keywords internal
 tempest_storm_read_state <- function(
   paths,
   metadata,
@@ -1293,7 +1265,6 @@ tempest_storm_read_state <- function(
   state
 }
 
-#' @keywords internal
 tempest_storm_attach_workspace <- function(
   supplied_workspace,
   workspace,
@@ -1860,7 +1831,6 @@ tempest_storm_stage_bundle_files <- function(
   invisible(metadata)
 }
 
-#' @keywords internal
 tempest_storm_save_artifacts <- function(
   run_dir,
   workspace,

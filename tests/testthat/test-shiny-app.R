@@ -240,33 +240,6 @@ test_that("Co-STORM session failures expose only safe error metadata", {
   expect_no_match(jsonlite::toJSON(event@payload, auto_unbox = TRUE), secret)
 })
 
-test_that("tempest_shiny_ui builds namespaced host panels", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("bslib")
-  skip_if_not_installed("shinychat")
-  html <- paste(
-    as.character(tempest_shiny_ui(
-      "host",
-      panels = c("chat", "sources", "report"),
-      show_config = TRUE
-    )),
-    collapse = ""
-  )
-
-  expect_match(html, "host-chat-topic")
-  expect_match(html, "host-chat-save_session")
-  expect_match(html, "host-sources-body")
-  expect_match(html, "host-report-body")
-  expect_match(html, "host-config-coordinator")
-
-  review_html <- paste(
-    as.character(tempest_shiny_ui("host", panels = "review")),
-    collapse = ""
-  )
-  expect_match(review_html, "host-review-product_source", fixed = TRUE)
-  expect_match(review_html, "Run review", fixed = TRUE)
-})
-
 test_that("chat UI uses the Tempest assistant icon", {
   skip_if_not_installed("shiny")
   skip_if_not_installed("bslib")
@@ -531,19 +504,6 @@ test_that("chat module delegates native chat and session lifecycle work", {
   app <- source_shiny_modules()
   server_code <- paste(deparse(body(app$mod_chat_server)), collapse = "\n")
 
-  expect_named(
-    formals(tempest_shiny_server),
-    c(
-      "id",
-      "config",
-      "store",
-      "panels",
-      "experts",
-      "session_id",
-      "program_set",
-      "knowledge"
-    )
-  )
   expect_named(
     formals(app$mod_chat_server),
     c(
@@ -1773,91 +1733,6 @@ test_that("session store saves and restores bundles for shared app tabs", {
     session$flushReact()
     expect_match(as.character(output$body$html), "Generate a report")
   })
-})
-
-test_that("tempest_shiny_server renders host-managed shared state", {
-  skip_if_not_installed("shiny")
-  skip_if_not_installed("ellmer")
-  cfg <- tempest_config(
-    chat_fn = function(role, model, system_prompt, echo) fake_chat()
-  )
-  workspace <- fake_store_with_sources(1)
-  source_id <- workspace$list_retrieved_sources()[[1]]$id
-  workspace$add_proposed_claim(tempest_claim(
-    claim_text = "Host adapter evidence renders.",
-    source_ids = source_id
-  ))
-  store <- tempest_shiny_store()
-  ses <- tempest_session(
-    "Embedded host topic",
-    config = cfg,
-    experts = list(test_expert(
-      name = "Host Expert"
-    )),
-    retriever = tempest_retriever(config = cfg, workspace = workspace),
-    session_id = "host-session-1"
-  )
-  tempest:::tempest_session_commit_mindmap(
-    ses,
-    list(
-      nodes = list(list(
-        id = "root",
-        label = "Embedded host topic",
-        parent = NULL,
-        notes = "",
-        source_ids = source_id
-      )),
-      edges = list()
-    )
-  )
-  ses$.__enclos_env__$private$add_turn("User", "user", "Show embedded state.")
-
-  shiny::testServer(
-    tempest_shiny_server,
-    args = list(
-      config = cfg,
-      store = store,
-      panels = c("sources", "facts", "mindmap", "transcript", "report")
-    ),
-    {
-      expect_identical(shared_store, store)
-      shared_store$set_costorm_session(ses)
-      session$flushReact()
-
-      expect_equal(
-        shiny::isolate(shared_store$costorm_session())$session_id,
-        "host-session-1"
-      )
-      expect_no_match(
-        as.character(output[["sources-body"]]$html),
-        "No sources collected yet"
-      )
-      expect_no_match(
-        as.character(output[["facts-body"]]$html),
-        "No facts extracted yet"
-      )
-      expect_equal(output[["mindmap-n_nodes"]], "1")
-      expect_match(
-        as.character(output[["transcript-body"]]$html),
-        "embedded state"
-      )
-      expect_match(
-        as.character(output[["report-body"]]$html),
-        "Generate a report"
-      )
-    }
-  )
-})
-
-test_that("the example host app parses", {
-  path <- system.file(
-    "examples",
-    "shiny-host",
-    "app.R",
-    package = "tempest"
-  )
-  skip_if(identical(path, ""), "example host app not installed")
-  expect_no_error(parse(path))
 })
 
 test_that("workflow_progress_ui renders reducer state", {

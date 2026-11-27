@@ -1,6 +1,5 @@
 # STORM ellmer type definitions
 
-#' @keywords internal
 tempest_type_perspectives <- function() {
   ellmer::type_object(
     title = ellmer::type_string("Suggested title for the final report."),
@@ -16,7 +15,6 @@ tempest_type_perspectives <- function() {
   )
 }
 
-#' @keywords internal
 tempest_type_personas <- function() {
   ellmer::type_object(
     personas = ellmer::type_array(
@@ -47,7 +45,6 @@ tempest_type_personas <- function() {
   )
 }
 
-#' @keywords internal
 tempest_type_outline <- function() {
   subsection <- ellmer::type_object(
     title = ellmer::type_string("Subsection title"),
@@ -70,7 +67,6 @@ tempest_type_outline <- function() {
   )
 }
 
-#' @keywords internal
 tempest_type_fact_extract <- function() {
   src <- ellmer::type_object(
     source_id = ellmer::type_string("Source id like Sxxxxxxxxxxxx"),
@@ -104,7 +100,6 @@ tempest_type_fact_extract <- function() {
   ellmer::type_object(facts = ellmer::type_array(fact))
 }
 
-#' @keywords internal
 tempest_type_next_question <- function() {
   ellmer::type_object(
     question = ellmer::type_string("Next research question to ask the expert."),
@@ -115,7 +110,6 @@ tempest_type_next_question <- function() {
   )
 }
 
-#' @keywords internal
 tempest_type_query_decomposition <- function() {
   ellmer::type_object(
     queries = ellmer::type_array(
@@ -124,7 +118,6 @@ tempest_type_query_decomposition <- function() {
   )
 }
 
-#' @keywords internal
 tempest_type_briefing_items <- function() {
   item <- ellmer::type_object(
     kind = ellmer::type_enum(

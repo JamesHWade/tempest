@@ -453,8 +453,6 @@ tempest_product_authority_finalize_manifest <- function(
   candidate
 }
 
-
-#' @keywords internal
 tempest_product_authority_stage_manifest_traces <- function(records) {
   records <- tempest_stage_records_validate(records)
   traces <- lapply(records, function(record) {
@@ -488,7 +486,6 @@ tempest_product_authority_stage_manifest_traces <- function(records) {
   tempest_research_manifest_traces(traces)
 }
 
-#' @keywords internal
 tempest_product_authority_deputy_manifest_traces <- function(
   traces,
   manifest,
@@ -687,7 +684,6 @@ tempest_product_authority_deputy_manifest_traces <- function(
   traces
 }
 
-#' @keywords internal
 tempest_product_authority_expert_session_trace_bindings <- function(
   records,
   expert_ids,
@@ -738,7 +734,6 @@ tempest_product_authority_expert_session_trace_bindings <- function(
   stats::setNames(bound_expert_ids, session_ids)
 }
 
-#' @keywords internal
 tempest_product_authority_manifest_runtime_from_traces <- function(traces) {
   ids <- function(field) {
     values <- vapply(
@@ -754,7 +749,6 @@ tempest_product_authority_manifest_runtime_from_traces <- function(traces) {
   )
 }
 
-#' @keywords internal
 tempest_product_authority_extraction_attempt_ids <- function(records) {
   vapply(
     Filter(
@@ -771,7 +765,6 @@ tempest_product_authority_extraction_attempt_ids <- function(records) {
   )
 }
 
-#' @keywords internal
 tempest_product_authority_manifest_validate_trace_ids <- function(
   stage_traces,
   deputy_traces,
@@ -1018,7 +1011,6 @@ tempest_product_authority_manifest_validate_trace_ids <- function(
   invisible(traces)
 }
 
-#' @keywords internal
 tempest_product_authority_manifest_existing_traces <- function(
   manifest,
   stage_traces,
@@ -1131,7 +1123,6 @@ tempest_product_authority_manifest_existing_traces <- function(
   invisible(NULL)
 }
 
-#' @keywords internal
 tempest_product_authority_bind_stage_records <- function(
   manifest,
   records,
@@ -1175,7 +1166,6 @@ tempest_product_authority_bind_stage_records <- function(
   )
 }
 
-#' @keywords internal
 tempest_product_authority_validate_stage_records <- function(
   manifest,
   records,
@@ -1260,7 +1250,6 @@ tempest_product_authority_validate_stage_records <- function(
   tempest_stage_records_validate_manifest(records, manifest)
 }
 
-#' @keywords internal
 tempest_product_authority_bind_report <- function(manifest, report_md) {
   reference <- tempest_product_report_reference(report_md)
   deliverables <- manifest@deliverables
@@ -1275,7 +1264,6 @@ tempest_product_authority_bind_report <- function(manifest, report_md) {
   )
 }
 
-#' @keywords internal
 tempest_product_authority_validate_report <- function(
   manifest,
   reference,

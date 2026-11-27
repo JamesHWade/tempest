@@ -146,13 +146,6 @@ tempest_governed_procedure_s7_validator <- function(self) {
   result
 }
 
-#' Tempest governed-procedure reference
-#'
-#' An immutable reference to one governed procedure revision and the pinned
-#' Graft view in which it was accepted. The reference also binds the exact
-#' dsprrr program artifact and Tempest evaluator contract.
-#'
-#' @keywords internal
 TempestGovernedProcedureRef <- S7::new_class(
   "TempestGovernedProcedureRef",
   properties = list(

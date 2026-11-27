@@ -427,14 +427,11 @@ tempest_expert_profile_from_data <- function(data) {
   value
 }
 
-
-#' @keywords internal
 tempest_expert_records <- function(experts) {
   experts <- tempest_validate_experts(experts)
   unname(lapply(experts, tempest_expert_profile_record))
 }
 
-#' @keywords internal
 tempest_expert_record_fields <- function() {
   c(
     "expert_id",
@@ -450,7 +447,6 @@ tempest_expert_record_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_experts_from_records <- function(
   records,
   what = "expert profiles",
@@ -518,7 +514,6 @@ tempest_experts_from_records <- function(
   )
 }
 
-#' @keywords internal
 tempest_expert_session_record_fields <- function() {
   c(
     "session_id",
@@ -529,7 +524,6 @@ tempest_expert_session_record_fields <- function() {
   )
 }
 
-#' @keywords internal
 tempest_expert_session_snapshot_record <- function(binding) {
   fields <- tempest_expert_session_record_fields()
   invalid <- !is.list(binding) ||
@@ -550,7 +544,6 @@ tempest_expert_session_snapshot_record <- function(binding) {
   tempest_product_serializable_list(binding, "expert_session")
 }
 
-#' @keywords internal
 tempest_expert_sessions_snapshot <- function(session) {
   manager <- tempest_session_expert_manager(session)
   session_ids <- sort(manager$list_sessions())

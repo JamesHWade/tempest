@@ -1,4 +1,3 @@
-#' @keywords internal
 tempest_product_write_json <- function(path, x, digits = 4, force = FALSE) {
   dir.create(dirname(path), recursive = TRUE, showWarnings = FALSE)
   json <- jsonlite::toJSON(
@@ -78,12 +77,10 @@ tempest_persistence_bundle_mismatched_checksums <- function(
 # classes so callers can catch any save/load failure with a single handler.
 # Session persistence errors additionally carry `tempest_session_error`, which
 # is shared with non-persistence session errors raised by `TempestSession`.
-#' @keywords internal
 tempest_persistence_error_class <- function(specific = character()) {
   c(specific, "tempest_persistence_error", "tempest_error")
 }
 
-#' @keywords internal
 tempest_session_persistence_error_class <- function(specific = character()) {
   c(
     specific,
@@ -93,7 +90,6 @@ tempest_session_persistence_error_class <- function(specific = character()) {
   )
 }
 
-#' @keywords internal
 tempest_product_unsupported_format_abort <- function(
   what,
   version = NULL,
@@ -115,7 +111,6 @@ tempest_persistence_schema_version <- function(value, what, class) {
   )
 }
 
-#' @keywords internal
 tempest_persistence_manifest_files <- function(value, what, class) {
   valid <- is.list(value) &&
     !is.data.frame(value) &&
@@ -139,7 +134,6 @@ tempest_persistence_manifest_files <- function(value, what, class) {
   unname(vapply(value, identity, character(1)))
 }
 
-#' @keywords internal
 tempest_persistence_manifest_checksums <- function(
   value,
   files,
@@ -173,7 +167,6 @@ tempest_persistence_manifest_checksums <- function(
   unlist(value, use.names = TRUE)
 }
 
-#' @keywords internal
 tempest_persistence_leaf_path_is_symlink <- function(path) {
   expanded <- path.expand(path)
   without_trailing_separator <- sub("[/\\\\]+$", "", expanded)
@@ -184,7 +177,6 @@ tempest_persistence_leaf_path_is_symlink <- function(path) {
   !is.na(link_target) && nzchar(link_target)
 }
 
-#' @keywords internal
 tempest_persistence_bundle_path_has_symlink <- function(bundle_dir, rel_path) {
   parts <- strsplit(gsub("\\\\", "/", rel_path), "/", fixed = TRUE)[[1]]
   current <- bundle_dir
@@ -197,7 +189,6 @@ tempest_persistence_bundle_path_has_symlink <- function(bundle_dir, rel_path) {
   FALSE
 }
 
-#' @keywords internal
 tempest_persistence_require_regular_bundle_files <- function(
   bundle_dir,
   files,
@@ -262,7 +253,6 @@ tempest_persistence_require_regular_bundle_files <- function(
   invisible(files)
 }
 
-#' @keywords internal
 tempest_persistence_credential_audit <- function(value, what, class) {
   evidence_path <- function(path) {
     grepl(
@@ -373,7 +363,6 @@ tempest_persistence_credential_audit <- function(value, what, class) {
   invisible(value)
 }
 
-#' @keywords internal
 tempest_product_read_json <- function(
   path,
   what = "JSON file",
@@ -400,7 +389,6 @@ tempest_product_read_json <- function(
   )
 }
 
-#' @keywords internal
 tempest_persistence_exact_records <- function(
   records,
   fields,
@@ -441,7 +429,6 @@ tempest_persistence_exact_records <- function(
   records
 }
 
-#' @keywords internal
 tempest_product_bundle_checksum <- function(bundle_dir, rel_path) {
   digest::digest(
     file.path(bundle_dir, rel_path),
@@ -451,12 +438,10 @@ tempest_product_bundle_checksum <- function(bundle_dir, rel_path) {
   )
 }
 
-#' @keywords internal
 tempest_product_install_bundle <- function(staging_dir, bundle_dir) {
   file.rename(staging_dir, bundle_dir)
 }
 
-#' @keywords internal
 tempest_product_atomic_commit_bundle <- function(
   staging_dir,
   bundle_dir,

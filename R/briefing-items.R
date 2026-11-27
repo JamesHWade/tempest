@@ -138,8 +138,6 @@ tempest_briefing_item_id <- function(kind, text, claim_ids, confidence) {
   )
 }
 
-#' Governed briefing item (S7)
-#' @keywords internal
 TempestBriefingItem <- S7::new_class(
   "TempestBriefingItem",
   package = "tempest",

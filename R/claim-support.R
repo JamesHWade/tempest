@@ -171,22 +171,6 @@ TempestClaimSupport <- S7::new_class(
   }
 )
 
-#' Create an explicit claim-support assessment
-#'
-#' `tempest_claim_support()` records one verifier judgment for one exact
-#' claim-by-evidence-span pair. The source binding is explicit, while claim,
-#' span, and source existence are validated by the owning [ResearchWorkspace].
-#'
-#' @param claim_id Exact provisional claim identifier.
-#' @param evidence_span_id Exact evidence-span identifier.
-#' @param source_id Exact source identifier owned by the evidence span.
-#' @param verification_status One of `"supported"`, `"partially_supported"`,
-#'   `"unsupported"`, `"contradicted"`, or `"unverifiable"`.
-#' @param support_score Finite support strength in `[0, 1]`, or `NA` only for
-#'   an `"unverifiable"` assessment.
-#' @param rationale Required bounded credential-free rationale.
-#' @return A `tempest_claim_support` S7 value.
-#' @keywords internal
 tempest_claim_support <- function(
   claim_id,
   evidence_span_id,

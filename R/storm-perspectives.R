@@ -1,20 +1,5 @@
 # STORM perspectives and expert-profile stage
 
-#' Generate expert profiles for a topic
-#'
-#' Uses an LLM to propose diverse experts who would naturally approach the
-#' topic from different angles, then normalizes the provider response into
-#' validated, versioned [tempest_expert()] profiles.
-#'
-#' @param topic The research topic.
-#' @param n Number of experts to generate.
-#' @param config A `TempestConfig` object.
-#' @param verbose Print progress.
-#' @param program_set A [TempestProgramSet] containing the exact `personas`
-#'   program. If `NULL`, [tempest_program_set()] creates the builtin set.
-#' @return A list of `tempest_expert` profiles.
-#'
-#' @keywords internal
 tempest_generate_experts <- function(
   topic,
   n = 3,
@@ -45,7 +30,6 @@ tempest_generate_experts <- function(
   )
 }
 
-#' @keywords internal
 tempest_persona_requirements <- function(requirements = NULL) {
   if (is.null(requirements)) {
     return(paste(
@@ -63,7 +47,6 @@ tempest_persona_requirements <- function(requirements = NULL) {
   tempest_config_string(requirements, "requirements")
 }
 
-#' @keywords internal
 tempest_personas_ellmer_fallback <- function(chat, inputs, context) {
   prompt <- paste0(
     "Topic: ",
@@ -116,7 +99,6 @@ tempest_prepare_expert_generation <- function(
   )
 }
 
-#' @keywords internal
 tempest_generate_experts_with_program <- function(
   topic,
   n,
@@ -195,11 +177,6 @@ tempest_generate_experts_async <- function(
   })
 }
 
-#' Format Persona Details for Prompt
-#'
-#' @param persona A plain runtime expert record.
-#' @return A formatted string with persona details.
-#' @keywords internal
 tempest_format_persona_details <- function(persona) {
   parts <- character()
 
@@ -227,12 +204,6 @@ tempest_format_persona_details <- function(persona) {
   paste(parts, collapse = "\n\n")
 }
 
-#' Render Expert System Prompt for a Persona
-#'
-#' @param persona A validated expert profile.
-#' @param expert_id Expert ID used in the rendered prompt.
-#' @return A rendered system prompt string.
-#' @keywords internal
 tempest_render_expert_prompt <- function(persona, expert_id = NULL) {
   if (!S7::S7_inherits(persona, TempestExpertProfile)) {
     tempest_abort(
@@ -255,7 +226,6 @@ tempest_render_expert_prompt <- function(persona, expert_id = NULL) {
   )
 }
 
-#' @keywords internal
 tempest_generate_perspectives <- function(
   chat,
   topic,
@@ -280,7 +250,6 @@ tempest_generate_perspectives <- function(
   stage_result$output
 }
 
-#' @keywords internal
 tempest_stage_string <- function(value, field, allow_empty = FALSE) {
   if (
     !is.character(value) ||
@@ -304,7 +273,6 @@ tempest_stage_string <- function(value, field, allow_empty = FALSE) {
   value
 }
 
-#' @keywords internal
 tempest_stage_string_array <- function(
   value,
   field,
@@ -350,12 +318,10 @@ tempest_stage_string_array <- function(
   value
 }
 
-#' @keywords internal
 tempest_generated_expert_scalar <- function(value, field, allow_empty = FALSE) {
   tempest_stage_string(value, field, allow_empty = allow_empty)
 }
 
-#' @keywords internal
 tempest_generated_expert_profile <- function(value) {
   if (!is.list(value) || is.data.frame(value)) {
     tempest_abort(
@@ -406,7 +372,6 @@ tempest_generated_expert_profile <- function(value) {
   )
 }
 
-#' @keywords internal
 tempest_normalize_experts <- function(x, n = NULL) {
   if (!is.list(x) || is.data.frame(x) || is.null(x$personas)) {
     tempest_abort(
@@ -435,7 +400,6 @@ tempest_normalize_experts <- function(x, n = NULL) {
   purrr::map(values, tempest_generated_expert_profile)
 }
 
-#' @keywords internal
 tempest_normalize_perspectives <- function(x, topic, n_experts = NULL) {
   if (!is.list(x) || is.data.frame(x)) {
     tempest_abort(
@@ -497,16 +461,6 @@ tempest_normalize_perspectives <- function(x, topic, n_experts = NULL) {
   )
 }
 
-#' Generate a single expert profile for a specific area
-#'
-#' @param topic The research topic.
-#' @param area The area of expertise needed.
-#' @param existing_experts Existing expert profiles to avoid duplicating.
-#' @param config A `TempestConfig` object.
-#' @param module ProgramSet-bound persona execution.
-#' @param record_stage Product-owned stage-record callback.
-#' @return A validated `tempest_expert` profile.
-#' @keywords internal
 tempest_generate_single_expert <- function(
   topic,
   area,

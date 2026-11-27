@@ -623,7 +623,6 @@ tempest_research_manifest_programs_same_identity <- function(x, y) {
   )
 }
 
-
 tempest_research_manifest_runtime <- function(value) {
   value <- value %||% list()
   if (!is.list(value) || is.data.frame(value)) {
@@ -1070,13 +1069,6 @@ tempest_research_manifest_s7_validator <- function(self) {
   }
 }
 
-#' TempestResearchManifest (S7)
-#'
-#' A small immutable value contract describing the identities and references
-#' used by one STORM or Co-STORM research run. Runtime clients, credentials,
-#' stores, tools, and executable objects are deliberately excluded.
-#'
-#' @keywords internal
 TempestResearchManifest <- S7::new_class(
   "TempestResearchManifest",
   properties = list(
@@ -1097,33 +1089,6 @@ TempestResearchManifest <- S7::new_class(
   validator = tempest_research_manifest_s7_validator
 )
 
-#' Create a Tempest research manifest
-#'
-#' `tempest_research_manifest()` records only durable identities and references
-#' for one STORM or Co-STORM run. Supply a [tempest_config()] object to compute
-#' its behavior-relevant digest. `config_digest` is intended for restoration of
-#' an existing record.
-#'
-#' Reference fields accept only canonical JSON-compatible plain values. They
-#' cannot contain credentials, chats, functions, environments, connections,
-#' S7 or R6 objects, external pointers, or missing and non-finite values.
-#'
-#' @param research_run_id Stable research-run identifier.
-#' @param mode Product mode, either `"storm"` or `"costorm"`.
-#' @param config A `TempestConfig` used to compute `config_digest`, or `NULL`
-#'   when restoring an existing digest.
-#' @param config_digest Existing SHA-256 configuration identity. Supply this
-#'   only when `config` is unavailable during restoration.
-#' @param programs Named references to exact scientific programs.
-#' @param artifact_selection Exact retained artifact evidence selection. This is
-#'   input provenance, not current permission or execution authority.
-#' @param runtime Opaque Deputy session and run references.
-#' @param traces References to Deputy or dsprrr traces.
-#' @param deliverables References to product deliverables.
-#' @param status Run status: `"running"`, `"succeeded"`, `"failed"`, or
-#'   `"cancelled"`.
-#' @return A `TempestResearchManifest` S7 object.
-#' @keywords internal
 tempest_research_manifest <- function(
   research_run_id,
   mode = c("storm", "costorm"),

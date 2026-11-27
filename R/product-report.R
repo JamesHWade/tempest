@@ -225,7 +225,6 @@ tempest_stage_records_validate_execution_review <- function(
   invisible(content)
 }
 
-#' @keywords internal
 tempest_extract_citation_ids <- function(text) {
   ids <- unique(unlist(regmatches(
     text,
@@ -234,7 +233,6 @@ tempest_extract_citation_ids <- function(text) {
   gsub("\\[|\\]", "", ids)
 }
 
-#' @keywords internal
 tempest_markdown_heading_text <- function(text) {
   if (!rlang::is_string(text) || is.na(text)) {
     tempest_product_report_abort(
@@ -270,7 +268,6 @@ tempest_markdown_heading_text <- function(text) {
   unique(values)
 }
 
-#' @keywords internal
 tempest_markdown_has_heading <- function(text, labels) {
   heading_key <- function(value) {
     value <- tempest_contract_normalize_display_text(value)
@@ -282,7 +279,6 @@ tempest_markdown_has_heading <- function(text, labels) {
   any(headings %in% labels)
 }
 
-#' @keywords internal
 tempest_normalize_min_support_score <- function(min_support_score) {
   score <- min_support_score %||% 0.7
   if (
@@ -300,7 +296,6 @@ tempest_normalize_min_support_score <- function(min_support_score) {
   as.double(score)
 }
 
-#' @keywords internal
 tempest_apply_min_support_score <- function(
   status,
   score,
@@ -322,7 +317,6 @@ tempest_apply_min_support_score <- function(
   status
 }
 
-#' @keywords internal
 tempest_citation_matches <- function(text) {
   rx <- gregexpr("\\[(S[0-9a-f]{12})\\]", text, perl = TRUE)
   starts <- as.integer(rx[[1]])
@@ -339,7 +333,6 @@ tempest_citation_matches <- function(text) {
   )
 }
 
-#' @keywords internal
 tempest_citation_context <- function(text, start, end) {
   text_len <- nchar(text)
   before <- if (start > 1L) substr(text, 1L, start - 1L) else ""
@@ -353,7 +346,6 @@ tempest_citation_context <- function(text, start, end) {
   trimws(substr(text, left, right))
 }
 
-#' @keywords internal
 tempest_normalize_claim_match_text <- function(text) {
   text <- gsub("\\[(\\^?S[0-9a-f]{12})\\]", " ", text, perl = TRUE)
   text <- tolower(text)
@@ -361,14 +353,12 @@ tempest_normalize_claim_match_text <- function(text) {
   trimws(gsub("\\s+", " ", text))
 }
 
-#' @keywords internal
 tempest_citation_shaped_tokens <- function(text) {
   matches <- gregexpr("\\[S[^]\\r\\n]*\\]", text, perl = TRUE)
   tokens <- regmatches(text, matches)
   unname(unlist(tokens, use.names = FALSE))
 }
 
-#' @keywords internal
 tempest_citation_tokens_valid <- function(text) {
   tokens <- tempest_citation_shaped_tokens(text)
   length(tokens) == 0L ||
@@ -379,7 +369,6 @@ tempest_citation_tokens_valid <- function(text) {
     ))
 }
 
-#' @keywords internal
 tempest_package_structural_headings <- function() {
   c(
     "Introduction",
@@ -405,7 +394,6 @@ tempest_package_structural_headings <- function() {
   )
 }
 
-#' @keywords internal
 tempest_markdown_structural_heading <- function(lines) {
   headings <- grepl("^[[:space:]]*#{1,6}[[:space:]]", lines)
   heading_text <- sub(
@@ -417,7 +405,6 @@ tempest_markdown_structural_heading <- function(lines) {
   headings & normalized %in% tolower(tempest_package_structural_headings())
 }
 
-#' @keywords internal
 tempest_report_title_validate <- function(title) {
   if (
     !rlang::is_string(title) ||
@@ -433,7 +420,6 @@ tempest_report_title_validate <- function(title) {
   title
 }
 
-#' @keywords internal
 tempest_markdown_escape_plain_text <- function(value, field) {
   if (is.null(value) || (rlang::is_string(value) && is.na(value))) {
     return("")
@@ -455,7 +441,6 @@ tempest_markdown_escape_plain_text <- function(value, field) {
   gsub("([\\\\`*_{}\\[\\]()#+.!|~-])", "\\\\\\1", value, perl = TRUE)
 }
 
-#' @keywords internal
 tempest_markdown_source_url <- function(value) {
   if (is.null(value) || (rlang::is_string(value) && is.na(value))) {
     return("")
@@ -480,7 +465,6 @@ tempest_markdown_source_url <- function(value) {
   paste0("<", value, ">")
 }
 
-#' @keywords internal
 tempest_claims_for_citation_context <- function(claims, context = NULL) {
   if (length(claims) == 0 || is.null(context) || !nzchar(context)) {
     return(claims)
@@ -505,7 +489,6 @@ tempest_claims_for_citation_context <- function(claims, context = NULL) {
   matched
 }
 
-#' @keywords internal
 tempest_citation_context_range <- function(text, start, end) {
   text_len <- nchar(text)
   before <- if (start > 1L) substr(text, 1L, start - 1L) else ""
@@ -521,7 +504,6 @@ tempest_citation_context_range <- function(text, start, end) {
   c(start = left, end = right)
 }
 
-#' @keywords internal
 tempest_apply_strict_claim_action <- function(
   text,
   store,
@@ -582,7 +564,6 @@ tempest_apply_strict_claim_action <- function(
   text
 }
 
-#' @keywords internal
 tempest_source_status <- function(
   store,
   source_id,
@@ -631,7 +612,6 @@ tempest_source_status <- function(
   statuses[order(match(statuses, worst_first))][1]
 }
 
-#' @keywords internal
 tempest_strict_publication_claims <- function(
   text,
   store,
@@ -790,7 +770,6 @@ tempest_strict_publication_claims <- function(
   invisible(required_claim_ids)
 }
 
-#' @keywords internal
 tempest_strict_publication_assertions <- function(
   text,
   atomic_lines = integer()
@@ -830,7 +809,6 @@ tempest_strict_publication_assertions <- function(
   unname(assertions)
 }
 
-#' @keywords internal
 tempest_report_body_validate_reserved_sections <- function(body) {
   if (!rlang::is_string(body) || is.na(body)) {
     tempest_product_report_abort("Report body must be one Markdown string.")
@@ -857,7 +835,6 @@ tempest_report_body_validate_reserved_sections <- function(body) {
   invisible(body)
 }
 
-#' @keywords internal
 tempest_status_badge <- function(status) {
   if (length(status) != 1 || is.na(status)) {
     return("")
@@ -873,7 +850,6 @@ tempest_status_badge <- function(status) {
   )
 }
 
-#' @keywords internal
 tempest_add_footnotes <- function(
   text,
   store,
@@ -967,7 +943,6 @@ tempest_add_footnotes <- function(
   list(text = text2, footnotes = paste(notes, collapse = "\n"))
 }
 
-#' @keywords internal
 tempest_report_md_render <- function(
   title,
   body,
@@ -1143,7 +1118,6 @@ tempest_report <- function(x) {
   report_md
 }
 
-#' @keywords internal
 tempest_final_report_validate <- function(
   report_md,
   workspace,
@@ -1280,8 +1254,6 @@ tempest_final_report_validate <- function(
   invisible(report_md)
 }
 
-
-#' @keywords internal
 tempest_product_report_execution_review_candidates <- function(...) {
   histories <- list(...)
   candidates <- unlist(
@@ -1301,7 +1273,6 @@ tempest_product_report_execution_review_candidates <- function(...) {
   candidates[order(nchar(candidates), decreasing = TRUE)]
 }
 
-#' @keywords internal
 tempest_product_report_without_execution_review <- function(
   value,
   records,
@@ -1341,7 +1312,6 @@ tempest_product_report_without_execution_review <- function(
   substr(value, 1L, prefix_length)
 }
 
-#' @keywords internal
 tempest_product_report_for_stage_records <- function(
   value,
   records,
@@ -1365,7 +1335,6 @@ tempest_product_report_for_stage_records <- function(
   )
 }
 
-#' @keywords internal
 tempest_product_report_inline_citations <- function(value) {
   gsub(
     "\\[\\^(S[0-9a-f]{12})\\]",
@@ -1375,7 +1344,6 @@ tempest_product_report_inline_citations <- function(value) {
   )
 }
 
-#' @keywords internal
 tempest_product_report_validate_policy <- function(
   report_md,
   title,

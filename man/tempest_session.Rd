@@ -26,7 +26,7 @@ tempest_session(
 experts are generated automatically.}
 
 \item{retriever}{Optional \code{TempestRetriever} or compatible retriever object
-with a \link{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
+with a \code{ResearchWorkspace} at \verb{$workspace} and \code{search(query, k)} and
 \code{fetch(url)} methods. \code{search()} returns a data frame with \code{title} and
 HTTP/HTTPS \code{url} columns; \code{snippet} is optional and Tempest derives or
 verifies \code{source_id}. Create the workspace with

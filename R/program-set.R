@@ -346,13 +346,6 @@ tempest_program_set_s7_validator <- function(self) {
   result
 }
 
-#' TempestProgramSet (S7)
-#'
-#' A validated live collection of the exact dsprrr programs used by Tempest.
-#' Durable projections contain only entry metadata; registry-bound modules and
-#' the local bundle root remain live process state.
-#'
-#' @keywords internal
 TempestProgramSet <- S7::new_class(
   "TempestProgramSet",
   properties = list(
@@ -584,39 +577,6 @@ tempest_program_set_write_bundle <- function(
   tempest_program_set_new(entries, restored, bundle_root = root)
 }
 
-#' Create a validated Tempest program set
-#'
-#' `tempest_program_set()` resolves the exact ten dsprrr programs used by the
-#' STORM and Co-STORM product stages. With `programs = NULL` and `path = NULL`,
-#' it creates the package's addressable builtin programs without writing files.
-#' Custom programs require `path` and are persisted immediately as verified
-#' dsprrr program artifacts.
-#'
-#' The returned live value retains executable modules. Its manifest projection
-#' contains only portable identifiers, evaluator metadata, and builtin or
-#' bundle-relative artifact references. Stored research and Graft records never
-#' select or authorize executable programs.
-#'
-#' Resume compares program identity independently of physical location, so a
-#' relocated verified bundle is accepted. A custom-program run must resume with
-#' a ProgramSet carrying the same identities. Omitting `program_set` at a run
-#' boundary resolves the package's current builtins and can resume only when
-#' those builtin artifact IDs match the persisted run.
-#'
-#' @param programs `NULL` for the exact package builtin programs, or an exact
-#'   named list of ten dsprrr Module objects.
-#' @param path Optional directory in which to create a file-backed ProgramSet.
-#'   It must not already exist. Custom `programs` require this argument.
-#' @param contract_versions Contract version `1`, or an exact named integer
-#'   vector containing version `1` for every stage.
-#' @param evaluators `NULL` for Tempest's named stage output-contract
-#'   evaluators, or an exact named list whose records contain `evaluator_id`
-#'   and `evaluator_version`. These identify how stage output is judged and are
-#'   distinct from an optimization teleprompter or metric.
-#' @param registry Named runtime-binding registry passed to dsprrr artifact
-#'   operations. It is never stored in ProgramSet metadata.
-#' @return A validated `TempestProgramSet` S7 object.
-#' @keywords internal
 tempest_program_set <- function(
   programs = NULL,
   path = NULL,

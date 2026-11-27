@@ -373,7 +373,6 @@ tempest_session_async_work_assert_quiescent <- function(session) {
   invisible(NULL)
 }
 
-#' @keywords internal
 tempest_session_verification_owner_token <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_costorm_session_abort(
@@ -389,7 +388,6 @@ tempest_session_verification_owner_token <- function(session) {
   token
 }
 
-#' @keywords internal
 tempest_session_emit_progress <- function(session, ...) {
   if (!inherits(session, "TempestSession")) {
     tempest_costorm_session_abort("{.arg session} must be a TempestSession.")
@@ -497,7 +495,6 @@ tempest_session_program_set <- function(session) {
   tempest_session_private(session)$program_set_value
 }
 
-#' @keywords internal
 tempest_session_programs <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_costorm_session_abort(
@@ -506,7 +503,6 @@ tempest_session_programs <- function(session) {
   }
   tempest_session_private(session)$programs_value
 }
-
 
 tempest_session_stage_records <- function(session) {
   if (!inherits(session, "TempestSession")) {
@@ -924,7 +920,6 @@ tempest_session_set_stage_records <- function(session, records) {
   invisible(session)
 }
 
-#' @keywords internal
 tempest_session_report_value <- function(session) {
   if (!inherits(session, "TempestSession")) {
     tempest_costorm_session_abort(
@@ -934,7 +929,6 @@ tempest_session_report_value <- function(session) {
   tempest_session_private(session)$report_md_value
 }
 
-#' @keywords internal
 tempest_session_set_report_value <- function(session, report_md) {
   if (!inherits(session, "TempestSession")) {
     tempest_costorm_session_abort(

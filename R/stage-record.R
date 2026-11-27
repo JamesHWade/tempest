@@ -1599,7 +1599,6 @@ tempest_stage_records_validate_manifest <- function(records, manifest) {
   invisible(records)
 }
 
-#' @keywords internal
 tempest_stage_records_verification_projection <- function(records, workspace) {
   records <- tempest_stage_records_validate(records)
   if (!inherits(workspace, "ResearchWorkspace")) {
@@ -1742,7 +1741,6 @@ tempest_stage_records_verification_projection <- function(records, workspace) {
   ))
 }
 
-#' @keywords internal
 tempest_stage_records_validate_workspace <- function(
   records,
   workspace,
@@ -1978,7 +1976,6 @@ tempest_stage_records_validate_workspace <- function(
   invisible(records)
 }
 
-#' @keywords internal
 tempest_stage_records_validate_workspace_coverage <- function(
   records,
   workspace,
@@ -2039,7 +2036,6 @@ tempest_stage_records_validate_workspace_coverage <- function(
   invisible(records)
 }
 
-#' @keywords internal
 tempest_stage_records_validate_generated_experts <- function(records, experts) {
   records <- tempest_stage_records_validate(records)
   experts <- tempest_validate_experts(experts)
@@ -2152,7 +2148,6 @@ tempest_stage_records_validate_generated_experts <- function(records, experts) {
   invisible(records)
 }
 
-#' @keywords internal
 tempest_stage_records_validate_claim_provenance <- function(
   records,
   workspace,
@@ -2276,7 +2271,6 @@ tempest_stage_records_validate_claim_provenance <- function(
   invisible(records)
 }
 
-#' @keywords internal
 tempest_stage_records_validate_persisted_trust <- function(
   records,
   workspace,
