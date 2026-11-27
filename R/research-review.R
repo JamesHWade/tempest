@@ -219,52 +219,54 @@ tempest_research_review_dossier_json <- function(dossier) {
 }
 
 tempest_research_review_validate_evidence <- function(evidence, dossier, step) {
-  if (
-    !is.list(evidence) ||
-      is.data.frame(evidence) ||
-      !is.null(names(evidence)) ||
-      length(evidence) > 24L
-  ) {
-    tempest_research_review_abort(
-      "The {.val {step}} model returned malformed evidence citations."
-    )
-  }
   source_ids <- vapply(dossier, `[[`, character(1), "source_id")
-  for (index in seq_along(evidence)) {
-    citation <- evidence[[index]]
-    if (
-      !is.list(citation) ||
-        is.data.frame(citation) ||
-        !identical(names(citation), c("source_id", "quote"))
-    ) {
-      tempest_research_review_abort(
-        "The {.val {step}} model returned a malformed evidence citation."
+  source_texts <- stats::setNames(
+    lapply(dossier, `[[`, "text"),
+    source_ids
+  )
+  result <- tempest_dossier_validate_evidence(
+    evidence = evidence,
+    source_ids = source_ids,
+    source_texts = source_texts,
+    validate_entry = function(citation) {
+      if (
+        !is.list(citation) ||
+          is.data.frame(citation) ||
+          !identical(names(citation), c("source_id", "quote"))
+      ) {
+        tempest_research_review_abort(
+          "The {.val {step}} model returned a malformed evidence citation."
+        )
+      }
+      source_id <- tempest_research_review_validate_string(
+        citation$source_id,
+        paste0(step, ".evidence.source_id"),
+        max_chars = 128L
       )
-    }
-    source_id <- tempest_research_review_validate_string(
-      citation$source_id,
-      paste0(step, ".evidence.source_id"),
-      max_chars = 128L
-    )
-    if (!source_id %in% source_ids) {
+      quote <- tempest_research_review_validate_string(
+        citation$quote,
+        paste0(step, ".evidence.quote"),
+        max_chars = 4000L
+      )
+      list(ok = TRUE, source_id = source_id, quote = quote)
+    },
+    on_list_error = function() {
+      tempest_research_review_abort(
+        "The {.val {step}} model returned malformed evidence citations."
+      )
+    },
+    on_unknown_source = function(source_id) {
       tempest_research_review_abort(
         "The {.val {step}} model cited unknown source id {.val {source_id}}."
       )
-    }
-    quote <- tempest_research_review_validate_string(
-      citation$quote,
-      paste0(step, ".evidence.quote"),
-      max_chars = 4000L
-    )
-    source <- dossier[[match(source_id, source_ids)]]
-    if (!grepl(quote, source$text, fixed = TRUE)) {
+    },
+    on_missing_quote = function(source_id) {
       tempest_research_review_abort(
         "The {.val {step}} model returned a quote that is not verbatim in its cited source."
       )
     }
-    evidence[[index]] <- list(source_id = source_id, quote = quote)
-  }
-  unname(evidence)
+  )
+  result$evidence
 }
 
 tempest_research_review_validate_reviewer <- function(output, dossier) {

@@ -135,52 +135,98 @@ tempest_claim_review_normalize_record <- function(record, include_id = TRUE) {
   record
 }
 
-tempest_claim_review_validate_evidence <- function(evidence, dossier_ids) {
+tempest_dossier_validate_evidence <- function(
+  evidence,
+  source_ids,
+  source_texts,
+  validate_entry,
+  on_list_error,
+  on_unknown_source,
+  on_missing_quote,
+  check_duplicates = FALSE,
+  on_duplicate = NULL,
+  max_entries = 24L
+) {
   if (
     !is.list(evidence) ||
       is.data.frame(evidence) ||
       !is.null(names(evidence)) ||
-      length(evidence) > 24L
+      length(evidence) > max_entries
   ) {
-    return("evidence must be an unnamed list of at most 24 source quotes")
+    return(list(ok = FALSE, issue = on_list_error()))
   }
   seen <- character()
+  normalized <- vector("list", length(evidence))
   for (index in seq_along(evidence)) {
-    item <- evidence[[index]]
-    issue <- tempest_claim_review_record_list(
-      item,
-      c("source_id", "quote"),
-      "evidence entries"
-    )
-    if (!is.null(issue)) {
-      return(issue)
+    entry <- validate_entry(evidence[[index]])
+    if (!isTRUE(entry$ok)) {
+      return(list(ok = FALSE, issue = entry$issue))
     }
-    source_id <- item$source_id
-    if (!tempest_opaque_identifier_valid(source_id)) {
-      return("evidence source_id must be a bounded identifier")
+    source_id <- entry$source_id
+    if (!source_id %in% source_ids) {
+      return(list(ok = FALSE, issue = on_unknown_source(source_id)))
     }
-    if (!source_id %in% dossier_ids) {
-      return("evidence references a source absent from the dossier")
+    quote <- entry$quote
+    if (isTRUE(check_duplicates)) {
+      pair <- tempest_product_canonical_json(list(source_id, quote))
+      if (pair %in% seen) {
+        return(list(ok = FALSE, issue = on_duplicate()))
+      }
+      seen <- c(seen, pair)
     }
-    quote <- item$quote
-    if (!tempest_claim_review_plain_scalar(quote, 4000L)) {
-      return(
-        "evidence quote must be one non-empty string of at most 4000 characters"
-      )
-    }
-    pair <- tempest_product_canonical_json(list(source_id, quote))
-    if (pair %in% seen) {
-      return("evidence cannot repeat an identical source and quote pair")
-    }
-    seen <- c(seen, pair)
-    source_text <- attr(dossier_ids, "source_texts", exact = TRUE)[[source_id]]
+    source_text <- source_texts[[source_id]]
     if (is.null(source_text) || !grepl(quote, source_text, fixed = TRUE)) {
-      return(
-        "evidence quote must be an exact substring of its dossier source text"
-      )
+      return(list(ok = FALSE, issue = on_missing_quote(source_id)))
     }
+    normalized[[index]] <- list(source_id = source_id, quote = quote)
   }
-  NULL
+  list(ok = TRUE, evidence = unname(normalized), issue = NULL)
+}
+
+tempest_claim_review_validate_evidence <- function(evidence, dossier_ids) {
+  source_texts <- attr(dossier_ids, "source_texts", exact = TRUE) %||% list()
+  result <- tempest_dossier_validate_evidence(
+    evidence = evidence,
+    source_ids = dossier_ids,
+    source_texts = source_texts,
+    validate_entry = function(item) {
+      issue <- tempest_claim_review_record_list(
+        item,
+        c("source_id", "quote"),
+        "evidence entries"
+      )
+      if (!is.null(issue)) {
+        return(list(ok = FALSE, issue = issue))
+      }
+      if (!tempest_opaque_identifier_valid(item$source_id)) {
+        return(list(
+          ok = FALSE,
+          issue = "evidence source_id must be a bounded identifier"
+        ))
+      }
+      if (!tempest_claim_review_plain_scalar(item$quote, 4000L)) {
+        return(list(
+          ok = FALSE,
+          issue = "evidence quote must be one non-empty string of at most 4000 characters"
+        ))
+      }
+      list(ok = TRUE, source_id = item$source_id, quote = item$quote)
+    },
+    on_list_error = function() {
+      "evidence must be an unnamed list of at most 24 source quotes"
+    },
+    on_unknown_source = function(source_id) {
+      "evidence references a source absent from the dossier"
+    },
+    on_missing_quote = function(source_id) {
+      "evidence quote must be an exact substring of its dossier source text"
+    },
+    check_duplicates = TRUE,
+    on_duplicate = function() {
+      "evidence cannot repeat an identical source and quote pair"
+    }
+  )
+  result$issue
 }
 
 tempest_claim_review_validate_record <- function(record) {

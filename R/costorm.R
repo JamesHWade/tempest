@@ -182,20 +182,6 @@ tempest_costorm_retriever_workspace <- function(retriever) {
 
 
 tempest_costorm_deputy_trace <- function(trace) {
-  if (!is.list(trace) || is.data.frame(trace)) {
-    tempest_costorm_session_abort(
-      "A Co-STORM Deputy trace must be a plain record."
-    )
-  }
-  canonical <- tryCatch(
-    tempest_research_manifest_traces(list(trace))[[1L]],
-    error = function(error) {
-      tempest_costorm_session_abort(
-        "A Co-STORM Deputy trace does not match the manifest contract.",
-        parent = error
-      )
-    }
-  )
   required <- c(
     "agent_id",
     "correlation_id",
@@ -207,19 +193,16 @@ tempest_costorm_deputy_trace <- function(trace) {
     "trace_id",
     "trace_type"
   )
-  if (!all(required %in% names(canonical))) {
-    tempest_costorm_session_abort(
-      "A Co-STORM Deputy trace is missing required execution references."
-    )
-  }
-  if (
-    !identical(canonical$trace_type, "deputy_run") ||
-      !identical(canonical$trace_id, canonical$deputy_run_id)
-  ) {
-    tempest_costorm_session_abort(
-      "A Co-STORM Deputy trace must identify its exact Deputy run."
-    )
-  }
+  canonical <- tempest_deputy_trace_validate_base(
+    trace = trace,
+    required = required,
+    abort_fn = tempest_costorm_session_abort,
+    plain_msg = "A Co-STORM Deputy trace must be a plain record.",
+    invalid_msg = "A Co-STORM Deputy trace does not match the manifest contract.",
+    missing_msg = "A Co-STORM Deputy trace is missing required execution references.",
+    identity_msg = "A Co-STORM Deputy trace must identify its exact Deputy run.",
+    pass_parent = TRUE
+  )
   allowed_pair <- paste(canonical$stage, canonical$role, sep = ":") %in%
     c(
       "dialogue:moderator",
@@ -2156,6 +2139,55 @@ tempest_session_agent_completion_assert_quiescent <- function(session) {
   tempest_agent_completion_assert_quiescent(context$registry)
 }
 
+tempest_session_match_pending_deputy_run <- function(
+  session,
+  record,
+  expected_fields
+) {
+  if (
+    !inherits(session, "TempestSession") ||
+      !is.list(record) ||
+      is.data.frame(record) ||
+      !identical(names(record), expected_fields)
+  ) {
+    tempest_agent_completion_record_abort()
+  }
+  context <- tempest_session_agent_completion_context(session)
+  pending_runs <- tempest_session_pending_deputy_runs(session)
+  completion_id <- record$completion_id
+  ids <- vapply(pending_runs, `[[`, character(1), "completion_id")
+  index <- which(ids == completion_id)
+  trace <- tryCatch(
+    tempest_costorm_deputy_trace(record$deputy_execution),
+    error = function(error) NULL
+  )
+  if (length(index) != 1L || is.null(trace)) {
+    tempest_agent_completion_record_abort()
+  }
+  pending_run <- pending_runs[[index]]
+  identity_fields <- setdiff(names(pending_run), "completion_id")
+  if (!identical(trace[identity_fields], pending_run[identity_fields])) {
+    tempest_agent_completion_record_abort()
+  }
+  list(
+    context = context,
+    pending_runs = pending_runs,
+    index = index,
+    completion_id = completion_id,
+    trace = trace
+  )
+}
+
+tempest_session_drop_pending_deputy_run <- function(
+  session,
+  pending_runs,
+  index
+) {
+  session$.__enclos_env__$private$pending_deputy_runs_value <-
+    tempest_costorm_pending_deputy_runs(pending_runs[-index])
+  invisible(NULL)
+}
+
 tempest_session_settle_agent_completion <- function(session, completion) {
   expected <- c(
     "completion_id",
@@ -2164,42 +2196,24 @@ tempest_session_settle_agent_completion <- function(session, completion) {
     "provider_turn",
     "deputy_execution"
   )
-  if (
-    !inherits(session, "TempestSession") ||
-      !is.list(completion) ||
-      is.data.frame(completion) ||
-      !identical(names(completion), expected)
-  ) {
-    tempest_agent_completion_record_abort()
-  }
-  context <- tempest_session_agent_completion_context(session)
-  pending_runs <- tempest_session_pending_deputy_runs(session)
-  completion_id <- completion$completion_id
-  ids <- vapply(pending_runs, `[[`, character(1), "completion_id")
-  index <- which(ids == completion_id)
-  trace <- tryCatch(
-    tempest_costorm_deputy_trace(completion$deputy_execution),
-    error = function(error) NULL
+  matched <- tempest_session_match_pending_deputy_run(
+    session,
+    completion,
+    expected
   )
+  trace <- matched$trace
   if (
-    length(index) != 1L ||
-      is.null(trace) ||
-      !identical(trace$status, "complete") ||
+    !identical(trace$status, "complete") ||
       !identical(trace$completion_disposition, "issued")
   ) {
-    tempest_agent_completion_record_abort()
-  }
-  pending_run <- pending_runs[[index]]
-  identity_fields <- setdiff(names(pending_run), "completion_id")
-  if (!identical(trace[identity_fields], pending_run[identity_fields])) {
     tempest_agent_completion_record_abort()
   }
 
   recorded <- tryCatch(
     {
       tempest_agent_completion_issue(
-        context$registry,
-        completion_id = completion_id,
+        matched$context$registry,
+        completion_id = matched$completion_id,
         prompt = completion$prompt,
         response = completion$response,
         provider_turn = completion$provider_turn,
@@ -2212,37 +2226,28 @@ tempest_session_settle_agent_completion <- function(session, completion) {
   )
   if (!recorded) {
     tempest_agent_completion_rollback_issue(
-      context$registry,
-      completion_id,
-      context$owner
+      matched$context$registry,
+      matched$completion_id,
+      matched$context$owner
     )
     tempest_agent_completion_record_abort()
   }
-  pending_runs <- pending_runs[-index]
-  session$.__enclos_env__$private$pending_deputy_runs_value <-
-    tempest_costorm_pending_deputy_runs(pending_runs)
-  invisible(completion_id)
+  tempest_session_drop_pending_deputy_run(
+    session,
+    matched$pending_runs,
+    matched$index
+  )
+  invisible(matched$completion_id)
 }
 
 tempest_session_settle_agent_terminal <- function(session, terminal) {
   expected <- c("completion_id", "deputy_execution", "disposition")
-  if (
-    !inherits(session, "TempestSession") ||
-      !is.list(terminal) ||
-      is.data.frame(terminal) ||
-      !identical(names(terminal), expected)
-  ) {
-    tempest_agent_completion_record_abort()
-  }
-  context <- tempest_session_agent_completion_context(session)
-  pending_runs <- tempest_session_pending_deputy_runs(session)
-  completion_id <- terminal$completion_id
-  ids <- vapply(pending_runs, `[[`, character(1), "completion_id")
-  index <- which(ids == completion_id)
-  trace <- tryCatch(
-    tempest_costorm_deputy_trace(terminal$deputy_execution),
-    error = function(error) NULL
+  matched <- tempest_session_match_pending_deputy_run(
+    session,
+    terminal,
+    expected
   )
+  trace <- matched$trace
   disposition_valid <- rlang::is_string(terminal$disposition) &&
     identical(trace$completion_disposition %||% NULL, terminal$disposition) &&
     ((!identical(trace$status %||% NULL, "complete") &&
@@ -2252,25 +2257,15 @@ tempest_session_settle_agent_terminal <- function(session, terminal) {
   id_available <- tryCatch(
     {
       tempest_agent_completion_assert_id(
-        context$registry,
-        completion_id,
+        matched$context$registry,
+        matched$completion_id,
         must_exist = FALSE
       )
       TRUE
     },
     error = function(error) FALSE
   )
-  if (
-    length(index) != 1L ||
-      is.null(trace) ||
-      !disposition_valid ||
-      !id_available
-  ) {
-    tempest_agent_completion_record_abort()
-  }
-  pending_run <- pending_runs[[index]]
-  identity_fields <- setdiff(names(pending_run), "completion_id")
-  if (!identical(trace[identity_fields], pending_run[identity_fields])) {
+  if (!disposition_valid || !id_available) {
     tempest_agent_completion_record_abort()
   }
   recorded <- tryCatch(
@@ -2283,10 +2278,12 @@ tempest_session_settle_agent_terminal <- function(session, terminal) {
   if (!recorded) {
     tempest_agent_completion_record_abort()
   }
-  pending_runs <- pending_runs[-index]
-  session$.__enclos_env__$private$pending_deputy_runs_value <-
-    tempest_costorm_pending_deputy_runs(pending_runs)
-  invisible(completion_id)
+  tempest_session_drop_pending_deputy_run(
+    session,
+    matched$pending_runs,
+    matched$index
+  )
+  invisible(matched$completion_id)
 }
 
 tempest_session_start_deputy_run <- function(session, pending_run) {

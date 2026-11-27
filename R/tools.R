@@ -1017,69 +1017,128 @@ tempest_register_default_tools <- function(
   invisible(chat)
 }
 
+# Product-owned model selection and fixed scientific tool attachment
 
-#' Generate a single expert profile for a specific area
-#'
-#' @param topic The research topic.
-#' @param area The area of expertise needed.
-#' @param existing_experts Existing expert profiles to avoid duplicating.
-#' @param config A `TempestConfig` object.
-#' @param module ProgramSet-bound persona execution.
-#' @param record_stage Product-owned stage-record callback.
-#' @return A validated `tempest_expert` profile.
-#' @keywords internal
-tempest_generate_single_expert <- function(
-  topic,
-  area,
-  existing_experts,
-  config,
-  module,
-  record_stage = function(record, output = NULL) invisible(record)
-) {
-  topic <- tempest_product_scalar(topic, "topic")
-  area <- tempest_product_scalar(area, "area")
-  existing_experts <- tempest_validate_experts(
-    existing_experts,
-    "existing_experts"
+tempest_research_tools_abort <- function(message, ..., parent = NULL) {
+  tempest_abort(
+    message,
+    ...,
+    class = c("tempest_research_tools_error", "tempest_error"),
+    parent = parent,
+    .envir = rlang::caller_env()
   )
+}
 
-  existing_desc <- if (length(existing_experts) > 0) {
-    paste(
-      purrr::map_chr(existing_experts, function(expert) {
-        paste0(
-          "- ",
-          expert@name,
-          " [",
-          expert@expert_id,
-          "]",
-          " (",
-          expert@title,
-          "): ",
-          expert@description
-        )
-      }),
-      collapse = "\n"
+tempest_research_model <- function(config, role) {
+  if (!S7::S7_inherits(config, TempestConfig)) {
+    tempest_research_tools_abort(
+      "{.arg config} must be created by {.fn tempest_config}."
     )
-  } else {
-    "(none)"
   }
-  requirements <- paste0(
-    "Needed expertise: ",
-    area,
-    "\n\nExisting experts (do not duplicate):\n",
-    existing_desc,
-    paste0(
-      "\n\nGenerate exactly one complementary expert persona for this ",
-      "knowledge gap."
+  role <- tempest_research_expert_id(role, "role")
+  model <- config@models[[role]] %||% NULL
+  if (!rlang::is_string(model) || !nzchar(model)) {
+    tempest_research_tools_abort(c(
+      "No model is configured for role {.val {role}}.",
+      i = "Add the role to {.arg models} in {.fn tempest_config}."
+    ))
+  }
+  model
+}
+
+tempest_research_tool_roles <- function() {
+  c("coordinator", "expert", "writer", "mindmap", "judge")
+}
+
+tempest_research_tool_role <- function(role) {
+  role <- tempest_research_expert_id(role, "role")
+  if (!role %in% tempest_research_tool_roles()) {
+    tempest_research_tools_abort(
+      "{.arg role} must be one fixed scientific role from {.val {tempest_research_tool_roles()}}."
     )
+  }
+  role
+}
+
+tempest_research_tools <- function(
+  retriever,
+  role,
+  model = NULL,
+  search_provider = "native",
+  claim_provenance = list(),
+  max_search_results = NULL
+) {
+  if (!tempest_retriever_compatible(retriever)) {
+    tempest_research_tools_abort(
+      "{.arg retriever} must provide a ResearchWorkspace, search(), and fetch()."
+    )
+  }
+  role <- tempest_research_tool_role(role)
+  search_provider <- tempest_normalize_search_provider(search_provider)
+  claim_provenance <- tempest_product_canonical_list(
+    claim_provenance,
+    "claim_provenance"
   )
-  tempest_generate_experts_with_program(
-    topic = topic,
-    n = 1L,
-    config = config,
-    verbose = FALSE,
-    module = module,
-    requirements = requirements,
-    record_stage = record_stage
-  )[[1]]
+
+  tools <- tempest_tools_evidence_read(retriever)
+  if (role %in% c("coordinator", "expert")) {
+    tools <- c(
+      tempest_tools_web(
+        retriever,
+        model = model,
+        search_provider = search_provider,
+        max_search_results = max_search_results
+      ),
+      tools
+    )
+  }
+  if (identical(role, "expert")) {
+    tools <- c(
+      tools,
+      tempest_tools_evidence_write(
+        retriever,
+        claim_provenance = claim_provenance
+      )
+    )
+  }
+  tools
+}
+
+tempest_research_attach_tools <- function(
+  chat,
+  retriever,
+  role,
+  model = NULL,
+  search_provider = "native",
+  claim_provenance = list(),
+  semantic_retrieval = TRUE,
+  max_search_results = NULL
+) {
+  if (is.null(chat) || !is.function(chat$register_tools)) {
+    tempest_research_tools_abort(
+      "{.arg chat} must provide a register_tools() method."
+    )
+  }
+  semantic_retrieval <- tempest_product_flag(
+    semantic_retrieval,
+    "semantic_retrieval"
+  )
+  tools <- tempest_research_tools(
+    retriever = retriever,
+    role = role,
+    model = model,
+    search_provider = search_provider,
+    claim_provenance = claim_provenance,
+    max_search_results = max_search_results
+  )
+  if (length(tools) > 0L) {
+    chat$register_tools(tools)
+  }
+  if (semantic_retrieval) {
+    registrar <- tempest_semantic_retrieval_registrar(retriever)
+    if (!is.null(registrar)) {
+      registrar(chat, context = list(role = role))
+    }
+  }
+  invisible(chat)
 }

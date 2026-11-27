@@ -38,42 +38,27 @@ tempest_otel_attribute_keys <- function() {
 }
 
 tempest_otel_progress_stages <- function() {
-  c(
-    "dialogue",
-    "evidence",
-    "mindmap",
-    "outline",
-    "persistence",
-    "perspectives",
-    "polish",
-    "report",
-    "research",
-    "session",
-    "suggestions",
-    "verification",
-    "warmup",
-    "write"
-  )
+  sort(unique(c(
+    names(tempest_progress_labels("storm", "stage")),
+    names(tempest_progress_labels("costorm", "stage")),
+    "persistence"
+  )))
 }
 
 tempest_otel_progress_steps <- function() {
+  base_steps <- sort(unique(c(
+    setdiff(
+      c(
+        names(tempest_progress_labels("storm", "step")),
+        names(tempest_progress_labels("costorm", "step"))
+      ),
+      c("persist", "expert_question")
+    ),
+    "delegate_to_expert"
+  )))
   c(
-    "created",
-    "delegate_to_expert",
-    "expert_fanout",
-    "fact_extraction",
-    "generate",
-    "moderator_response",
-    "question_generation",
-    "report_md",
-    "turn",
-    "update",
-    "user_turn",
-    "perspectives_artifacts",
-    "research_artifacts",
-    "outline_artifacts",
-    "write_artifacts",
-    "polish_artifacts"
+    base_steps,
+    paste0(tempest_storm_stage_order(), "_artifacts")
   )
 }
 
