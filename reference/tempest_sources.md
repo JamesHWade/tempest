@@ -4,7 +4,7 @@ Reports every evidence resource consumed by a product, including
 accepted organizational knowledge supplied through
 [`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md)
 or
-[`tempest_artifact_knowledge()`](https://jameshwade.github.io/tempest/reference/tempest_artifact_knowledge.md).
+[`tempest_reuse_artifact_research()`](https://jameshwade.github.io/tempest/reference/tempest_reuse_artifact_research.md).
 
 ## Usage
 

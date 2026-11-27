@@ -3,12 +3,11 @@
 Implements an R-native clone of the STORM and Co-STORM
 research-and-writing workflows using 'ellmer' for LLM orchestration and
 'shinychat' for an interactive Shiny UI. Includes web retrieval tools,
-evidence tracking with citations, mind-map style topic planning, and
-evaluation helpers built on 'vitals'. Tempest owns provisional
-scientific research state, claim-centered evidence, authoritative STORM
-and Co-STORM product flows, and scientific reports. It delegates
-execution to 'deputy', structured research programs to 'dsprrr', and
-accepted-knowledge publication to 'graft'.
+evidence tracking with citations, and mind-map style topic planning.
+Tempest owns provisional scientific research state, claim-centered
+evidence, authoritative STORM and Co-STORM product flows, and scientific
+reports. It delegates execution to 'deputy', structured research
+programs to 'dsprrr', and accepted-knowledge publication to 'graft'.
 
 ## References
 
