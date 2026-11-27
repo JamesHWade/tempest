@@ -688,8 +688,14 @@ tempest_researcher_app_callr_entry <- function(
         "tempest_researcher_app_input_error",
         "tempest_researcher_app_tools_error"
       )
-      error_message <- if (any(classes %in% safe_classes)) {
-        tempest_researcher_app_safe_message(conditionMessage(error))
+      error_message <- if (
+        any(classes %in% safe_classes) && isNamespaceLoaded("tempest")
+      ) {
+        safe_message <- get(
+          "tempest_researcher_app_safe_message",
+          asNamespace("tempest")
+        )
+        safe_message(conditionMessage(error))
       } else {
         NULL
       }
