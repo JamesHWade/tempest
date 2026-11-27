@@ -43,10 +43,12 @@ tempest_app(
 
 - graft_store:
 
-  Optional local directory path or
+  Optional local directory path,
   [`graft::ArtifactStore`](https://jameshwade.github.io/graft/reference/ArtifactStore.html)
   (including
-  [`graft::graft_store_postgres()`](https://jameshwade.github.io/graft/reference/graft_store_postgres.html))
+  [`graft::graft_store_postgres()`](https://jameshwade.github.io/graft/reference/graft_store_postgres.html)),
+  or zero-argument store factory `function()` returning a
+  [`graft::ArtifactStore`](https://jameshwade.github.io/graft/reference/ArtifactStore.html)
   for reviewed project memory. Defaults to `NULL` (disabled). When
   supplied, Workspace settings can pin an accepted stream for new
   sessions or attach read-only `graft_tools()` recall (with `shinychat`

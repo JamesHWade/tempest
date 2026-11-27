@@ -30,8 +30,11 @@ permission. Input selection identities and their full metadata digest
 remain distinct from output publication. Input `reported_decision` is
 unverified host provenance, never authenticated acceptance; malformed
 metadata is omitted. Decision actor, reason, key and other arbitrary
-input provenance are excluded. Schema 3 retains artifact inputs and
-directly replaces native snapshot and receipt-based reviews.
+input provenance are excluded. Schema 4 adds `knowledge$consultations`,
+a bounded, read-only lane of plain-data `@extra$graft` recall
+consultation metadata emitted by Graft memory tools; consultations
+remain unverified provenance distinct from pinned input admission,
+output acceptance, and claim-support evidence.
 
 ## Usage
 

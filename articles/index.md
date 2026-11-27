@@ -1,6 +1,6 @@
 # Articles
 
-### Start here
+### Guides
 
 - [Get started with
   Tempest](https://jameshwade.github.io/tempest/articles/tempest.md):
@@ -8,8 +8,6 @@
   Pick the right Tempest workflow, configure models and search, produce
   your first cited STORM report, and explore interactively with
   Co-STORM.
-
-### Guides
 
 - [Enriched reports and the Researcher
   app](https://jameshwade.github.io/tempest/articles/enriched-research.md):

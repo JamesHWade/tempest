@@ -80,14 +80,24 @@ tempest_researcher_app(
 
 - graft_store:
 
-  Optional local directory path (or
-  [`graft::LocalArtifactStore`](https://jameshwade.github.io/graft/reference/LocalArtifactStore.html))
-  for Graft reviewed project memory. Defaults to `NULL` (disabled). When
+  Optional local directory path,
+  [`graft::ArtifactStore`](https://jameshwade.github.io/graft/reference/ArtifactStore.html)
+  (including
+  [`graft::graft_store()`](https://jameshwade.github.io/graft/reference/graft_store.html)
+  and
+  [`graft::graft_store_postgres()`](https://jameshwade.github.io/graft/reference/graft_store_postgres.html)),
+  or zero-argument store factory `function()` returning a
+  [`graft::ArtifactStore`](https://jameshwade.github.io/graft/reference/ArtifactStore.html)
+  for reviewed project memory. Defaults to `NULL` (disabled). When
   supplied, completed runs are published as unaccepted candidates that
   you can review, accept into a named stream, correct, or withdraw; new
   runs can consult accepted streams through read-only
   [`graft::graft_tools()`](https://jameshwade.github.io/graft/reference/graft_tools.html)
-  or pin an accepted stream as their comparison basis.
+  or pin an accepted stream as their comparison basis. For PostgreSQL
+  stores, pass a zero-argument factory function or configure standard
+  `libpq` credentials (`PGPASSWORD`, `.pgpass`, or `PGSERVICE`) so
+  isolated background workers can reconnect without serializing
+  credentials to disk.
 
 - memory_purpose:
 

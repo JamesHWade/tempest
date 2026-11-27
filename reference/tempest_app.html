@@ -30,11 +30,7 @@ bounded Co-STORM session archive download and upload without autosave.
       <ul class="navbar-nav me-auto"><li class="nav-item"><a class="nav-link" href="../articles/tempest.html">Get started</a></li>
 <li class="nav-item dropdown">
   <button class="nav-link dropdown-toggle" type="button" id="dropdown-articles" data-bs-toggle="dropdown" aria-expanded="false" aria-haspopup="true">Articles</button>
-  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Start here</h6></li>
-    <li><hr class="dropdown-divider"></li>
-    <li><h6 class="dropdown-header" data-toc-skip>Guides</h6></li>
-    <li><a class="dropdown-item" href="../articles/enriched-research.html">Enriched reports and the Researcher app</a></li>
+  <ul class="dropdown-menu" aria-labelledby="dropdown-articles"><li><a class="dropdown-item" href="../articles/enriched-research.html">Enriched reports and the Researcher app</a></li>
     <li><a class="dropdown-item" href="../articles/research-memory.html">Research that remembers with Graft</a></li>
     <li><a class="dropdown-item" href="../articles/daily-briefing.html">Build a recurring decision briefing</a></li>
     <li><a class="dropdown-item" href="../articles/scientific-review.html">Scientific review and evidence repair</a></li>
@@ -99,12 +95,13 @@ or network are needed. The example uses a local demo directory; set
 
 
 <dt id="arg-graft-store">graft_store<a class="anchor" aria-label="anchor" href="#arg-graft-store"></a></dt>
-<dd><p>Optional local directory path or <code><a href="https://jameshwade.github.io/graft/reference/ArtifactStore.html" class="external-link">graft::ArtifactStore</a></code>
-(including <code><a href="https://jameshwade.github.io/graft/reference/graft_store_postgres.html" class="external-link">graft::graft_store_postgres()</a></code>) for reviewed project memory.
-Defaults to <code>NULL</code> (disabled). When supplied, Workspace settings can pin
-an accepted stream for new sessions or attach read-only <code>graft_tools()</code>
-recall (with <code>shinychat</code> tool cards), and the Report tab adds explicit
-review, acceptance, correction, and withdrawal controls.</p></dd>
+<dd><p>Optional local directory path, <code><a href="https://jameshwade.github.io/graft/reference/ArtifactStore.html" class="external-link">graft::ArtifactStore</a></code>
+(including <code><a href="https://jameshwade.github.io/graft/reference/graft_store_postgres.html" class="external-link">graft::graft_store_postgres()</a></code>), or zero-argument store
+factory <code>function()</code> returning a <code><a href="https://jameshwade.github.io/graft/reference/ArtifactStore.html" class="external-link">graft::ArtifactStore</a></code> for reviewed
+project memory. Defaults to <code>NULL</code> (disabled). When supplied, Workspace
+settings can pin an accepted stream for new sessions or attach read-only
+<code>graft_tools()</code> recall (with <code>shinychat</code> tool cards), and the Report tab
+adds explicit review, acceptance, correction, and withdrawal controls.</p></dd>
 
 
 <dt id="arg-memory-purpose">memory_purpose<a class="anchor" aria-label="anchor" href="#arg-memory-purpose"></a></dt>

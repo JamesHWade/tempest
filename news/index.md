@@ -34,13 +34,25 @@
 
 - [`tempest_researcher_app()`](https://jameshwade.github.io/tempest/reference/tempest_researcher_app.md)
   now accepts optional `graft_store`, `memory_purpose`, `memory_actor`,
-  and `memory_eligible` arguments; background workers publish completed
-  research as unaccepted Graft candidates, attach read-only
+  and `memory_eligible` arguments—including local paths,
+  [`graft::graft_store()`](https://jameshwade.github.io/graft/reference/graft_store.html),
+  [`graft::graft_store_postgres()`](https://jameshwade.github.io/graft/reference/graft_store_postgres.html),
+  and zero-argument store factory functions—with credential-redacted
+  worker handoff; background workers publish completed research as
+  unaccepted Graft candidates, attach read-only
   [`graft::graft_tools()`](https://jameshwade.github.io/graft/reference/graft_tools.html)
   to experts, and support pinning an accepted stream as comparison
   knowledge, while the app adds an in-app Review and project memory
   panel and Graft status badges/filters in the saved-report library
-  ([\#198](https://github.com/JamesHWade/tempest/issues/198)).
+  ([\#198](https://github.com/JamesHWade/tempest/issues/198),
+  [\#204](https://github.com/JamesHWade/tempest/issues/204)).
+
+- [`tempest_trajectory_review()`](https://jameshwade.github.io/tempest/reference/tempest_trajectory_review.md)
+  bumps its projection schema to version 4 and adds a bounded, read-only
+  `knowledge$consultations` lane capturing `@extra$graft` memory recall
+  metadata emitted by Graft tools without altering pinned input
+  admission, output acceptance, or claim-support evidence
+  ([\#204](https://github.com/JamesHWade/tempest/issues/204)).
 
 - Saved research products now retain scientific review records with
   workspace schema 8, Co-STORM snapshot and bundle schema 14, STORM
