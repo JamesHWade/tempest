@@ -1105,50 +1105,36 @@ tempest_session_restore <- function(
   )
 }
 
-#' @keywords internal
-tempest_session_restore_internal <- function(
-  snapshot,
-  config = tempest_config(),
-  progress = NULL,
-  program_set = NULL,
-
-  knowledge = NULL
-) {
+tempest_session_parse_snapshot <- function(snapshot) {
   if (!is.list(snapshot)) {
     tempest_session_restore_abort("{.arg snapshot} must be a list.")
   }
+  restore_class <- tempest_session_persistence_error_class(
+    "tempest_session_restore_error"
+  )
   schema_version <- tempest_persistence_schema_version(
     snapshot$schema_version %||% NA_integer_,
     "Session snapshot schema version",
-    tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
+    restore_class
   )
   if (!identical(schema_version, 14L)) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
+      restore_class
     )
   }
-  snapshot_fields <- names(snapshot)
-  if (!identical(snapshot_fields, tempest_session_snapshot_fields())) {
+  if (!identical(names(snapshot), tempest_session_snapshot_fields())) {
     tempest_product_unsupported_format_abort(
       "TempestSession snapshot format",
       schema_version,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
+      restore_class
     )
   }
   tempest_persistence_credential_audit(
     snapshot,
     "Co-STORM session snapshot",
-    tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
+    restore_class
   )
   tempest_session_portable_snapshot(snapshot, action = "restore")
   snapshot$transcript <- tempest_session_transcript_record(
@@ -1162,9 +1148,7 @@ tempest_session_restore_internal <- function(
   tempest_research_workspace_require_current_schema(
     snapshot$workspace,
     "Schema 14 session workspace",
-    tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
+    restore_class
   )
   if (
     !rlang::is_string(snapshot$topic) || !nzchar(tempest_trim(snapshot$topic))
@@ -1184,12 +1168,19 @@ tempest_session_restore_internal <- function(
       "Snapshot must include a non-empty session id."
     )
   }
+  suggested_questions <- tempest_session_suggested_questions(
+    snapshot$suggested_questions,
+    action = "restore"
+  )
+  tempest_session_restore_progress_events(
+    snapshot$progress_events,
+    session_id = snapshot$session_id,
+    action = "restore"
+  )
   experts <- tempest_experts_from_records(
     snapshot$experts,
     what = "session expert profiles",
-    class = tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
+    class = restore_class
   )
   expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
   retired_expert_ids <- tempest_session_retired_expert_ids_from_record(
@@ -1207,9 +1198,29 @@ tempest_session_restore_internal <- function(
       )
     }
   )
+  if (!identical(research_manifest@mode, "costorm")) {
+    tempest_session_restore_abort(
+      "Snapshot research manifest is not a Co-STORM product."
+    )
+  }
+  if (!research_manifest@status %in% c("running", "succeeded")) {
+    tempest_session_restore_abort(
+      paste0(
+        "A Co-STORM session can restore only a running or succeeded research ",
+        "manifest."
+      )
+    )
+  }
   if (!identical(research_manifest@research_run_id, snapshot$session_id)) {
     tempest_session_restore_abort(
       "Snapshot session id does not match its research manifest run id."
+    )
+  }
+  if (
+    !setequal(names(research_manifest@programs), tempest_program_set_stages())
+  ) {
+    tempest_session_restore_abort(
+      "Snapshot research manifest does not record the complete ProgramSet."
     )
   }
   stage_records <- tryCatch(
@@ -1260,6 +1271,70 @@ tempest_session_restore_internal <- function(
     }
   )
   tryCatch(
+    {
+      tempest_product_authority_validate_report(
+        research_manifest,
+        snapshot$report_reference,
+        snapshot$report_md
+      )
+      tempest_stage_records_validate_generated_experts(stage_records, experts)
+      tempest_stage_records_validate_claim_provenance(
+        stage_records,
+        workspace,
+        research_manifest@research_run_id,
+        experts
+      )
+    },
+    error = function(error) {
+      tempest_session_restore_abort(
+        "Snapshot product history or report binding is invalid.",
+        parent = error
+      )
+    }
+  )
+  tryCatch(
+    tempest_stage_records_validate_product_outputs(
+      stage_records,
+      list(experts = snapshot$experts)
+    ),
+    error = function(error) {
+      tempest_session_restore_abort(
+        "Snapshot stage-record history does not match Co-STORM product state.",
+        parent = error
+      )
+    }
+  )
+  tempest_session_mindmap_assert_binding(snapshot$mindmap, workspace)
+  list(
+    snapshot = snapshot,
+    experts = experts,
+    retired_expert_ids = retired_expert_ids,
+    research_manifest = research_manifest,
+    stage_records = stage_records,
+    workspace = workspace,
+    suggested_questions = suggested_questions
+  )
+}
+
+#' @keywords internal
+tempest_session_restore_internal <- function(
+  snapshot,
+  config = tempest_config(),
+  progress = NULL,
+  program_set = NULL,
+  knowledge = NULL,
+  .parsed = NULL
+) {
+  parsed <- .parsed %||% tempest_session_parse_snapshot(snapshot)
+  snapshot <- parsed$snapshot
+  experts <- parsed$experts
+  retired_expert_ids <- parsed$retired_expert_ids
+  research_manifest <- parsed$research_manifest
+  stage_records <- parsed$stage_records
+  workspace <- parsed$workspace
+  suggested_questions <- parsed$suggested_questions
+
+  tryCatch(
     tempest_stage_records_validate_workspace(
       stage_records,
       workspace,
@@ -1285,21 +1360,6 @@ tempest_session_restore_internal <- function(
         require_verification = config@citation_policy %in%
           c("claim_verified", "strict")
       )
-      tempest_stage_records_validate_generated_experts(
-        stage_records,
-        experts
-      )
-      tempest_stage_records_validate_claim_provenance(
-        stage_records,
-        workspace,
-        research_manifest@research_run_id,
-        experts
-      )
-      tempest_product_authority_validate_report(
-        research_manifest,
-        snapshot$report_reference,
-        snapshot$report_md
-      )
       tempest_product_report_validate_policy(
         snapshot$report_md,
         snapshot$title,
@@ -1311,18 +1371,6 @@ tempest_session_restore_internal <- function(
     error = function(error) {
       tempest_session_restore_abort(
         "Snapshot product history or report binding is invalid.",
-        parent = error
-      )
-    }
-  )
-  tryCatch(
-    tempest_stage_records_validate_product_outputs(
-      stage_records,
-      list(experts = snapshot$experts)
-    ),
-    error = function(error) {
-      tempest_session_restore_abort(
-        "Snapshot stage-record history does not match Co-STORM product state.",
         parent = error
       )
     }
@@ -1378,7 +1426,6 @@ tempest_session_restore_internal <- function(
       )
     }
   )
-  tempest_session_mindmap_assert_binding(snapshot$mindmap, workspace)
   tryCatch(
     tempest_report_title_validate(snapshot$title),
     error = function(error) {
@@ -1392,15 +1439,6 @@ tempest_session_restore_internal <- function(
     snapshot$expert_sessions,
     experts,
     retired_expert_ids
-  )
-  suggested_questions <- tempest_session_suggested_questions(
-    snapshot$suggested_questions,
-    action = "restore"
-  )
-  tempest_session_restore_progress_events(
-    snapshot$progress_events,
-    session_id = snapshot$session_id,
-    action = "restore"
   )
   tempest_progress_callback(progress)
   retriever <- tempest_retriever(config = config, workspace = workspace)
@@ -2127,173 +2165,15 @@ tempest_session_bundle_validate_manifest <- function(
 }
 
 #' @keywords internal
-tempest_costorm_bundle_validate_product <- function(snapshot) {
-  schema_version <- tempest_persistence_schema_version(
-    snapshot$schema_version %||% NA_integer_,
-    "Session snapshot schema version",
-    tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
-  )
-  if (!identical(schema_version, 14L)) {
-    tempest_product_unsupported_format_abort(
-      "TempestSession snapshot format",
-      schema_version,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
-    )
+tempest_costorm_bundle_validate_product <- function(
+  snapshot,
+  return_parsed = FALSE
+) {
+  parsed <- tempest_session_parse_snapshot(snapshot)
+  if (isTRUE(return_parsed)) {
+    return(parsed)
   }
-  if (!identical(names(snapshot), tempest_session_snapshot_fields())) {
-    tempest_product_unsupported_format_abort(
-      "TempestSession snapshot format",
-      schema_version,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
-    )
-  }
-  tempest_persistence_credential_audit(
-    snapshot,
-    "Co-STORM session snapshot",
-    tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
-  )
-  tempest_session_portable_snapshot(snapshot, action = "restore")
-  tempest_session_transcript_record(
-    snapshot$transcript,
-    action = "restore"
-  )
-  mindmap <- tempest_session_mindmap_record(
-    snapshot$mindmap,
-    action = "restore"
-  )
-  tempest_session_suggested_questions(
-    snapshot$suggested_questions,
-    action = "restore"
-  )
-  tempest_session_restore_progress_events(
-    snapshot$progress_events,
-    session_id = snapshot$session_id,
-    action = "restore"
-  )
-  experts <- tempest_experts_from_records(
-    snapshot$experts,
-    what = "session expert profiles",
-    class = tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
-  )
-  expert_ids <- vapply(experts, \(expert) expert@expert_id, character(1))
-  tempest_session_retired_expert_ids_from_record(
-    snapshot$retired_expert_ids,
-    expert_ids
-  )
-  research_manifest <- tryCatch(
-    tempest_research_manifest_from_record(snapshot$research_manifest),
-    error = function(error) {
-      tempest_session_restore_abort(
-        paste0(
-          "Snapshot contains an invalid research manifest: ",
-          conditionMessage(error)
-        )
-      )
-    }
-  )
-  if (!identical(research_manifest@mode, "costorm")) {
-    tempest_session_restore_abort(
-      "Snapshot research manifest is not a Co-STORM product."
-    )
-  }
-  if (!research_manifest@status %in% c("running", "succeeded")) {
-    tempest_session_restore_abort(
-      paste0(
-        "A Co-STORM session can restore only a running or succeeded research ",
-        "manifest."
-      )
-    )
-  }
-  if (!identical(research_manifest@research_run_id, snapshot$session_id)) {
-    tempest_session_restore_abort(
-      "Snapshot session id does not match its research manifest run id."
-    )
-  }
-  if (
-    !setequal(names(research_manifest@programs), tempest_program_set_stages())
-  ) {
-    tempest_session_restore_abort(
-      "Snapshot research manifest does not record the complete ProgramSet."
-    )
-  }
-  stage_records <- tryCatch(
-    {
-      records <- tempest_stage_records_from_data(
-        snapshot$stage_records,
-        allow_running = FALSE
-      )
-      tempest_product_authority_validate_stage_records(
-        research_manifest,
-        records,
-        expert_ids = expert_ids,
-        expert_sessions = snapshot$expert_sessions
-      )
-      records
-    },
-    error = function(error) {
-      tempest_session_restore_abort(
-        "Snapshot contains invalid or mismatched stage-record history.",
-        parent = error
-      )
-    }
-  )
-  workspace <- tryCatch(
-    tempest_research_workspace_restore(
-      snapshot$workspace
-    ),
-    error = function(error) {
-      tempest_session_restore_abort(
-        paste0(
-          "Snapshot contains an invalid ResearchWorkspace: ",
-          conditionMessage(error)
-        )
-      )
-    }
-  )
-  tryCatch(
-    {
-      tempest_product_authority_validate_report(
-        research_manifest,
-        snapshot$report_reference,
-        snapshot$report_md
-      )
-      tempest_stage_records_validate_execution_review(
-        snapshot$report_md,
-        stage_records,
-        trusted_title = snapshot$title
-      )
-      tempest_stage_records_validate_generated_experts(stage_records, experts)
-      tempest_stage_records_validate_claim_provenance(
-        stage_records,
-        workspace,
-        research_manifest@research_run_id,
-        experts
-      )
-      tempest_stage_records_validate_product_outputs(
-        stage_records,
-        list(experts = snapshot$experts)
-      )
-    },
-    error = function(error) {
-      tempest_session_restore_abort(
-        "Snapshot product history or report binding is invalid.",
-        parent = error
-      )
-    }
-  )
-
-  tempest_session_mindmap_assert_binding(mindmap, workspace)
-  invisible(snapshot)
+  invisible(parsed$snapshot)
 }
 
 #' @keywords internal
@@ -2367,26 +2247,11 @@ tempest_costorm_bundle_read <- function(
       "tempest_session_restore_error"
     )
   )
-  schema_version <- tempest_persistence_schema_version(
-    manifest$schema_version %||% NA_integer_,
-    "Session bundle schema version",
-    tempest_session_persistence_error_class(
-      "tempest_session_restore_error"
-    )
-  )
-  if (!identical(schema_version, 14L)) {
-    tempest_product_unsupported_format_abort(
-      "Co-STORM bundle format",
-      schema_version,
-      tempest_session_persistence_error_class(
-        "tempest_session_restore_error"
-      )
-    )
-  }
   declared_files <- tempest_session_bundle_validate_manifest(
     bundle_dir,
     manifest
   )
+  schema_version <- manifest$schema_version
   strict_json <- function(rel_path, what) {
     tempest_product_read_json(
       file.path(bundle_dir, rel_path),
@@ -2499,10 +2364,14 @@ tempest_costorm_bundle_read <- function(
   workspace <- workspace[tempest_research_workspace_snapshot_fields()]
   snapshot$workspace <- workspace
   snapshot <- snapshot[tempest_session_snapshot_fields()]
-  tempest_costorm_bundle_validate_product(snapshot)
+  parsed <- tempest_costorm_bundle_validate_product(
+    snapshot,
+    return_parsed = TRUE
+  )
   list(
     path = normalizePath(bundle_dir, winslash = "/", mustWork = TRUE),
-    snapshot = snapshot
+    snapshot = parsed$snapshot,
+    parsed = parsed
   )
 }
 
@@ -2565,7 +2434,7 @@ tempest_session_resume_internal <- function(
     config = config,
     progress = progress,
     program_set = program_set,
-
-    knowledge = knowledge
+    knowledge = knowledge,
+    .parsed = bundle$parsed
   )
 }

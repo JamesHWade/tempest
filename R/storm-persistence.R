@@ -1368,8 +1368,6 @@ tempest_storm_load_artifacts <- function(
     tempest_persistence_error_class("tempest_run_restore_error")
   )
   declared_files <- tempest_storm_bundle_validate_manifest(run_dir, metadata)
-
-  tempest_storm_require_current_schema(metadata)
   path_is_declared <- function(path) {
     rel_path <- gsub(
       "\\\\",
@@ -1940,21 +1938,12 @@ tempest_storm_save_artifacts <- function(
     metadata
   )
   tryCatch(
-    {
-      tempest_persistence_require_regular_bundle_files(
-        staging_dir,
-        "run_config.json",
-        "Staged STORM root manifest",
-        tempest_persistence_error_class("tempest_run_persistence_error")
-      )
-      tempest_storm_bundle_validate_manifest(staging_dir, metadata)
-      tempest_storm_load_artifacts(
-        staging_dir,
-        config = config,
-        program_set = program_set,
-        run_id = research_manifest@research_run_id
-      )
-    },
+    tempest_storm_load_artifacts(
+      staging_dir,
+      config = config,
+      program_set = program_set,
+      run_id = research_manifest@research_run_id
+    ),
     error = function(error) {
       tempest_abort(
         "The completed staged STORM bundle failed validation.",
